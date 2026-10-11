@@ -24,9 +24,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-(!4lv(jy64*-c&do2-3-t97*7_)25bt1q+zq(^gw=(n3vq4_&g'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False  # Turn off debug in production
 
-ALLOWED_HOSTS = []
+# Add your production domain or IP here
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -39,7 +40,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'base',
-    
 ]
 
 MIDDLEWARE = [
@@ -119,7 +119,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# Define where static files are stored in production
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Additional static file directories for development
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+# Media files (if you're using file uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 # Default primary key field type
@@ -127,20 +136,26 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# settings.py
 
+# Email Settings
 # Use the SMTP email backend to send emails
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
-# SMTP server settings
-EMAIL_HOST = 'smtp.gmail.com'  # Example using Gmail's SMTP server
+# SMTP server settings for sending emails (Gmail example)
+EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
 # Your email credentials
-EMAIL_HOST_USER = 'codecubesacademy@gmail.com'  # Replace with your email address
-EMAIL_HOST_PASSWORD = 'ijfanotfcrtclvce'  # Replace with your email password
+EMAIL_HOST_USER = 'codecubesacademy@gmail.com'  # Replace with your actual email address
+EMAIL_HOST_PASSWORD = 'ijfanotfcrtclvce'  # Replace with your actual email password or use an app password
+
+# Default email address to receive contact form submissions
+DEFAULT_TO_EMAIL = EMAIL_HOST_USER
 
 
-# Default "To" email address for contact form submissions
-DEFAULT_TO_EMAIL =  EMAIL_HOST_USER # Replace with your desired recipient email
+# Security Settings (adjust these in production)
+SECURE_SSL_REDIRECT = True  # Redirect all HTTP to HTTPS
+SESSION_COOKIE_SECURE = True  # Ensure session cookie is only sent over HTTPS
+CSRF_COOKIE_SECURE = True  # Ensure CSRF cookie is only sent over HTTPS
+
