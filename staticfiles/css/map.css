@@ -1,0 +1,181 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    display: flex;
+}
+
+.menu {
+    width: 250px;
+    background-color: #556B2F;
+    color: #f1f1f1;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 757px;
+    position: relative;
+}
+
+.menu .logo img {
+    width: 100%;
+    padding: 10px;
+}
+
+.menu nav ul {
+    list-style: none;
+    padding: 0;
+    height: 100vh;
+}
+
+.menu nav ul li {
+    padding: 15px;
+    cursor: pointer;
+}
+
+.menu nav ul li.active {
+    background-color: #444;
+}
+
+.menu nav ul li:hover {
+    background-color: #555;
+}
+
+.menu-footer {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    background-color: #556B2F;
+    margin-top: 0px;
+}
+
+.demo-button,
+.upgrade-button {
+    padding: 10px;
+    margin: 5px 0;
+    cursor: pointer;
+    background-color: #444;
+    color: white;
+    border: none;
+    text-align: center;
+}
+
+.map-container {
+    flex-grow: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.search-bar {
+    display: flex;
+    padding: 10px;
+    background-color: #f1f1f1;
+}
+
+.search-bar input {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px 0 0 4px;
+}
+
+.search-bar .search-button {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+}
+
+#map {
+    flex-grow: 1;
+    height: 100vh; /* Make map fill the available vertical space */
+    z-index: 0;
+}
+
+.map-controls {
+    position: absolute;
+    top: 50px;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.zoom-controls button,
+.layer-controls select {
+    display: block;
+    margin-bottom: 10px;
+    padding: 5px;
+    cursor: pointer;
+}
+
+.info-panel {
+    display: none;
+    padding: 10px;
+    background-color: #444;
+    border-top: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: absolute;
+    width: 300px;
+    height: 500px;
+    margin-top: 150px;
+}
+
+.info-panel h3 {
+    margin: 0;
+}
+
+.info-panel p {
+    margin: 5px 0;
+}
+
+.info-panel .search-filter {
+    display: flex;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.info-panel .search-filter input {
+    flex-grow: 1;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px 0 0 4px;
+}
+
+.info-panel .search-filter button {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+}
+
+.no-fields-message {
+    text-align: center;
+    margin: 10px 0;
+}
+
+.add-fields {
+    text-align: center;
+    margin: 10px 0;
+}
+
+.add-fields .add-field-button {
+    padding: 10px;
+    margin-top: 10px;
+    cursor: pointer;
+    background-color: #444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+}

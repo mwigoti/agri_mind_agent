@@ -1,0 +1,421 @@
+.back-to-top {
+    position: fixed;
+    right: 30px;
+    bottom: 30px;
+    display: flex;
+    width: 45px;
+    height: 45px;
+    align-items: center;
+    justify-content: center;
+    transition: 0.5s;
+    z-index: 99;
+}
+.background-image {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -1; /* Places the image behind the content */
+  }
+.logo img {
+    display: block;
+    object-fit: cover;
+    width: 90%;
+    height: 103px;
+    border-radius: 50%;
+    opacity: 0.9;
+    mix-blend-mode: multiply; /* Try 'screen' or 'overlay' if 'multiply' doesn't work */
+}
+
+.btn {
+    font-weight: 600;
+    transition: .5s;
+    background-color: black !important;
+}
+
+.btn-sm-square {
+    width: 34px;
+    height: 34px;
+}
+
+.btn-square,
+.btn-sm-square {
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: normal;
+}
+
+.btn-hover-bg {
+    transition: 0.5s;
+}
+
+.btn-hover-bg:hover {
+    background: silver !important;
+    color: black !important;
+}
+
+.topbar {
+    padding: 2px 10px 2px 20px;
+    background: black !important;
+}
+
+.topbar a,
+.topbar a i {
+    transition: 0.5s;
+}
+
+.topbar a:hover,
+.topbar a i:hover {
+    color: silver !important;
+}
+
+@media (max-width: 768px) {
+    .topbar {
+        display: none;
+    }
+}
+
+.navbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    padding: 20px;
+}
+
+.navbar nav {
+    margin-left: auto;
+}
+
+.navbar nav li {
+    display: inline;
+    margin: 0 10px;
+}
+
+.navbar nav li a {
+    text-decoration: none;
+    color: #e9e4e4;
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 0.7rem 0.6rem;
+    border-radius: 6px;
+    transition: all 0.4s ease-in;
+    pointer-events: auto;
+}
+
+.navbar nav li a:hover {
+    background: #000;
+    color: #fff;
+}
+
+.carousel-header #carouselId .carousel-inner .carousel-item {
+    position: relative;
+    min-height: 100vh;
+}
+
+.carousel-header #carouselId .carousel-inner .carousel-item img {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.carousel-header #carouselId .carousel-inner .carousel-item .carousel-caption {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    padding-top: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: linear-gradient(rgba(0, 0, 0, .4), rgba(0, 0, 0, 0.4));
+    background-size: cover;
+}
+
+.carousel-control-prev,
+.carousel-control-next {
+    opacity: 0;
+}
+
+.carousel-control-prev .carousel-control-prev-icon,
+.carousel-control-next .carousel-control-next-icon {
+    background: transparent !important;
+}
+
+.bg-breadcrumb {
+    background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(../img/breadcrumb-bg.jpg);
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    padding: 100px 0 0 0;
+    z-index: -1;
+}
+
+.about .tab-class .nav .nav-item a.active,
+.about .tab-class .nav .nav-item a.active span {
+    background: var(--bs-primary) !important;
+    color: var(--bs-white) !important;
+}
+
+.service .service-item {
+    position: relative;
+    overflow: hidden;
+}
+
+.service .service-item .service-link {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: end;
+    background: rgba(0, 0, 0, 0.3);
+    transition: 0.5s;
+}
+
+.service .service-item .service-link:hover {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.service .service-item .service-link a {
+    color: var(--bs-white);
+    transition: 0.5s;
+}
+
+.service .service-item img {
+    transition: 0.5s;
+}
+
+.service .service-item:hover img {
+    transform: scale(1.2);
+}
+
+.service .service-item .service-link:hover a:hover {
+    color: var(--bs-primary);
+}
+
+.donation .donation-item {
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.donation .donation-item::after {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    content: "";
+    top: 0;
+    left: 0;
+    display: flex;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2;
+}
+
+.donation .donation-item .donation-content {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    justify-content: end;
+    bottom: -60px;
+    left: 0;
+    transition: 0.5s;
+    z-index: 3;
+}
+
+.donation .donation-item:hover .donation-content {
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.donation .donation-item .donation-btn {
+    visibility: hidden;
+    opacity: 0;
+    transition: 0.5s;
+}
+
+.donation .donation-item:hover .donation-btn {
+    visibility: visible;
+    opacity: 1;
+}
+
+.causes .causes-item {
+    overflow: hidden;
+}
+
+.causes .causes-item .causes-img {
+    position: relative;
+    transition: 0.5s;
+}
+
+.causes .causes-item .causes-img .causes-link {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    bottom: 0 !important;
+    left: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    background: rgba(0, 0, 0, .2);
+    transition: 0.5s;
+}
+
+.causes .causes-item .causes-img:hover .causes-link {
+    background: rgba(0, 0, 0, .6);
+}
+
+.causes .causes-item .causes-img img {
+    transition: 0.5s;
+}
+
+.causes .causes-item .causes-img:hover img {
+    transform: scalex(-1);
+}
+
+.causes .causes-item .causes-img .causes-dination {
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+.causes .causes-item .causes-img .causes-dination a {
+    font-size: 14px;
+}
+
+.causes .causes-item .causes-content {
+    background: var(--bs-secondary);
+    border-color: var(--bs-white);
+    border-style: dotted;
+    border-top: 0;
+}
+
+.causes .causes-item .progress {
+    height: 10px;
+    overflow: visible;
+}
+
+.causes .causes-item .progress .progress-bar {
+    position: relative;
+    width: 0;
+    overflow: visible;
+    background: var(--bs-primary);
+    transition: 2s;
+}
+
+.causes .causes-item .progress .progress-bar span {
+    position: absolute;
+    top: 50%;
+    right: -1px;
+    transform: translateY(-50%);
+    padding: 1px 5px;
+    font-size: 12px;
+    color: var(--bs-white);
+    background: var(--bs-dark);
+    z-index: 1;
+}
+
+.event .event-carousel.owl-carousel {
+    position: relative;
+}
+
+.event .event-carousel.owl-carousel .owl-nav .owl-prev {
+    position: absolute;
+    top: -60px;
+    left: 0;
+    width: 80px;
+    height: 40px;
+    border: 1px solid var(--bs-primary);
+    background: var(--bs-primary);
+    color: var(--bs-white);
+}
+
+.event .event-carousel.owl-carousel .owl-nav .owl-next {
+    position: absolute;
+    top: -60px;
+    right: 0;
+    width: 80px;
+    height: 40px;
+    border: 1px solid var(--bs-primary);
+    background: var(--bs-primary);
+    color: var(--bs-white);
+}
+
+.event .event-carousel.owl-carousel .owl-nav .owl-prev span,
+.event .event-carousel.owl-carousel .owl-nav .owl-next span {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.event .event-carousel.owl-carousel .owl-nav .owl-prev:hover,
+.event .event-carousel.owl-carousel .owl-nav .owl-next:hover {
+    background: var(--bs-white);
+    color: var(--bs-primary);
+}
+
+.footer {
+    padding: 100px 0;
+    background: var(--bs-secondary);
+}
+
+.footer .footer-widget {
+    margin-bottom: 30px;
+}
+
+.footer .footer-widget .btn-square {
+    width: 34px;
+    height: 34px;
+    background: var(--bs-dark);
+}
+
+.footer .footer-widget .btn-square i {
+    font-size: 14px;
+    color: var(--bs-white);
+    transition: .5s;
+}
+
+.footer .footer-widget .btn-square:hover i {
+    color: var(--bs-primary);
+}
+
+.footer .footer-link {
+    display: block;
+    color: var(--bs-white);
+    margin-bottom: 15px;
+    transition: .5s;
+}
+
+.footer .footer-link:hover {
+    color: var(--bs-primary);
+}
+
+.footer .footer-link-holder {
+    display: flex;
+    flex-direction: column;
+}
+
+.footer .footer-link-holder a {
+    margin-bottom: 10px;
+}
+
+.footer .footer-link-holder a:hover {
+    text-decoration: underline;
+}
+
+.footer .footer-bottom {
+    padding-top: 40px;
+    border-top: 1px dotted var(--bs-white);
+}
