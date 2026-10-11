@@ -1,0 +1,62 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriVision - Weather</title>
+    <link rel="stylesheet" href="{% static 'css/weather.css' %}">
+</head>
+<body>
+    <div class="header">
+        <h1></h1>
+        <div>
+            <input type="text" name="" id="input" placeholder="Enter city name">
+            <button id="search" onclick="searchByCity()">Search</button>
+        </div>
+    </div>
+
+    <main>
+        <div class="weather">
+            <h2 id="city">{{ city_name }}, {{ country_code }}</h2>
+            <div class="temp-box">
+                <img src="{% static 'images/weathericon.png' %}" alt="" id="img">
+                <p id="temperature">{{ temperature }} °C</p>
+            </div>
+            <span id="clouds">{{ weather_description }}</span>
+        </div>
+        <div class="divider1"></div>
+
+        <div class="forecstH">
+            <p class="cast-header">Upcoming forecast</p>
+            <div class="templist">
+                {% for forecast in hourly_forecast %}
+                    <div class="next">
+                        <div>
+                            <p class="time">{{ forecast.time }}</p>
+                            <p>{{ forecast.temp_max }} °C / {{ forecast.temp_min }} °C</p>
+                        </div>
+                        <p class="desc">{{ forecast.weather_description }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </main>
+
+    <div class="forecstD">
+        <div class="divider2"></div>
+        <p class="cast-header"> Next 4 days forecast</p>
+        <div class="weekF">
+            {% for forecast in daily_forecast %}
+                <div class="dayF">
+                    <p class="date">{{ forecast.date }}</p>
+                    <p>{{ forecast.temp_max }} °C / {{ forecast.temp_min }} °C</p>
+                    <p class="desc">{{ forecast.weather_description }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    <script src="{% static 'js/weather.js' %}"></script>
+</body>
+</html>

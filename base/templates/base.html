@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% load static %}
+    <title>{% block title %}AgriVision - Research{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/research.css' %}">
+</head>
+<body>
+    <nav>
+        <div class="container">
+            <div class="dFlex aic jcsb">
+                <div class="logo">
+                    
+                </div>
+                <ul>
+                    <li><a class="active" href="{% url 'home' %}">Home</a></li>
+                    <li><a class="active" href="{% url 'research' %}">Research</a></li>
+                    <li><a href="{% url 'services' %}">Services</a></li>
+                    <li><a href="{% url 'contact' %}">Contact Us</a></li>
+                    <li><a class="active" href="{% url 'auth' %}">Account</a></li>
+                    
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+    <footer>
+        <!--<div class="container">
+            <div class="dFlex aic jcc">
+                <div class="content">
+                     <div class="logo">
+                        <h2>Logo</h2>
+                    </div>
+                    <ul>
+                        <li><a href=""></a>In</li>
+                        <li><a href=""></a>X</li>
+                        <li><a href=""></a>YT</li>
+                        <li><a href=""></a>Ig</li>
+                    </ul>
+                </div>
+            </div>
+        </div> -->
+        <div class="copy">
+            <div class="container">
+                <div class="dFlex aic jcsb">
+                    <p>&#169; Agrivision, All right reserved</p>
+                    <p>Made with CodeCubes</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

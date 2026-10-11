@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% load static %}
+    <title>{% block title %}CROP Monitoring{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/map.css' %}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha384-VzLXTJGPSyTLX6d96AxgkKvE/LRb7ECGyTxuwtpjHnVWVZs2gp5RDjeM/tgBnVdM" crossorigin=""/>
+    <script src="https://kit.fontawesome.com/your-fontawesome-kit.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha384-RFZC58YeKApoNsIbBxf4z6JJXmh+geBSgkCQXFyh+4tiFSJmJBt+2FbjxW7Ar16M" crossorigin=""></script>
+</head>
+<body>
+    <div class="container">
+        <div class="menu">
+            <div class="logo">
+                <!--<img src="{% static 'crop-logo.png' %}" alt="CROP Logo">-->
+                <h3>AgriVision</h3>
+            </div>
+            <nav>
+                <ul>
+                    <li id="toggleButton"><i class="fas fa-calendar"></i> Hide Info Panel </li>
+                    <li><i class="fas fa-calendar"></i> Season 2024</li>
+                    <li><i class="fas fa-play"></i> Get started</li>
+                    <li class="active"><i class="fas fa-chart-line"></i> Monitoring</li>
+                    <a style="text-decoration: none; color: inherit;" href="{% url 'weather' %}"><li><i class="fas fa-cloud-sun"></i> Weather</li></a>
+                    <li><i class="fas fa-chart-bar"></i> Overview</li>
+                    <li><i class="fas fa-map"></i> VRA maps</li>
+                    <li><i class="fas fa-clipboard-list"></i> Field activity log</li>
+                    <li><i class="fas fa-database"></i> Data manager</li>
+                    <li><i class="fas fa-cog"></i> Field manager</li>
+                    <li><i class="fas fa-bell"></i> Notifications</li>
+                    <li><i class="fas fa-bell"></i> Request A Demo</li>
+                    <li><i class="fas fa-bell"></i> Upgrade </li>
+
+                    
+                </ul>
+            </nav>
+            
+        </div>
+        <div class="map-container">
+            <div class="search-bar">
+                <input type="text" placeholder="Search location">
+                <button class="search-button"><i class="fas fa-search"></i></button>
+            </div>
+            <div id="map">
+                <!-- Map will be inserted here by JavaScript -->
+            </div>
+            <div class="map-controls">
+                
+                <div class="layer-controls">
+                    <select>
+                        <option>Sentinel-2</option>
+                    </select>
+                    <select>
+                        <option>NDVI</option>
+                    </select>
+                </div>
+            </div>
+            <div class="info-panel">
+                <h3>Global view <i class="fas fa-info-circle"></i></h3>
+                <p>0 ha</p>
+                <div class="search-filter">
+                    <input type="text" placeholder="Search">
+                    <button>Filter</button>
+                </div>
+                <div class="no-fields-message">
+                    <p>No fields in this season. <a href="#">Update season</a></p>
+                </div>
+                <div class="add-fields">
+                    <h4>Add your fields</h4>
+                    <p>Browse satellite images, vegetation indices, weather data and much more</p>
+                    <button class="add-field-button">+ ADD FIELD</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{% static 'js/map.js' %}"></script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css"
+    />
+    <title>AgriVision-Home</title>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="navbar">
+                <div class="logo">
+                    <img src="{% static 'images/result.webp' %}" alt="Logo" />
+                </div>
+                <nav>
+                   
+                    <li><a href="/">Home</a></li>
+                    <li><a href="{% url 'research' %}">Research</a></li>
+                    <li><a href="{% url 'services' %}">Services</a></li>
+                    <li><a href="{% url 'contact' %}">Contact Us</a></li>
+                    <li><a href="{% url 'auth' %}">Account</a></li>
+                </nav>
+                
+                <div class="btn">
+                    <i class="fa fa-bars menu-btn"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+    <section>
+       
+        
+
+        
+        <div class="container">
+            <div class="background-image">
+            <img src="{% static "images/hero.webp" %}" width= "100%" , height="100%", />
+            </div>
+            <div class="content">
+                <h4>AgriVision</h4>
+                <h4>Where Agriculture</h4>
+                <h4>meets innovation.</h4>
+                <p>
+
+AgriVision is transforming agriculture with innovative technology and data-driven solutions. Our platform uses advanced satellite imagery to monitor crop health, detect diseases, and predict yields, helping farmers make informed decisions and boost productivity.
+
+AgriVision offers tools for crop monitoring, soil analysis, weather forecasting, and irrigation management, all designed to enhance farm efficiency and sustainability. By integrating these insights, we support farmers in optimizing resources and improving overall farm performance.
+
+Our mission extends beyond individual farms; we aim to promote sustainable practices and contribute to global food security. AgriVision empowers farmers with cutting-edge technology to ensure a prosperous and environmentally friendly future for agriculture.
+
+                </p>
+                <a href="{% url 'auth' %}">
+                    <button>Explore More</button>
+                </a>
+                <div class="social_icons">
+                    <i class="fa fa-brands fa-facebook"></i>
+                    <i class="fa fa-brands fa-twitter"></i>
+                    <i class="fa fa-brands fa-instagram"></i>
+                    <i class="fa fa-brands fa-pinterest"></i>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script src="{% static 'js/script.js' %}"></script>
+</body>
+</html>
