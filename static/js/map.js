@@ -1,22 +1,20 @@
 // Function to initialize and render the map in the 'map' div
 function initializeMap() {
     // Access the div with id 'map' and initialize the map
-    var map = L.map('map').setView([0, 0], 2); // Adjust as necessary
+    const map = L.map('map').setView([0, 0], 2);
 
     // Define base layers
-    var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Esri World Imagery Layer
-    var satelliteLayer = L.esri.basemapLayer('Imagery');
-
-    // Esri World Boundaries and Places Reference Layer
-    var boundariesLayer = L.esri.basemapLayer('ImageryLabels');
+    // Esri World Imagery and Boundaries Layers
+    const satelliteLayer = L.esri.basemapLayer('Imagery');
+    const boundariesLayer = L.esri.basemapLayer('ImageryLabels');
 
     // Layer switcher functionality
-    var layerSelect = document.getElementById('layerSelect');
+    const layerSelect = document.getElementById('layerSelect');
     if (layerSelect) {
         layerSelect.addEventListener('change', function(e) {
             // Clear all layers before adding the selected one
@@ -37,14 +35,12 @@ function initializeMap() {
     }
 
     // Add a feature group to hold drawn items
-    var drawnItems = new L.FeatureGroup();
+    const drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
 
     // Add draw control to the map for polygon drawing
-    var drawControl = new L.Control.Draw({
-        edit: {
-            featureGroup: drawnItems
-        },
+    const drawControl = new L.Control.Draw({
+        edit: { featureGroup: drawnItems },
         draw: {
             polygon: true,
             polyline: false,
@@ -58,35 +54,39 @@ function initializeMap() {
 
     // Capture polygon coordinates when a new polygon is created
     map.on(L.Draw.Event.CREATED, function(event) {
-        var layer = event.layer;
-        var coordinates = layer.getLatLngs()[0].map(function(latlng) {
+        const layer = event.layer;
+        const coordinates = layer.getLatLngs()[0].map(function(latlng) {
             return [latlng.lat, latlng.lng];
         });
-        console.log("Polygon coordinates:", coordinates); // Replace with integration to soil analysis algorithm
+        console.log("Polygon coordinates:", coordinates); // Placeholder for further processing
 
         drawnItems.addLayer(layer);
     });
 }
 
-// Wait until DOM is fully loaded before initializing the map
-document.addEventListener("DOMContentLoaded", initializeMap);
-
-document.addEventListener("DOMContentLoaded", function() {
+// Toggle Info Panel functionality
+function setupInfoPanelToggle() {
     const infoPanel = document.querySelector(".info-panel");
-    const hideInfoPanelButton = document.querySelector(".menu ul li:first-child");
+    const toggleButton = document.querySelector(".menu ul li:first-child");
+
+    if (!infoPanel || !toggleButton) {
+        console.error("Required elements not found. Check if the 'info-panel' class and toggle button are correctly defined.");
+        return;
+    }
 
     // Ensure the panel is visible by default
     infoPanel.style.display = "block";
 
     // Toggle visibility on button click
-    hideInfoPanelButton.addEventListener("click", function() {
-        if (infoPanel.style.display === "block") {
-            infoPanel.style.display = "none";
-            hideInfoPanelButton.textContent = "Show Info Panel";
-        } else {
-            infoPanel.style.display = "block";
-            hideInfoPanelButton.textContent = "Hide Info Panel";
-        }
+    toggleButton.addEventListener("click", function() {
+        const isVisible = infoPanel.style.display === "block";
+        infoPanel.style.display = isVisible ? "none" : "block";
+        toggleButton.textContent = isVisible ? "Show Info Panel" : "Hide Info Panel";
     });
-});
+}
 
+// Initialize map and setup toggle when DOM is fully loaded
+document.addEventListener("DOMContentLoaded", function() {
+    initializeMap();
+    setupInfoPanelToggle();
+});
