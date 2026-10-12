@@ -142,5 +142,6 @@ def calculate_area(coordinates):
         j = (i + 1) % n
         area += coordinates[i][0] * coordinates[j][1]
         area -= coordinates[j][0] * coordinates[i][1]
+        area=area/2.0
     
-    return area / 2.0
+    return render('area.html', 'area:area')
