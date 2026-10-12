@@ -8,78 +8,6 @@
     <script src="https://js.arcgis.com/4.27/" data-dojo-config="parseOnLoad:true"></script>
 </head>
 <body>
-    <div class="container">
-      <!-- Menu Section -->
-        <div class="menu">
-            <div class="logo">
-                <h3>AgriVision</h3>
-            </div>
-            <nav>
-                <ul>
-                    <li>Hide Info Panel</li>
-                    <li>Season 2024</li>
-                    <li>Get Started</li>
-                    <li>Monitoring</li>
-                    <li>Weather</li>
-                    <li>Overview</li>
-                    <li>VRA Maps</li>
-                    <li>Field Activity Log</li>
-                    <li>Data Manager</li>
-                    <li>Field Manager</li>
-                    <li>Notifications</li>
-                    <li>Request A Demo</li>
-                    <li>Upgrade</li>
-                </ul>
-            </nav>
-        </div>
-
-        <!-- Map Container -->
-        <div class="map-container">
-            <div id="map"></div>
-
-            <!-- Map Controls -->
-            <div class="map-controls layer-controls">
-                <select id="baseLayer">
-                    <option value="osm">OSM</option>
-                    <option value="satellite">Satellite</option>
-                    <option value="satellite-bounds">Satellite with Boundaries</option>
-                </select>
-            </div>
-
-            <!-- Info Panel -->
-            <div class="info-panel">
-                <h3>Global View</h3>
-                <p><span id="area">0</span> ha</p>
-
-                <!-- Search Filter -->
-                <div class="search-filter">
-                    <input type="text" placeholder="Filter fields...">
-                    <button class="search-button">Search</button>
-                </div>
-
-                <!-- No Fields Message -->
-                <div class="no-fields-message" id="no-fields-message">
-                    No fields in this season. <a href="#" id="updateSeason">Update Season</a>
-                </div>
-
-                <!-- Add Fields Section -->
-                <div class="add-fields">
-                    <h4>Add Your Fields</h4>
-                    <p>Browse satellite images, vegetation indices, weather data, and more</p>
-                    <button class="add-field-button" id="addField">+ ADD FIELD</button>
-                </div>
-
-                <!-- Save Panel -->
-                <div id="save-panel" style="display: none;">
-                    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-                    <input type="text" id="fieldName" placeholder="Enter field name">
-                    <button class="save-button" id="saveField">Save Field</button>
-                    <button class="cancel-button" id="cancelField">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-    </div>
     <script>
         require([
             "esri/Map",
@@ -240,5 +168,78 @@
             });
         });
     </script>
+    <div class="container">
+      <!-- Menu Section -->
+        <div class="menu">
+            <div class="logo">
+                <h3>AgriVision</h3>
+            </div>
+            <nav>
+                <ul>
+                    <li>Hide Info Panel</li>
+                    <li>Season 2024</li>
+                    <li>Get Started</li>
+                    <li>Monitoring</li>
+                    <li>Weather</li>
+                    <li>Overview</li>
+                    <li>VRA Maps</li>
+                    <li>Field Activity Log</li>
+                    <li>Data Manager</li>
+                    <li>Field Manager</li>
+                    <li>Notifications</li>
+                    <li>Request A Demo</li>
+                    <li>Upgrade</li>
+                </ul>
+            </nav>
+        </div>
+
+        <!-- Map Container -->
+        <div class="map-container">
+            <div id="map"></div>
+
+            <!-- Map Controls -->
+            <div class="map-controls layer-controls">
+                <select id="baseLayer">
+                    <option value="osm">OSM</option>
+                    <option value="satellite">Satellite</option>
+                    <option value="satellite-bounds">Satellite with Boundaries</option>
+                </select>
+            </div>
+
+            <!-- Info Panel -->
+            <div class="info-panel">
+                <h3>Global View</h3>
+                <p><span id="area">0</span> ha</p>
+
+                <!-- Search Filter -->
+                <div class="search-filter">
+                    <input type="text" placeholder="Filter fields...">
+                    <button class="search-button">Search</button>
+                </div>
+
+                <!-- No Fields Message -->
+                <div class="no-fields-message" id="no-fields-message">
+                    No fields in this season. <a href="#" id="updateSeason">Update Season</a>
+                </div>
+
+                <!-- Add Fields Section -->
+                <div class="add-fields">
+                    <h4>Add Your Fields</h4>
+                    <p>Browse satellite images, vegetation indices, weather data, and more</p>
+                    <button class="add-field-button" id="addField">+ ADD FIELD</button>
+                </div>
+
+                <!-- Save Panel -->
+                <div id="save-panel" style="display: none;">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                    <input type="text" id="fieldName" placeholder="Enter field name">
+                    <button class="save-button" id="saveField">Save Field</button>
+                    <button class="cancel-button" id="cancelField">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
 </body>
 </html>
