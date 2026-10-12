@@ -1,4 +1,5 @@
 {% load static %}
+{% csrf token %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,13 +11,14 @@
     <link rel="stylesheet" href="https://js.arcgis.com/3.46/dijit/themes/claro/claro.css">
     <link rel="stylesheet" href="https://js.arcgis.com/3.46/esri/css/esri.css">
     <link rel="stylesheet" href="{% static 'css/map.css' %}">
-    {% csrf_token %}
     <script>
         var dojoConfig = { parseOnLoad: true };
     </script>
     <script src="https://js.arcgis.com/3.46/"></script>
     
     <script>
+    var dojoConfig = { parseOnLoad: true };
+
 require([
     "esri/map", 
     "esri/layers/ArcGISTiledMapServiceLayer",
@@ -75,22 +77,6 @@ function setupInfoPanelToggle() {
     });
 }
 
-function getCsrfToken() {
-    const name = 'csrftoken';
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
 function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
     let isDrawingMode = false;
     let markerCoordinates = [];
@@ -124,7 +110,8 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
     }
 
     function sendCoordinatesToDjango(coordinates) {
-        const csrftoken = getCsrfToken();
+        // Get CSRF token
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
         
         fetch('/calculate-field-center/', {
             method: 'POST',
@@ -143,6 +130,7 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
                 alert('Error calculating field center: ' + data.error);
             } else {
                 console.log('Field center:', data.center);
+                // Update info panel with calculated data
                 updateInfoPanel(data);
             }
         })
@@ -155,61 +143,59 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
     function updateInfoPanel(data) {
         const infoPanel = document.querySelector('.info-panel');
         if (infoPanel) {
+            // Update area if provided
             if (data.area) {
-                const areaElement = infoPanel.querySelector('p');
+                const areaElement = infoPanel.querySelector('h3 + div');
                 if (areaElement) {
                     areaElement.textContent = `${data.area.toFixed(2)} ha`;
                 }
             }
             
+            // Add center coordinates if needed
             if (data.center) {
-                let centerElement = infoPanel.querySelector('.field-center');
-                if (!centerElement) {
-                    centerElement = document.createElement('p');
-                    centerElement.className = 'field-center';
-                    infoPanel.insertBefore(centerElement, infoPanel.querySelector('.search-filter'));
-                }
+                const centerElement = document.createElement('div');
                 centerElement.textContent = `Center: ${data.center.lng.toFixed(4)}, ${data.center.lat.toFixed(4)}`;
+                infoPanel.appendChild(centerElement);
             }
         }
     }
 
     const addFieldButton = document.querySelector(".add-field-button");
-    if (addFieldButton) {
-        addFieldButton.addEventListener("click", function() {
-            isDrawingMode = !isDrawingMode;
+    addFieldButton.addEventListener("click", function() {
+        isDrawingMode = !isDrawingMode;
 
-            if (isDrawingMode) {
-                addFieldButton.textContent = "Finish Field";
-                addFieldButton.style.backgroundColor = "#ff4444";
-                map.on("click", handleMapClick);
-            } else {
-                addFieldButton.textContent = "+ ADD FIELD";
-                addFieldButton.style.backgroundColor = "";
-                map.off("click", handleMapClick);
+        if (isDrawingMode) {
+            addFieldButton.textContent = "Finish Field";
+            addFieldButton.style.backgroundColor = "#ff4444";
+            map.on("click", handleMapClick);
+        } else {
+            addFieldButton.textContent = "+ Add Field";
+            addFieldButton.style.backgroundColor = "";
+            map.off("click", handleMapClick);
 
-                if (markerCoordinates.length < 3) {
-                    alert("At least three points are required to create a polygon.");
-                    resetDrawing(map, markers);
-                } else {
-                    sendCoordinatesToDjango(markerCoordinates);
-                }
-
-                markerCoordinates = [];
+            if (markerCoordinates.length < 3) {
+                alert("At least three points are required to create a polygon.");
                 resetDrawing(map, markers);
+            } else {
+                // Send coordinates to Django for processing
+                sendCoordinatesToDjango(markerCoordinates);
             }
-        });
-    }
+
+            markerCoordinates = [];
+            resetDrawing(map, markers);
+        }
+    });
 }
 
 function resetDrawing(map, markers) {
     markers.forEach(marker => map.graphics.remove(marker));
     markers.length = 0;
 }
-    </script>
+</script>
 </head>
 <body class="claro">
     <div class="container">
+        <!-- Sidebar Menu -->
         <div class="menu">
             <div class="logo">
                 <h3>AgriVision</h3>
@@ -233,9 +219,11 @@ function resetDrawing(map, markers) {
             </nav>
         </div>
 
+        <!-- Main Map Container -->
         <div class="map-container">
             <div id="map"></div>
             
+            <!-- Map Controls for Layer Switching -->
             <div class="map-controls">
                 <label for="layerSelect">Map Layer:</label>
                 <select id="layerSelect">
@@ -245,6 +233,7 @@ function resetDrawing(map, markers) {
                 </select>
             </div>
             
+            <!-- Info Panel -->
             <div class="info-panel">
                 <h3>Global View</h3>
                 <p>0 ha</p>
@@ -263,5 +252,6 @@ function resetDrawing(map, markers) {
             </div>
         </div>
     </div>
+   
 </body>
 </html>
