@@ -1,40 +1,35 @@
 // Function to initialize and render the map in the 'map' div
-function initializeMap() {
-    const map = L.map('map').setView([0, 0], 2);
+require([
+    "esri/map", 
+    "esri/layers/ArcGISTiledMapServiceLayer",
+    "dojo/domReady!"
+], function(Map, ArcGISTiledMapServiceLayer) {
 
-    // Define base layers
-    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    // Initialize the map with a hybrid (satellite + labels) basemap
+    var map = new Map("map", {
+        basemap: "hybrid",
+        center: [-98.5795, 39.8283],
+        zoom: 4
+    });
 
-    const satelliteLayer = L.esri.basemapLayer('Imagery');
-    const boundariesLayer = L.esri.basemapLayer('ImageryLabels');
+    // URL for World Boundaries and Places
+    var boundariesURL = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer";
+    var boundariesLayer = new ArcGISTiledMapServiceLayer(boundariesURL);
 
-    // Layer switcher functionality
-    const layerSelect = document.getElementById('layerSelect');
-    if (layerSelect) {
-        layerSelect.addEventListener('change', function(e) {
-            map.eachLayer(function(layer) {
-                if (!layer._isDrawingLayer) {  // Preserve drawing layers
-                    map.removeLayer(layer);
-                }
-            });
+    // Layer switching functionality
+    document.getElementById("layerSelect").addEventListener("change", function(e) {
+        map.removeAllLayers();
 
-            if (e.target.value === 'osm') {
-                map.addLayer(osmLayer);
-            } else if (e.target.value === 'satellite') {
-                map.addLayer(satelliteLayer);
-            } else if (e.target.value === 'satelliteBoundaries') {
-                map.addLayer(satelliteLayer);
-                map.addLayer(boundariesLayer);
-            }
-        });
-    }
-
-    return map;
-}
-
+        if (e.target.value === "osm") {
+            map.setBasemap("streets");
+        } else if (e.target.value === "satellite") {
+            map.setBasemap("hybrid"); // Satellite with labels
+        } else if (e.target.value === "satelliteBoundaries") {
+            map.setBasemap("hybrid"); // Base map for satellite
+            map.addLayer(boundariesLayer); // Add boundaries and places
+        }
+    });
+});
 function setupInfoPanelToggle() {
     const infoPanel = document.querySelector(".info-panel");
     const toggleButton = document.querySelector(".menu ul nav li:first-child");
@@ -125,6 +120,6 @@ function setupPolygonDrawing(map) {
 }
 
 
-const map = initializeMap();
+
 setupInfoPanelToggle();
 setupPolygonDrawing(map);
