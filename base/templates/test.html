@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AgriVision - Field Management</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.27/esri/themes/light/main.css"/>
+    <link rel="stylesheet" href="map.css">
+</head>
+<body>
+    <div class="container">
+        <div class="menu">
+            <div class="logo">
+                <h3>AgriVision</h3>
+            </div>
+            <ul>
+                <li>Hide Info Panel</li>
+                <li>Season 2024</li>
+                <li>Get Started</li>
+                <li>Monitoring</li>
+                <li>Weather</li>
+                <li>Overview</li>
+                <li>VRA Maps</li>
+                <li>Field Activity Log</li>
+                <li>Data Manager</li>
+                <li>Field Manager</li>
+                <li>Notifications</li>
+                <li>Request A Demo</li>
+                <li>Upgrade</li>
+            </ul>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <div class="map-controls">
+                <select id="baseLayer">
+                    <option value="osm">OSM</option>
+                    <option value="satellite">Satellite</option>
+                    <option value="satellite-bounds">Satellite with Boundaries</option>
+                </select>
+            </div>
+
+            <div class="info-panel">
+                <h3>Global View</h3>
+                <p><span id="area">0</span> ha</p>
+                
+                <div class="search-filter">
+                    <input type="text" placeholder="Filter fields...">
+                </div>
+
+                <div id="no-fields-message">
+                    No fields in this season. <a href="#" id="updateSeason">Update Season</a>
+                </div>
+
+                <div class="add-fields">
+                    <h4>Add Your Fields</h4>
+                    <p>Browse satellite images, vegetation indices, weather data, and more</p>
+                    <button id="addField">+ ADD FIELD</button>
+                </div>
+
+                <div id="save-panel" style="display: none;">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                    <input type="text" id="fieldName" placeholder="Enter field name">
+                    <button id="saveField">Save Field</button>
+                    <button id="cancelField">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://js.arcgis.com/4.27/"></script>
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/layers/GraphicsLayer",
+            "esri/widgets/Sketch",
+            "esri/geometry/geometryEngine",
+            "esri/layers/BasemapLayer",
+            "esri/Basemap"
+        ], function(Map, MapView, GraphicsLayer, Sketch, geometryEngine, BasemapLayer, Basemap) {
+            
+            // Create the base layers
+            const osmBasemap = new Basemap({
+                baseLayers: [
+                    new BasemapLayer({
+                        url: "https://services.arcgisonline.com/ArcGIS/rest/api/MapServer"
+                    })
+                ]
+            });
+
+            const satelliteBasemap = new Basemap({
+                baseLayers: [
+                    new BasemapLayer({
+                        url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"
+                    })
+                ]
+            });
+
+            // Create the map
+            const map = new Map({
+                basemap: osmBasemap
+            });
+
+            // Create the view
+            const view = new MapView({
+                container: "map",
+                map: map,
+                center: [0, 0],
+                zoom: 2
+            });
+
+            // Create a graphics layer for the drawings
+            const graphicsLayer = new GraphicsLayer();
+            map.add(graphicsLayer);
+
+            // Create sketch widget
+            let sketch;
+            let currentPolygon = null;
+
+            // Handle Add Field button click
+            document.getElementById('addField').addEventListener('click', function() {
+                document.getElementById('save-panel').style.display = 'block';
+                document.getElementById('addField').style.display = 'none';
+
+                // Initialize sketch if not already done
+                if (!sketch) {
+                    sketch = new Sketch({
+                        view: view,
+                        layer: graphicsLayer,
+                        creationMode: 'single',
+                        availableCreateTools: ['polygon'],
+                        visibleElements: {
+                            createTools: { polygon: true },
+                            selectionTools: false,
+                            settingsMenu: false
+                        }
+                    });
+
+                    view.ui.add(sketch, 'top-right');
+
+                    // Handle sketch creation
+                    sketch.on('create', function(event) {
+                        if (event.state === 'complete') {
+                            currentPolygon = event.graphic.geometry;
+                            // Calculate area in hectares
+                            const area = geometryEngine.geodesicArea(currentPolygon, 'hectares');
+                            document.getElementById('area').textContent = area.toFixed(2);
+                        }
+                    });
+                }
+
+                sketch.create('polygon');
+            });
+
+            // Handle save button click
+            document.getElementById('saveField').addEventListener('click', function() {
+                const fieldName = document.getElementById('fieldName').value;
+                
+                if (!fieldName) {
+                    alert('Please enter a field name');
+                    return;
+                }
+                
+                if (!currentPolygon) {
+                    alert('Please draw a field first');
+                    return;
+                }
+
+                // Prepare the field data
+                const fieldData = {
+                    name: fieldName,
+                    polygon: currentPolygon.toJSON()
+                };
+
+                // Send to backend
+                fetch('/api/fields/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify(fieldData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Field saved successfully!');
+                    resetDrawingState();
+                })
+                .catch(error => {
+                    console.error('Error saving field:', error);
+                    alert('Error saving field');
+                });
+            });
+
+            // Handle cancel button click
+            document.getElementById('cancelField').addEventListener('click', function() {
+                resetDrawingState();
+            });
+
+            // Function to reset drawing state
+            function resetDrawingState() {
+                graphicsLayer.removeAll();
+                currentPolygon = null;
+                document.getElementById('fieldName').value = '';
+                document.getElementById('area').textContent = '0';
+                document.getElementById('save-panel').style.display = 'none';
+                document.getElementById('addField').style.display = 'block';
+                if (sketch) {
+                    sketch.cancel();
+                }
+            }
+
+            // Handle base layer changes
+            document.getElementById('baseLayer').addEventListener('change', function(e) {
+                const selected = e.target.value;
+                switch(selected) {
+                    case 'osm':
+                        map.basemap = osmBasemap;
+                        break;
+                    case 'satellite':
+                        map.basemap = satelliteBasemap;
+                        break;
+                    case 'satellite-bounds':
+                        map.basemap = satelliteBasemap;
+                        // Add boundary layer if available
+                        break;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
