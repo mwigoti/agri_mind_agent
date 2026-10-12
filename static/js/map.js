@@ -70,3 +70,23 @@ function initializeMap() {
 
 // Wait until DOM is fully loaded before initializing the map
 document.addEventListener("DOMContentLoaded", initializeMap);
+
+document.addEventListener("DOMContentLoaded", function() {
+    const infoPanel = document.querySelector(".info-panel");
+    const hideInfoPanelButton = document.querySelector(".menu ul li:first-child");
+
+    // Ensure the panel is visible by default
+    infoPanel.style.display = "block";
+
+    // Toggle visibility on button click
+    hideInfoPanelButton.addEventListener("click", function() {
+        if (infoPanel.style.display === "block") {
+            infoPanel.style.display = "none";
+            hideInfoPanelButton.textContent = "Show Info Panel";
+        } else {
+            infoPanel.style.display = "block";
+            hideInfoPanelButton.textContent = "Hide Info Panel";
+        }
+    });
+});
+
