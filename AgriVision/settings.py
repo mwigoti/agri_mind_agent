@@ -81,7 +81,7 @@ WSGI_APPLICATION = 'AgriVision.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 import os
-import dj_database_url
+
 
 import os
 from urllib.parse import urlparse
