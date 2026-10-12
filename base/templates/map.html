@@ -137,7 +137,7 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
                 alert("At least three points are required to create a polygon.");
                 resetDrawing(map, markers);
             } else {
-                console.log("Polygon created with coordinates:", markerCoordinates);
+                document.getElementById("coordinatesDisplay").innerText = "Coordinates: " + JSON.stringify(markerCoordinates);
             }
 
             // Reset coordinates and markers for the next field
@@ -214,6 +214,6 @@ function resetDrawing(map, markers) {
             </div>
         </div>
     </div>
-   
+   <div id ="coordinatesDisplay"></div>
 </body>
 </html>
