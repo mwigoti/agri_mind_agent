@@ -1,6 +1,5 @@
 from django.contrib.auth.models import User
-from django.db import models
-
+from django.utils.timezone import now
 from django.contrib.gis.db import models
 
 
@@ -14,19 +13,12 @@ class UserProfile(models.Model):
         return self.user.username
 
 
-from django.db import models
-from django.utils.timezone import now
-from django.utils.timezone import datetime
 
 class Field(models.Model):
     name = models.CharField(max_length=255)
-    geometry = models.JSONField(default=dict)
+    geometry = models.PolygonField()  # Stores the polygon geometry
+    created_at = models.DateTimeField(default=now)
 
-    def save(self, *args, **kwargs):
-        # Ensure datetime objects are serialized
-        if isinstance(self.geometry, dict):
-            for key, value in self.geometry.items():
-                if isinstance(value, datetime):
-                    self.geometry[key] = value.isoformat()
-        super().save(*args, **kwargs)
+    def __str__(self):
+        return self.name
 

@@ -112,30 +112,35 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
 
     function sendCoordinatesToDjango(coordinates) {
         const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const fieldName = prompt("Enter a name for this field:");
+
         
-        fetch('/calculate-field-center/', {
+        fetch('/save-field/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrftoken
             },
-            body: JSON.stringify({ coordinates })
+            body: JSON.stringify({
+                name: fieldName,
+                coordinates: coordinates
+            })
         })
         .then(response => response.json())
         .then(data => {
             if (data.error) {
-                console.error('Error:', data.error);
-                alert('Error calculating field center: ' + data.error);
-            } else {
-                console.log('Field center:', data.center);
-                updateInfoPanel(data);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error sending coordinates to server');
-        });
-    }
+            console.error('Error:', data.error);
+            alert('Error saving field: ' + data.error);
+        } else {
+            alert('Field saved successfully!');
+            console.log('Saved field:', data);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error sending coordinates to server');
+    });
+}
 
     function updateInfoPanel(data) {
         const infoPanel = document.querySelector('.info-panel');
