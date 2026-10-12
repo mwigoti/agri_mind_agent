@@ -28,3 +28,5 @@ PyYAML==6.0.1
 
 # Type hints
 typing_extensions==4.10.0
+
+psycopg2-binary==2.9.9 
