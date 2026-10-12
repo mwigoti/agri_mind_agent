@@ -160,17 +160,6 @@ function initializeMap() {
             });
         }
 
-        // Set up info panel toggle (if elements exist)
-        const toggleButton = document.getElementById('toggleButton');
-        const infoPanel = document.querySelector('.info-panel');
-        
-        if (toggleButton && infoPanel) {
-            toggleButton.addEventListener('click', function() {
-                infoPanel.classList.toggle('hidden');
-                toggleButton.textContent = infoPanel.classList.contains('hidden') ? 
-                    'Show Info Panel' : 'Hide Info Panel';
-            });
-        }
 
     } catch (error) {
         console.error('Error initializing map:', error);
