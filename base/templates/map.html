@@ -18,57 +18,59 @@
             <div class="logo">
                 <h3>AgriVision</h3>
             </div>
-            <nav>
-                <ul>
-                    <li id="toggleButton"><i class="fas fa-calendar"></i> Hide Info Panel </li>
-                    <li><i class="fas fa-calendar"></i> Season 2024</li>
-                    <li><i class="fas fa-play"></i> Get started</li>
-                    <li class="active"><i class="fas fa-chart-line"></i> Monitoring</li>
-                    <li><a href="{% url 'weather' %}" style="text-decoration: none; color: inherit;"><i class="fas fa-cloud-sun"></i> Weather</a></li>
-                    <li><i class="fas fa-chart-bar"></i> Overview</li>
-                    <li><i class="fas fa-map"></i> VRA maps</li>
-                    <li><i class="fas fa-clipboard-list"></i> Field activity log</li>
-                    <li><i class="fas fa-database"></i> Data manager</li>
-                    <li><i class="fas fa-cog"></i> Field manager</li>
-                    <li><i class="fas fa-bell"></i> Notifications</li>
-                    <li><i class="fas fa-bell"></i> Request A Demo</li>
-                    <li><i class="fas fa-bell"></i> Upgrade </li>
-                </ul>
-            </nav>
+    
+            <ul class="menu-items">
+                <li><button id="toggleButton">Hide Info Panel</button></li>
+                <li>Season 2024</li>
+                <li>Get started</li>
+                <li>Monitoring</li>
+                <li><a href="{% url 'weather' %}" style="text-decoration: none; color: inherit;">Weather</a></li>
+                <li>Overview</li>
+                <li>VRA maps</li>
+                <li>Field activity log</li>
+                <li>Data manager</li>
+                <li>Field manager</li>
+                <li>Notifications</li>
+                <li>Request A Demo</li>
+                <li>Upgrade</li>
+            </ul>
         </div>
-        
+    
         <div class="map-container">
             <div class="search-bar">
-                <input type="text" placeholder="Search location">
-                <button class="search-button"><i class="fas fa-search"></i></button>
+                <input type="text" placeholder="Search fields...">
             </div>
-            
+    
             <div id="map" style="height: 100vh; width: 100%;"></div>
-            
+    
             <div class="map-controls">
                 <div class="layer-controls">
                     <label for="layerSelect">Map Layer:</label>
-                    <select id="layerSelect">
-                        <option value="osm">OSM</option>
+                    <select id="layerSelect" class="layer-select">
+                        <option value="osm">OpenStreetMap</option>
                         <option value="satellite">Satellite</option>
                     </select>
                 </div>
             </div>
-            
+    
             <div class="info-panel">
-                <h3>Global view <i class="fas fa-info-circle"></i></h3>
-                <p>0 ha</p>
-                <div class="search-filter">
-                    <input type="text" placeholder="Search">
-                    <button>Filter</button>
+                <div class="info-header">
+                    <h3>Global view</h3>
+                    <p>0 ha</p>
                 </div>
+    
+                <div class="search-filter">
+                    <input type="text" placeholder="Filter fields...">
+                </div>
+    
                 <div class="no-fields-message">
                     <p>No fields in this season. <a href="#">Update season</a></p>
                 </div>
+    
                 <div class="add-fields">
                     <h4>Add your fields</h4>
                     <p>Browse satellite images, vegetation indices, weather data, and more</p>
-                    <button class="add-field-button">+ ADD FIELD</button>
+                    <button class="add-field-btn">+ ADD FIELD</button>
                 </div>
             </div>
         </div>
