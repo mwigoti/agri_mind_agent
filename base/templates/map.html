@@ -1,16 +1,18 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
-{% load static %}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CROP Monitoring - AgriVision</title>
-    <link rel="stylesheet" href="{% static 'css/map.css' %}">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha384-VzLXTJGPSyTLX6d96AxgkKvE/LRb7ECGyTxuwtpjHnVWVZs2gp5RDjeM/tgBnVdM" crossorigin=""/>
+    <title>AgriVision Map</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
-    <script src="https://kit.fontawesome.com/your-fontawesome-kit.js" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha384-RFZC58YeKApoNsIbBxf4z6JJXmh+geBSgkCQXFyh+4tiFSJmJBt+2FbjxW7Ar16M" crossorigin=""></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    
+    <!-- Your custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
 </head>
 <body>
     <div class="container">
@@ -18,7 +20,7 @@
             <div class="logo">
                 <h3>AgriVision</h3>
             </div>
-    
+
             <ul class="menu-items">
                 <li><button id="toggleButton">Hide Info Panel</button></li>
                 <li>Season 2024</li>
@@ -35,14 +37,14 @@
                 <li>Upgrade</li>
             </ul>
         </div>
-    
+
         <div class="map-container">
             <div class="search-bar">
                 <input type="text" placeholder="Search fields...">
             </div>
-    
-            <div id="map" style="height: 100vh; width: 100%;"></div>
-    
+
+            <div id="map" style="height: 100vh; width: 100%; position: relative; z-index: 1;"></div>
+
             <div class="map-controls">
                 <div class="layer-controls">
                     <label for="layerSelect">Map Layer:</label>
@@ -52,21 +54,21 @@
                     </select>
                 </div>
             </div>
-    
+
             <div class="info-panel">
                 <div class="info-header">
                     <h3>Global view</h3>
                     <p>0 ha</p>
                 </div>
-    
+
                 <div class="search-filter">
                     <input type="text" placeholder="Filter fields...">
                 </div>
-    
+
                 <div class="no-fields-message">
                     <p>No fields in this season. <a href="#">Update season</a></p>
                 </div>
-    
+
                 <div class="add-fields">
                     <h4>Add your fields</h4>
                     <p>Browse satellite images, vegetation indices, weather data, and more</p>
@@ -75,6 +77,13 @@
             </div>
         </div>
     </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://makinacorpus.github.io/Leaflet.GeometryUtil/leaflet.geometryutil.js"></script>
+    
+    <!-- Your custom JS -->
     <script src="{% static 'js/map.js' %}"></script>
 </body>
 </html>
