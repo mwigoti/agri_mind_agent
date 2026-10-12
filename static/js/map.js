@@ -1,6 +1,5 @@
 // Function to initialize and render the map in the 'map' div
 function initializeMap() {
-    // Access the div with id 'map' and initialize the map
     const map = L.map('map').setView([0, 0], 2);
 
     // Define base layers
@@ -9,7 +8,6 @@ function initializeMap() {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Esri World Imagery and Boundaries Layers
     const satelliteLayer = L.esri.basemapLayer('Imagery');
     const boundariesLayer = L.esri.basemapLayer('ImageryLabels');
 
@@ -17,41 +15,36 @@ function initializeMap() {
     const layerSelect = document.getElementById('layerSelect');
     if (layerSelect) {
         layerSelect.addEventListener('change', function(e) {
-            // Clear all layers before adding the selected one
             map.eachLayer(function(layer) {
-                map.removeLayer(layer);
+                if (!layer._isDrawingLayer) {  // Preserve drawing layers
+                    map.removeLayer(layer);
+                }
             });
 
-            // Add the selected layer based on the dropdown choice
             if (e.target.value === 'osm') {
                 map.addLayer(osmLayer);
             } else if (e.target.value === 'satellite') {
                 map.addLayer(satelliteLayer);
             } else if (e.target.value === 'satelliteBoundaries') {
                 map.addLayer(satelliteLayer);
-                map.addLayer(boundariesLayer); // Add boundaries on top
+                map.addLayer(boundariesLayer);
             }
         });
     }
 
-    // Return the map object to use in other functions
     return map;
 }
 
-// Toggle Info Panel functionality
 function setupInfoPanelToggle() {
     const infoPanel = document.querySelector(".info-panel");
     const toggleButton = document.querySelector(".menu ul li:first-child");
 
     if (!infoPanel || !toggleButton) {
-        console.error("Required elements not found. Check if the 'info-panel' class and toggle button are correctly defined.");
+        console.error("Required elements not found.");
         return;
     }
 
-    // Ensure the panel is visible by default
     infoPanel.style.display = "block";
-
-    // Toggle visibility on button click
     toggleButton.addEventListener("click", function() {
         const isVisible = infoPanel.style.display === "block";
         infoPanel.style.display = isVisible ? "none" : "block";
@@ -59,55 +52,79 @@ function setupInfoPanelToggle() {
     });
 }
 
-// Function to enable marker-based polygon creation
 function setupPolygonDrawing(map) {
-    // Create an array to store marker coordinates
-    const markerCoordinates = [];
-    const markers = new L.FeatureGroup();
-    const drawnItems = new L.FeatureGroup();
+    let isDrawingMode = false;
+    let markerCoordinates = [];
+    let markers = new L.FeatureGroup();
+    let polygons = new L.FeatureGroup();
+    
+    // Add layers to map and mark them as drawing layers
+    markers._isDrawingLayer = true;
+    polygons._isDrawingLayer = true;
     map.addLayer(markers);
-    map.addLayer(drawnItems);
+    map.addLayer(polygons);
 
-    // Add click event to add markers on map
-    map.on('click', function(e) {
-        // Get the clicked location coordinates
+    // Map click handler
+    function handleMapClick(e) {
+        if (!isDrawingMode) return;
+
         const { lat, lng } = e.latlng;
-
-        // Add marker to the map
-        const marker = L.marker([lat, lng]).addTo(map);
-        markers.addLayer(marker);
-
-        // Store the coordinates of the marker
+        
+        // Add marker
+        const marker = L.marker([lat, lng]).addTo(markers);
         markerCoordinates.push([lat, lng]);
-
-        // Log marker coordinates
-        console.log("Marker added at:", [lat, lng]);
-    });
-
-    // Event listener for the "Add Field" button to create polygon from markers
-    const addFieldButton = document.querySelector(".add-field-button");
-    addFieldButton.addEventListener("click", function() {
-        if (markerCoordinates.length < 3) {
-            alert("At least three points are required to draw a polygon.");
-            return;
+        
+        // If we have 3 or more points, draw/update the polygon
+        if (markerCoordinates.length >= 3) {
+            // Remove existing temporary polygon if it exists
+            polygons.clearLayers();
+            
+            // Create new polygon
+            const polygon = L.polygon(markerCoordinates, {
+                color: 'green',
+                fillColor: 'green',
+                fillOpacity: 0.3
+            });
+            polygons.addLayer(polygon);
         }
 
-        // Create a polygon from the marker coordinates
-        const polygon = L.polygon(markerCoordinates, { color: 'blue' });
-        drawnItems.addLayer(polygon);
+        console.log("Marker added at:", [lat, lng]);
+    }
 
-        // Clear markers after creating the polygon
-        markers.clearLayers();
+    // Add Field button handler
+    const addFieldButton = document.querySelector(".add-field-button");
+    addFieldButton.addEventListener("click", function() {
+        if (!isDrawingMode) {
+            // Start drawing mode
+            isDrawingMode = true;
+            addFieldButton.textContent = "FINISH FIELD";
+            addFieldButton.style.backgroundColor = "#ff4444";
+            map.on('click', handleMapClick);
+        } else {
+            // End drawing mode
+            isDrawingMode = false;
+            addFieldButton.textContent = "+ ADD FIELD";
+            addFieldButton.style.backgroundColor = "";
+            map.off('click', handleMapClick);
 
-        // Log all marker coordinates as polygon vertices
-        console.log("Polygon created with vertices:", markerCoordinates);
+            if (markerCoordinates.length < 3) {
+                alert("At least three points are required to create a field.");
+                markers.clearLayers();
+                markerCoordinates = [];
+                return;
+            }
 
-        // Clear the stored coordinates
-        markerCoordinates.length = 0;
+            // Log final polygon coordinates
+            console.log("Field created with coordinates:", markerCoordinates);
+            
+            // Reset for next field
+            markers.clearLayers();
+            markerCoordinates = [];
+        }
     });
 }
 
-// Initialize map, setup toggle and polygon drawing when DOM is fully loaded
+// Initialize everything when DOM is loaded
 document.addEventListener("DOMContentLoaded", function() {
     const map = initializeMap();
     setupInfoPanelToggle();
