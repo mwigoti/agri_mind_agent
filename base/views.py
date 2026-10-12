@@ -11,6 +11,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 import json
 from math import sqrt
+from .models import *
 
 from django.core.mail import send_mail, BadHeaderError
 
@@ -94,3 +95,25 @@ def signin(request):
 def pricing(request):
     return render(request, 'pricing.html')
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+
+@csrf_exempt
+def save_field(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        name = data.get('name')
+        polygon = data.get('polygon')
+        
+        if not name or not polygon:
+            return JsonResponse({'success': False, 'error': 'Name or polygon is missing'}, status=400)
+        
+        # Save to the database (assuming `Field` model is already created)
+        try:
+            field = Field.objects.create(name=name, geometry=polygon)
+            return JsonResponse({'success': True, 'field_id': field.id})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
