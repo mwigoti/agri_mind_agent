@@ -231,24 +231,28 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 // analysis button
 
-                var analyzeButton = document.createElement("button")
+                var analyzeButton = document.createElement("button");
                 analyzeButton.textContent = "Analyze";
-                analyzeButton.setAttribute("data-field-id", field.id);
-                analyzeButton.addEventListener("click", function() {
-                    const fieldId = analyzeButton.getAttribute("data-field-id");
-                    fetch(`/api/get-field-center/${fieldId}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            const { latitude, longitude } = data.centroid;
-                            console.log(`centroid (WGS84): lat= ${latitude}, long = ${longitude}`);
-                        } else {
-                            console.error("Error analyzing field: ", data.error);
 
-                        }
-                    })
-                    .catch(error => console.error("Unexpected Error:", error));
-                })
+                // Pass the field ID directly using a closure in the event listener
+                analyzeButton.addEventListener("click", function() {
+                    const fieldId = field.id; // Use the `field.id` directly from the current context
+
+                    // Fetch the field centroid from the API
+                    fetch(`/api/get-field-center/${fieldId}/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const { latitude, longitude } = data.centroid;
+                                console.log(`Centroid (WGS84): Latitude = ${latitude}, Longitude = ${longitude}`);
+                            } else {
+                                console.error("Error analyzing field:", data.error);
+                            }
+                        })
+                        .catch(error => console.error("Unexpected Error:", error));
+                });
+
+                
 
                 // delete button
 
