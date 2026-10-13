@@ -38,22 +38,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'base',
-    'django.contrib.sites',  # Required by allauth
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount', 
+    'base'
 ]
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',  # Default backend
-    'allauth.account.auth_backends.AuthenticationBackend',  # Allauth backend
+    'django.contrib.auth.backends.ModelBackend', 
+    
 ]
 
-SITE_ID = 1
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_AUTHENTICATION_METHOD = 'email'  # Use email for login
-LOGIN_REDIRECT_URL = '/'  # Redirect after login
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
