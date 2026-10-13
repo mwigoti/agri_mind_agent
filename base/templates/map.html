@@ -81,6 +81,7 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
     let isDrawingMode = false;
     let markerCoordinates = [];
     const markers = [];
+    let mapClickHandle = null;
 
     function handleMapClick(event) {
         if (!isDrawingMode) return;
@@ -110,7 +111,6 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
     }
 
     function sendCoordinatesToDjango(coordinates) {
-        // Get CSRF token
         const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
         
         fetch('/calculate-field-center/', {
@@ -119,9 +119,7 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrftoken
             },
-            body: JSON.stringify({
-                coordinates: coordinates
-            })
+            body: JSON.stringify({ coordinates })
         })
         .then(response => response.json())
         .then(data => {
@@ -130,7 +128,6 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
                 alert('Error calculating field center: ' + data.error);
             } else {
                 console.log('Field center:', data.center);
-                // Update info panel with calculated data
                 updateInfoPanel(data);
             }
         })
@@ -143,15 +140,13 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
     function updateInfoPanel(data) {
         const infoPanel = document.querySelector('.info-panel');
         if (infoPanel) {
-            // Update area if provided
             if (data.area) {
                 const areaElement = infoPanel.querySelector('h3 + div');
                 if (areaElement) {
                     areaElement.textContent = `${data.area.toFixed(2)} ha`;
                 }
             }
-            
-            // Add center coordinates if needed
+
             if (data.center) {
                 const centerElement = document.createElement('div');
                 centerElement.textContent = `Center: ${data.center.lng.toFixed(4)}, ${data.center.lat.toFixed(4)}`;
@@ -167,23 +162,23 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
         if (isDrawingMode) {
             addFieldButton.textContent = "Finish Field";
             addFieldButton.style.backgroundColor = "#ff4444";
-            map.on("click", handleMapClick);
+            mapClickHandle = map.on("click", handleMapClick);
         } else {
             addFieldButton.textContent = "+ Add Field";
             addFieldButton.style.backgroundColor = "";
-            map.off("click", handleMapClick);
+            if (mapClickHandle) {
+                mapClickHandle.remove();
+                mapClickHandle = null;
+            }
 
             if (markerCoordinates.length < 3) {
                 alert("At least three points are required to create a polygon.");
                 resetDrawing(map, markers);
             } else {
-                // Send coordinates to Django for processing
                 sendCoordinatesToDjango(markerCoordinates);
                 markerCoordinates = [];
                 resetDrawing(map, markers);
             }
-
-       
         }
     });
 }
@@ -196,7 +191,6 @@ function resetDrawing(map, markers) {
 </head>
 <body class="claro">
     <div class="container">
-        <!-- Sidebar Menu -->
         <div class="menu">
             <div class="logo">
                 <h3>AgriVision</h3>
@@ -207,7 +201,7 @@ function resetDrawing(map, markers) {
                     <li>Season 2024</li>
                     <li>Get Started</li>
                     <li class="active">Monitoring</li>
-                    <li>Weather</a></li>
+                    <li>Weather</li>
                     <li>Overview</li>
                     <li>VRA Maps</li>
                     <li>Field Activity Log</li>
@@ -220,11 +214,8 @@ function resetDrawing(map, markers) {
             </nav>
         </div>
 
-        <!-- Main Map Container -->
         <div class="map-container">
             <div id="map"></div>
-            
-            <!-- Map Controls for Layer Switching -->
             <div class="map-controls">
                 <label for="layerSelect">Map Layer:</label>
                 <select id="layerSelect">
@@ -233,8 +224,6 @@ function resetDrawing(map, markers) {
                     <option value="satelliteBoundaries">Satellite with Boundaries</option>
                 </select>
             </div>
-            
-            <!-- Info Panel -->
             <div class="info-panel">
                 <h3>Global View</h3>
                 <p>0 ha</p>
@@ -250,9 +239,7 @@ function resetDrawing(map, markers) {
                     <p>Browse satellite images, vegetation indices, weather data, and more</p>
                     <button class="add-field-button" id="addField">+ ADD FIELD</button>
                 </div>
-
             </div>
-
             <div id="save-panel" style="display: none;">
                 <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
                 <input type="text" id="fieldName" placeholder="Enter field name">
@@ -261,6 +248,5 @@ function resetDrawing(map, markers) {
             </div>
         </div>
     </div>
-   
 </body>
 </html>
