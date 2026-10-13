@@ -179,10 +179,11 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
             } else {
                 // Send coordinates to Django for processing
                 sendCoordinatesToDjango(markerCoordinates);
+                markerCoordinates = [];
+                resetDrawing(map, markers);
             }
 
-        markerCoordinates = [];
-        resetDrawing(map, markers);
+       
         }
     });
 }
