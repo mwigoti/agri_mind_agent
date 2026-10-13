@@ -236,9 +236,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 // Pass the field ID directly using a closure in the event listener
                 analyzeButton.addEventListener("click", function() {
+                    const fieldId = field.id; 
+
+                    window.location.href = `/api/analyze-field/${fieldId}/`;
+
                     
-                    window.location.href = "{% url 'res' %}";
-                    const fieldId = field.id; // Use the `field.id` directly from the current context
 
                     fetch(`/api/analyze-field/${fieldId}/`)
                     .then(response => response.json())
