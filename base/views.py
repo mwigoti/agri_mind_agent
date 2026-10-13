@@ -94,6 +94,8 @@ def signin(request):
 def pricing(request):
     return render(request, 'pricing.html')
 
+from .open_soil_grid import analyze_soil_data  # Import your analysis function
+
 @ensure_csrf_cookie
 @require_http_methods(["POST"])
 def calculate_field_center(request):
@@ -107,15 +109,15 @@ def calculate_field_center(request):
         # Calculate center
         x_coords = [point[0] for point in coordinates]
         y_coords = [point[1] for point in coordinates]
-        
         center_x = sum(x_coords) / len(coordinates)
         center_y = sum(y_coords) / len(coordinates)
         
-        # Calculate approximate area using the shoelace formula
+        # Calculate area
         area = calculate_area(coordinates)
+        area_hectares = abs(area) / 10000  # Convert to hectares
         
-        # Convert area from square meters to hectares
-        area_hectares = abs(area) / 10000  # 1 hectare = 10000 square meters
+        # Soil data analysis
+        soil_data = analyze_soil_data(coordinates)  # Replace with the actual function from `open_soil_grids.py`
         
         return JsonResponse({
             'center': {
@@ -123,6 +125,7 @@ def calculate_field_center(request):
                 'lat': center_y
             },
             'area': area_hectares,
+            'soil_data': soil_data,  # Include soil analysis results
             'num_points': len(coordinates)
         })
         
@@ -130,18 +133,16 @@ def calculate_field_center(request):
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 def calculate_area(coordinates):
     """
-    Calculate area using the shoelace formula (Gauss's area formula)
+    Calculate the area of a polygon using the shoelace formula (Gauss's area formula).
     """
     n = len(coordinates)
     area = 0.0
     
     for i in range(n):
-        j = (i + 1) % n
+        j = (i + 1) % n  # Wrap around to the first point
         area += coordinates[i][0] * coordinates[j][1]
         area -= coordinates[j][0] * coordinates[i][1]
-        area=area/2.0
     
-    return render('area.html', 'area:area')
+    return abs(area) / 2.0  # Return absolute value for positive area
