@@ -9,60 +9,7 @@
     <!-- ArcGIS CSS and JavaScript API -->
     <link rel="stylesheet" href="https://js.arcgis.com/3.46/dijit/themes/claro/claro.css">
     <link rel="stylesheet" href="https://js.arcgis.com/3.46/esri/css/esri.css">
-    <style>
-        html, body, #map { 
-            height: 100%; 
-            width: 100%; 
-            margin: 0; 
-            padding: 0; 
-        }
-        .container {
-            display: flex;
-            height: 100%;
-        }
-        .menu {
-            width: 250px;
-            background-color: #f4f4f4;
-            padding: 10px;
-        }
-        .menu h3 {
-            text-align: center;
-            margin: 10px 0;
-        }
-        .menu ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        .menu ul li {
-            padding: 8px;
-            cursor: pointer;
-        }
-        .map-container {
-            flex-grow: 1;
-            position: relative;
-        }
-        .map-controls {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 100;
-            background: white;
-            padding: 8px;
-            border-radius: 4px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.4);
-        }
-        .info-panel {
-            position: absolute;
-            top: 80px;
-            left: 10px;
-            width: 200px;
-            background: white;
-            padding: 10px;
-            border-radius: 4px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.4);
-            z-index: 100;
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'map.css' %}">
     <script>
         var dojoConfig = { parseOnLoad: true };
     </script>
