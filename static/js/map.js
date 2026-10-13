@@ -66,7 +66,7 @@ function setupPolygonDrawing(map) {
 
     // Map click handler
     function handleMapClick(e) {
-        if (!isDrawingMode) return;
+        if (isDrawingMode) return;
 
         const { lat, lng } = e.latlng;
         
@@ -124,9 +124,7 @@ function setupPolygonDrawing(map) {
     });
 }
 
-// Initialize everything when DOM is loaded
-document.addEventListener("DOMContentLoaded", function() {
-    const map = initializeMap();
-    setupInfoPanelToggle();
-    setupPolygonDrawing(map);
-});
+
+const map = initializeMap();
+setupInfoPanelToggle();
+setupPolygonDrawing(map);
