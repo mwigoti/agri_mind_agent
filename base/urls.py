@@ -15,6 +15,6 @@ urlpatterns = [
     path('login/', login, name="login"),
     path('pricing/', pricing, name="pricing"),
     
-    path('api/fields/', save_field, name='save_field'),
+    path('save_field/', SaveFieldView.as_view(), name='save-field'),
     
 ]

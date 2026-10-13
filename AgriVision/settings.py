@@ -92,19 +92,12 @@ if DATABASE_URL:
     url = urlparse(DATABASE_URL)
     DATABASES = {
         'default': {
-            'ENGINE': 'django.contrib.gis.db.backends.postgis',  # Or 'django.contrib.gis.db.backends.postgis' for GIS
+            'ENGINE': 'django.contrib.gis.db.backends.postgis',  
             'NAME': url.path[1:],
             'USER': url.username,
             'PASSWORD': url.password,
             'HOST': url.hostname,
             'PORT': url.port,
-        }
-    }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
 

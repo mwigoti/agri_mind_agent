@@ -1,19 +1,17 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login
-from django.contrib.auth.models import User  # Assuming you're using the default User model
-from .models import UserProfile  # Import your UserProfile model
 from django.core.mail import send_mail
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.conf import settings
 from django.http import JsonResponse
-from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.decorators.http import require_http_methods
 import json
-from math import sqrt
 from .models import *
-
 from django.core.mail import send_mail, BadHeaderError
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.gis.geos import Polygon
+from .serializers import FieldSerializer
 
 
 # Create your views here.
@@ -95,25 +93,32 @@ def signin(request):
 def pricing(request):
     return render(request, 'pricing.html')
 
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import json
-
-@csrf_exempt
-def save_field(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        name = data.get('name')
-        polygon = data.get('polygon')
-        
-        if not name or not polygon:
-            return JsonResponse({'success': False, 'error': 'Name or polygon is missing'}, status=400)
-        
-        # Save to the database (assuming `Field` model is already created)
+class SaveFieldView(APIView):
+    def post(self, request, *args, **kwargs):
         try:
-            field = Field.objects.create(name=name, geometry=polygon)
-            return JsonResponse({'success': True, 'field_id': field.id})
+            data = request.data
+            name = data.get('name', 'Unnamed Field')
+            coordinates = data.get('coordinates')
+
+            if not coordinates or len(coordinates) < 3:
+                return Response({"error": "At least 3 points are required"})
+            
+            # close the polygon by repeating first
+
+            if coordinates[0] != coordinates[-1]:
+                coordinates.append(coordinates[0])
+
+            # create polygon 
+
+            polygon = Polygon(coordinates)
+
+            #save to database
+            field=Field.objects.create(name=name, geometry=polygon)
+
+            serializer= FieldSerializer(field)
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)}, status=500)
-    
-    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            
