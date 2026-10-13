@@ -17,7 +17,7 @@ class UserProfile(models.Model):
 class Field(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
-    geometry = models.PolygonField()  # Stores the polygon geometry
+    geometry = models.PolygonField(srid=3857)  # Stores the polygon geometry
     created_at = models.DateTimeField(default=now)
 
     def __str__(self):
