@@ -147,10 +147,10 @@ class DeleteFieldView(APIView):
         field.delete()
         return Response({'message': 'Field deleted successfully'}, status=status.HTTP_200_OK)
 
-def get_field_center(field_id):
+def get_field_center(request):
     try:
         # Fetch the field by ID
-        field = Field.objects.get(id=field_id)
+        field = Field.objects.get(id)
 
         # Transform geometry to WGS84 and calculate the centroid
         center = field.geometry.transform(4326, clone=True).centroid
@@ -161,4 +161,4 @@ def get_field_center(field_id):
             "longitude": center.x,
         }
     except Field.DoesNotExist:
-        raise ValueError(f"Field with ID {field_id} does not exist")
+        raise ValueError(f"Field with ID {id} does not exist")
