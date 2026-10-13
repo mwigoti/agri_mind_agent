@@ -272,18 +272,26 @@ document.addEventListener("DOMContentLoaded", function() {
     // delete field
 
     function deleteField(id) {
-        fetch(`/api/delete-field/${id}`, { method: 'DELETE' })
-        .then(response => {
-            if (response.ok) {
-                alert("field deleted successfully!");
-                
-            } else {
-                alert("Failed to delete field!");
-
-            }
-        })
-        .catch(error => console.error('Error deleting Field:', error));
-    }
+    fetch(`/api/delete-field/${id}/`, { 
+        method: 'DELETE', 
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => {
+        if (response.ok) {
+            alert("Field deleted successfully!");
+            // Optionally reload or update the UI
+            location.reload(); // Reload the page to reflect changes
+        } else {
+            return response.json().then(data => {
+                throw new Error(data.error || "Failed to delete field!");
+            });
+        }
+    })
+    .catch(error => {
+        console.error("Error deleting field:", error);
+        alert(error.message || "An unexpected error occurred.");
+    });
+}
 });
 
 

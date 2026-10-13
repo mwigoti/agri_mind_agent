@@ -17,6 +17,7 @@ urlpatterns = [
     
     path('save-field/', SaveFieldView.as_view(), name='save-field'),
     path('api/myfields/', get_fields_geojson, name='api-myfields'),
-    path('api/delete-field/<int:field_id>/', delete_field, name='delete-field'),
+    path('api/delete-field/<int:id>/', DeleteFieldView.as_view(), name='delete-field'), 
+
     
 ]
