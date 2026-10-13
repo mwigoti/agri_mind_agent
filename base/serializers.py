@@ -4,4 +4,4 @@ from .models import Field
 class FieldSerializer(serializers.ModelSerializer):
     class Meta:
         model = Field
-        fields= ['__all__']
+        fields= ['id', 'name', 'geometry']
