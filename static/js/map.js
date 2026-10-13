@@ -37,7 +37,7 @@ function initializeMap() {
 
 function setupInfoPanelToggle() {
     const infoPanel = document.querySelector(".info-panel");
-    const toggleButton = document.querySelector(".menu ul li:first-child");
+    const toggleButton = document.querySelector(".menu ul nav li:first-child");
 
     if (!infoPanel || !toggleButton) {
         console.error("Required elements not found.");
@@ -53,7 +53,7 @@ function setupInfoPanelToggle() {
 }
 
 function setupPolygonDrawing(map) {
-    let isDrawingMode = false;
+    let isDrawingMode = true;
     let markerCoordinates = [];
     let markers = new L.FeatureGroup();
     let polygons = new L.FeatureGroup();
