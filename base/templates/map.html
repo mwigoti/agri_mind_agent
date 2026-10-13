@@ -238,20 +238,19 @@ document.addEventListener("DOMContentLoaded", function() {
                 analyzeButton.addEventListener("click", function() {
                     const fieldId = field.id; // Use the `field.id` directly from the current context
 
-                    // Fetch the field centroid from the API
                     fetch(`/api/get-field-center/${fieldId}/`)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                const { latitude, longitude } = data.centroid;
-                                console.log(`Centroid (WGS84): Latitude = ${latitude}, Longitude = ${longitude}`);
-                            } else {
-                                console.error("Error analyzing field:", data.error);
-                            }
-                        })
-                        .catch(error => console.error("Unexpected Error:", error));
-                });
-
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.latitude && data.longitude) {
+                            const { latitude, longitude } = data;
+                            console.log(`Centroid (WGS84): Latitude = ${latitude}, Longitude = ${longitude}`);
+                        } else {
+                            console.error("Error analyzing field:", data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Network or parsing error:", error);
+                    });
                 
 
                 // delete button
