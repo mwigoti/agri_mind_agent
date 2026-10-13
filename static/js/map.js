@@ -1,55 +1,55 @@
-document.addEventListener('DOMContentLoaded', function() {
-    initMap();
-    setupEventListeners();
+// Initialize the map and set the view to a specific location and zoom level
+var map = L.map('map').setView([0, 0], 2); // Adjust as necessary
+
+// Base layers
+var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+var terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    maxZoom: 17,
+    attribution: '© OpenTopoMap contributors'
 });
 
-let map;
+// Layer switcher
+document.getElementById('layerSelect').addEventListener('change', function(e) {
+    if (e.target.value === 'osm') {
+        map.removeLayer(terrainLayer);
+        map.addLayer(osmLayer);
+    } else if (e.target.value === 'terrain') {
+        map.removeLayer(osmLayer);
+        map.addLayer(terrainLayer);
+    }
+});
 
-function initMap() {
-    map = L.map('map').setView([0, 0], 2);  // Set initial view to the center of the world with zoom level 2
+// Add a feature group to hold drawn items
+var drawnItems = new L.FeatureGroup();
+map.addLayer(drawnItems);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+// Add draw control to the map for polygon drawing
+var drawControl = new L.Control.Draw({
+    edit: {
+        featureGroup: drawnItems
+    },
+    draw: {
+        polygon: true,
+        polyline: false,
+        circle: false,
+        rectangle: false,
+        marker: false,
+        circlemarker: false
+    }
+});
+map.addControl(drawControl);
 
-    console.log("Map initialized");
-}
-
-function setupEventListeners() {
-    // Menu item click
-    document.querySelectorAll('.menu nav ul li').forEach(item => {
-        item.addEventListener('click', function() {
-            document.querySelector('.menu nav ul li.active')?.classList.remove('active');
-            this.classList.add('active');
-        });
+// Capture polygon coordinates when a new polygon is created
+map.on(L.Draw.Event.CREATED, function(event) {
+    var layer = event.layer;
+    var coordinates = layer.getLatLngs()[0].map(function(latlng) {
+        return [latlng.lat, latlng.lng];
     });
+    console.log("Polygon coordinates:", coordinates); // Replace with integration to soil analysis algorithm
 
-    // Zoom controls
-    document.querySelector('.zoom-in').addEventListener('click', function() {
-        map.zoomIn();
-    });
-
-    document.querySelector('.zoom-out').addEventListener('click', function() {
-        map.zoomOut();
-    });
-
-    // Layer controls
-    document.querySelector('.layer-controls select').addEventListener('change', function() {
-        // Update the map layer based on the selected value
-        console.log("Layer changed to: " + this.value);
-    });
-}
-document.addEventListener('DOMContentLoaded', (event) => {
-    const infoPanel = document.querySelector('.info-panel');
-    const toggleButton = document.getElementById('toggleButton');
-    
-    toggleButton.addEventListener('click', () => {
-        if (infoPanel.style.display === 'none') {
-            infoPanel.style.display = 'block';
-            toggleButton.textContent = 'Hide Info Panel';
-        } else {
-            infoPanel.style.display = 'none';
-            toggleButton.textContent = 'Show Info Panel';
-        }
-    });
+    drawnItems.addLayer(layer);
 });
