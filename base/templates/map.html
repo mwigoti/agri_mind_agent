@@ -230,6 +230,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 // analysis button
 
                 var analyzeButton = document.createElement("button");
+                analyzeButton.textContent = "Analyze";
                 analyzeButton.addEventListener("click", function() {
                     alert('analyzing field: ${field.properties.name}')
                     // add analysis logic
@@ -238,6 +239,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 // delete button
 
                 var deleteButton = document.createElement("button");
+                deleteButton.textContent = "Delete";
                 deleteButton.addEventListener("click", function() {
                     if (confirm(`Are you sure you want to delete ${field.properties.name}?`)) {
                         deleteField(field.id)
