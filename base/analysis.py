@@ -36,7 +36,10 @@ class IntegratedSoilAnalyzer:
         }
         
         # CDS client initialization
-        self.cds_client = cdsapi.Client()
+        self.cds_client = cdsapi.Client(
+            url=os.environ.get('CDS_URL'),
+            key=os.environ.get('CDS_KEY')
+        )
         
         # Request configuration
         self.max_retries = 3
