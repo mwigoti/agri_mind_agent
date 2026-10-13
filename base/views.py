@@ -236,5 +236,14 @@ def load(request):
 def res(request):
     return render(request, 'result.html')
 
+# views.py
+import requests
+from django.http import JsonResponse
 
+def check_analysis_engine(request):
+    try:
+        response = requests.post("http://127.0.0.1:8001/health", timeout=5)
+        return JsonResponse(response.json())
+    except Exception as e:
+        return JsonResponse({"error": str(e)})
 
