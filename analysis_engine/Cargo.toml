@@ -13,3 +13,5 @@ chrono = { version = "0.4", features = ["serde"] }
 serde_json = "1.0"
 tokio = { version = "1.0", features = ["full"] }
 geo-types = { version = "0.7", features = ["serde"] }
+dotenv = "0.15.0"
+geojson = "0.24"
