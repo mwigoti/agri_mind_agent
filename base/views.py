@@ -149,7 +149,7 @@ class DeleteFieldView(APIView):
 
 def get_field_center(id):
     try:
-        field = Field.objects.get(id=id)
+        field = Field.objects.get(id)
 
         center = field.geometry.transform(4326, clone=True).centroid
 
