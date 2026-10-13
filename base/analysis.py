@@ -4,7 +4,8 @@ import json
 import os
 from datetime import datetime
 import time
-
+import re
+from typing import Any
 from typing import Optional, Dict, Any, Union
 
 from pyproj import Transformer
@@ -465,32 +466,34 @@ Keep analysis concise and practical for sustainable farming."""
             
     @staticmethod
     def _extract_analysis(result: Any) -> str:
-        """Extract analysis from HuggingFace chat completions response"""
+        """Extract and clean analysis from HuggingFace chat completions response"""
         print(f"DEBUG: Extracting analysis from result type: {type(result)}")
-        
+        raw_text = ''
+
         # Handle the chat completions response format
         if isinstance(result, dict):
-            # Check for the standard chat completions format
             if 'choices' in result and result['choices']:
                 choice = result['choices'][0]
                 if 'message' in choice:
-                    return choice['message'].get('content', '')
+                    raw_text = choice['message'].get('content', '')
                 elif 'text' in choice:
-                    return choice['text']
-            # Fallback for other dict formats
+                    raw_text = choice['text']
             elif 'generated_text' in result:
-                return result['generated_text']
+                raw_text = result['generated_text']
             elif 'content' in result:
-                return result['content']
-        
-        # Handle list format (legacy)
+                raw_text = result['content']
+
         elif isinstance(result, list) and result:
             if isinstance(result[0], dict):
                 if 'generated_text' in result[0]:
-                    return result[0]['generated_text']
+                    raw_text = result[0]['generated_text']
                 elif 'message' in result[0]:
-                    return result[0]['message'].get('content', '')
+                    raw_text = result[0]['message'].get('content', '')
             else:
-                return str(result[0])
-        
-        return str(result)
+                raw_text = str(result[0])
+        else:
+            raw_text = str(result)
+
+        # Clean up unwanted characters like '#' and '*'
+        cleaned_text = re.sub(r'[#*]', '', raw_text)
+        return cleaned_text.strip()
