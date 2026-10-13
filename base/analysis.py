@@ -1,17 +1,17 @@
-import cdsapi
-import xarray as xr
+
+
 import requests
 import pandas as pd
 import json
 import os
 from datetime import datetime
 import time
-import numpy as np
+
 from typing import Optional, Dict, Any, Union
-from django.conf import settings
+
 from pyproj import Transformer
 from .models import Field
-from datetime import timedelta
+
 
 class IntegratedSoilAnalyzer:
     def __init__(self, huggingface_token: Optional[str] = None):
@@ -25,7 +25,7 @@ class IntegratedSoilAnalyzer:
             "Content-Type": "application/json"
         }
         
-        self.cds_client = cdsapi.Client()
+        
         self.max_retries = 3
         self.retry_delay = 5
         self.last_request_time = None
