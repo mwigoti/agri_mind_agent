@@ -173,10 +173,6 @@ def get_field_center(request, id):
         return JsonResponse({
             "id": field.id,
             "name": field.name,
-            "original_coordinates": {
-                "x": center.x,
-                "y": center.y,
-            },
             "latitude": lat,
             "longitude": lon,
         })
