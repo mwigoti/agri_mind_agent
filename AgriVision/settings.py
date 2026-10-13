@@ -165,21 +165,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# Email Settings
-# Use the SMTP email backend to send emails
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-
-# SMTP server settings for sending emails (Gmail example)
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-
-# Your email credentials
-EMAIL_HOST_USER = 'codecubesacademy@gmail.com'  # Replace with your actual email address
-EMAIL_HOST_PASSWORD = 'ijfanotfcrtclvce'  # Replace with your actual email password or use an app password
-
-# Default email address to receive contact form submissions
-DEFAULT_TO_EMAIL = EMAIL_HOST_USER
 
 
 # Security Settings (adjust these in production)
@@ -193,4 +178,11 @@ HUGGINGFACE_TOKEN=os.getenv("HUGGINGFACE_TOKEN")
 AUTH_USER_MODEL = 'base.CustomUser'
 
 
-
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # or your SMTP server
+EMAIL_PORT = 587  # 465 for SSL
+EMAIL_USE_TLS = True  # False if using SSL
+EMAIL_USE_SSL = False  # True if using port 465
+EMAIL_HOST_USER = 'henrymwoha02@gmail.com'  # Your email address
+EMAIL_HOST_PASSWORD = 'igadgejoknyqsviq '  # Your password or app password
+DEFAULT_FROM_EMAIL = 'henrymwoha02@gmail.com'  # Default sender email
