@@ -240,6 +240,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 var deleteButton = document.createElement("button");
                 deleteButton.textContent = "Delete";
+            
                 deleteButton.addEventListener("click", function() {
                     if (confirm(`Are you sure you want to delete ${field.properties.name}?`)) {
                         deleteField(field.id)
@@ -397,6 +398,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 margin-right: 5px;
                 height: auto;
                 width: auto;
+                border-radius: 30px;
             }
         </style>
         <div class="map-container">
