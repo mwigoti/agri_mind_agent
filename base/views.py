@@ -152,18 +152,26 @@ class DeleteFieldView(APIView):
 
 
 
-@require_GET  
+from django.contrib.gis.geos import Point
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
+
+@require_GET
 def get_field_center(request, id):
     try:
-        
+        # Fetch the field by ID
         field = Field.objects.get(pk=id)
         
-       
-        center = field.geometry.transform(4326, clone=True).centroid
+        # Transform from UTM zone 37S to WGS 84 (standard lat/lon)
+        transformed_geometry = field.geometry.transform(4326, clone=True)
+        
+        # Calculate centroid after transformation
+        center = transformed_geometry.centroid
         
         return JsonResponse({
             "id": field.id,
             "name": field.name,
+            "original_srid": field.geometry.srid, 
             "latitude": center.y,
             "longitude": center.x,
         })
