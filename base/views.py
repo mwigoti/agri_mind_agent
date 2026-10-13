@@ -136,9 +136,8 @@ def get_fields_geojson(request):
     serializer = FieldGeoJSONSerializer(fields, many=True)  # Serialize data
     return Response(serializer.data) 
 
-def delete_field(request, id):
-    if request.method == 'DELETE':
-        field = get_object_or_404(Field, id)
+class DeleteFieldView(APIView):
+    def delete(self, request, id):
+        field = get_object_or_404(Field, id=id)
         field.delete()
-        return JsonResponse({'message': 'field deleted successfully'}, status=200)
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
+        return Response({'message': 'Field deleted successfully'}, status=status.HTTP_200_OK)
