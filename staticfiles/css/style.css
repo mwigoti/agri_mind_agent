@@ -44,36 +44,59 @@
 
 }
 
+/* Navbar Styling */
 .navbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 1rem 2rem;
+  background-color: #333; /* Adjust color as needed */
+  color: #fff;
 }
 
-.navbar nav {
+.navbar .logo img {
+  width: 100px; /* Adjust logo size */
+  height: auto;
+}
+
+.navbar nav ul {
   display: flex;
   align-items: center;
-  padding: 1.5rem 0;
-}
-
-.navbar nav li {
   list-style: none;
-  margin-left: 1rem;
+  padding: 0;
+  margin: 0;
 }
 
-.navbar nav li a {
+.navbar nav ul li {
+  margin-left: 1.5rem;
+}
+
+.navbar nav ul li a {
   text-decoration: none;
   color: #fff;
   font-size: 1.1rem;
-  padding: 0.7rem 0.6rem;
+  padding: 0.5rem 0.8rem;
   border-radius: 6px;
-  transition: all 0.4s ease-in;
+  transition: all 0.3s ease-in-out;
 }
 
-.navbar nav li a:hover {
-  background: #000;
+.navbar nav ul li a:hover {
+  background-color: #555; /* Hover background */
   color: #fff;
 }
+
+/* User Icon */
+.navbar nav ul li img {
+  vertical-align: middle;
+  border-radius: 50%; /* Makes the image circular */
+}
+
+/* Logout Styling (optional dropdown setup) */
+.navbar nav ul li a.logout {
+  color: #ff4d4d; /* Red color for logout link */
+  font-weight: bold;
+}
+
 
 section video {
   position: absolute;
@@ -111,12 +134,12 @@ section video {
   margin: 2rem 0;
   width: 21%;
   padding: 0.7rem 0;
-  cursor: pointer;
+  cursor: auto;
   font-size: 1rem;
   border-radius: 4px;
-  border: 1px solid #ddd;
+  border: 1px solid #000;
   background: inherit;
-  color: #fff;
+  color: #000;
   transition: all 0.3s ease-in-out;
 }
 
@@ -144,7 +167,7 @@ section video {
 
 .navbar .btn {
   font-size: 1.2rem;
-  color: #fff;
+  color: #000;
   align-items: center;
   cursor: pointer;
   display: none;
