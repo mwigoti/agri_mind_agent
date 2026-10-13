@@ -126,10 +126,16 @@ class SaveFieldView(APIView):
            
 # Retrieve fields as geojson from db
 
-def get_fields_geojson(request):
-    geojson_fields = serialize('geojson', Field.objects.all(), geometry_field='geometry', fields=('name',))
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from .models import Field
+from .serializers import FieldGeoJSONSerializer
 
-    return JsonResponse(geojson_fields, safe=False)
+@api_view(['GET'])
+def get_fields_geojson(request):
+    fields = Field.objects.all()  # Query all fields
+    serializer = FieldGeoJSONSerializer(fields, many=True)  # Serialize data
+    return Response(serializer.data) 
 
 def delete_field(request, field_id):
     if request.method == 'DELETE':
