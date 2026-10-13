@@ -12,5 +12,6 @@ key.pem/
 **/*.rlib
 **/*.o
 analysis_engine/target/
+.target/
 target/
-target/
+.target
