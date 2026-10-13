@@ -21,7 +21,7 @@ from django.utils.decorators import method_decorator  # Add this import
 from django.views import View
 from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Transform
-from .analysis import analyze_field
+from .analysis import IntegratedSoilAnalyzer
 
 
 # Create your views here.
@@ -155,8 +155,9 @@ class DeleteFieldView(APIView):
 def analyze_field_view(request, id):
     try:
         huggingface_token = settings.HUGGINGFACE_TOKEN
+        analyzer = IntegratedSoilAnalyzer()
 
-        result = analyze_field(id, huggingface_token)
+        result = analyzer.analyze_combined_data(id, huggingface_token)
 
         return JsonResponse(result)
     except Exception as e:

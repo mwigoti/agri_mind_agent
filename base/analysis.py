@@ -4,253 +4,200 @@ import requests
 import pandas as pd
 import json
 import os
-import sys
-from datetime import datetime, date
+from datetime import datetime
 import time
 import numpy as np
-from typing import Optional, Dict, Any
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import django
+from typing import Optional, Dict, Any, Union
 from django.conf import settings
-
-
-# Ensure Django is configured
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'AgriVision.settings')
-django.setup()
-
-from .models import Field  # Replace with your actual app name
 from pyproj import Transformer
+from .models import Field
+from datetime import timedelta
 
 class IntegratedSoilAnalyzer:
     def __init__(self, huggingface_token: Optional[str] = None):
-        """Initialize with required configurations"""
         self.huggingface_token = huggingface_token or os.getenv("HUGGINGFACE_TOKEN")
         if not self.huggingface_token:
-            raise ValueError("Hugging Face token is required. Set HUGGINGFACE_TOKEN environment variable.")
+            raise ValueError("Hugging Face token is required")
             
-        # Falcon-7B configuration
         self.model_url = "https://api-inference.huggingface.co/models/tiiuae/falcon-7b-instruct"
         self.headers = {
             "Authorization": f"Bearer {self.huggingface_token}",
             "Content-Type": "application/json"
         }
         
-        # CDS client initialization
-        self.cds_client = cdsapi.Client(
-            url=os.environ.get('CDS_URL'),
-            key=os.environ.get('CDS_KEY')
-        )
-        
-        # Request configuration
+        self.cds_client = cdsapi.Client()
         self.max_retries = 3
         self.retry_delay = 5
         self.last_request_time = None
         self.min_request_interval = 2
         
-    
-    def get_field_center(self, id: int) -> Dict[str, float]:
-        """
-        Retrieve the center coordinates of a field using Django ORM
-        
-        Args:
-            field_id (int): ID of the field in the database
-        
-        Returns:
-            Dict with latitude and longitude
-        """
+    def get_field_center(self, field_id: int) -> Dict[str, Any]:
         try:
-            # Fetch the field by ID
-            field = Field.objects.get(pk=id)
-            
-            # Create a transformer from Web Mercator (EPSG:3857) to WGS84 (EPSG:4326)
-            transformer = Transformer.from_crs(
-                "EPSG:3857",  # Web Mercator
-                "EPSG:4326",  
-                always_xy=True  # Ensure x, y order
-            )
-            
-            # Get the centroid of the geometry
+            field = Field.objects.get(pk=field_id)
+            transformer = Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True)
             center = field.geometry.centroid
-            
-            # Transform the coordinates
             lon, lat = transformer.transform(center.x, center.y)
             
             return {
-                "latitude": lat,
-                "longitude": lon,
+                "lat": lat,
+                "lon": lon,
                 "name": field.name
             }
-        
         except Field.DoesNotExist:
-            raise ValueError(f"Field with ID {id} not found")
+            raise ValueError(f"Field with ID {field_id} not found")
         except Exception as e:
             raise RuntimeError(f"Error retrieving field center: {e}")
-    def get_soilgrid_data(self, lat: float, lon: float) -> Optional[pd.DataFrame]:
-    
-        base_url = "https://rest.isric.org"
-        endpoint = f"soilgrids/v2.0/properties/query?lat={lat}&lon={lon}"
-        
-        try:
-            # Timeout set to 30 seconds to prevent long-running requests
-            response = requests.get(f"{base_url}/{endpoint}", timeout=30)
-            response.raise_for_status()
-            
-            # Parse the JSON response
-            data = response.json()
-            properties = data.get('properties', {}).get('layers', [])
-            
-            # Extract soil properties
-            soil_data = {}
-            for prop in properties:
-                # Safely extract mean value, defaulting to None if not available
-                soil_data[prop['name']] = prop['depths'][0]['values'].get('mean')
-            
-            # Convert to DataFrame, handling potential empty data
-            df = pd.DataFrame([soil_data])
-            
-            return df
-        
-        except requests.RequestException as e:
-            print(f"SoilGrids API Request Error: {e}")
-            return None
-        except (KeyError, IndexError, ValueError) as e:
-            print(f"SoilGrids Data Parsing Error: {e}")
-            return None
-        except Exception as e:
-            print(f"Unexpected error fetching SoilGrids data: {e}")
-            return None
-    def get_era5_data(self, latitude: float, longitude: float, analysis_date: Optional[str] = None) -> Dict[str, Any]:
-        """Fetch ERA5 climate data"""
-        # Use current date if no specific date provided
-        if analysis_date is None:
-            analysis_date = "2024-11-23"
-        
-        temp_file = f'temp_era5_data_{int(time.time())}.nc'
-        try:
-            year, month, day = analysis_date.split('-')
-            
-            # Calculate area bounds (0.5 degree buffer)
-            area = [
-                min(90, latitude + 0.5), 
-                max(-180, longitude - 0.5),
-                max(-90, latitude - 0.5), 
-                min(180, longitude + 0.5)
-            ]
-            
-            request = {
-                "variable": ["stl1", "swvl1", "e"],
-                "year": year,
-                "month": month,
-                "day": [day],
-                "time": ["00:00"],
-                "format": "netcdf",
-                "area": area
-            }
-            
-            self.cds_client.retrieve("reanalysis-era5-land", request, temp_file)
-            
-            # Open dataset with error handling
-            ds = xr.open_dataset(temp_file, engine='netcdf4')
-            
-            data = {
-                "metadata": {
-                    "timestamp": f"{analysis_date}T00:00:00",
-                    "area": {
-                        "north": area[0],
-                        "east": area[3],
-                        "south": area[2],
-                        "west": area[1]
-                    },
-                    "source": "ERA5-Land"
-                },
-                "data": {}
-            }
-            
-            variable_mapping = {
-                'stl1': 'soil_temperature_level_1',
-                'swvl1': 'volumetric_soil_water_layer_1',
-                'e': 'total_evaporation'
-            }
-            
-            for var_short_name in request["variable"]:
-                if var_short_name in ds:
-                    values = ds[var_short_name].values
-                    readable_name = variable_mapping[var_short_name]
-                    data["data"][readable_name] = {
-                        "mean": float(np.nanmean(values)),
-                        "min": float(np.nanmin(values)),
-                        "max": float(np.nanmax(values)),
-                        "unit": str(ds[var_short_name].units) if hasattr(ds[var_short_name], 'units') else "unknown"
-                    }
-            
-            return data
-            
-        except Exception as e:
-            print(f"Error fetching ERA5 data: {e}")
-            raise
-        finally:
-            # Ensure file is closed and deleted
-            if 'ds' in locals():
-                ds.close()
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
 
-    # Rest of the methods remain the same as in the previous implementation
-    # (get_soilgrid_data, analyze_combined_data, etc.)
-
-def analyze_field(id: int, huggingface_token: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Comprehensive field analysis workflow
-    
-    Args:
-        field_id (int): ID of the field to analyze
-        huggingface_token (Optional[str]): Hugging Face API token
-    
-    Returns:
-        Dict with analysis results
-    """
-    try:
-        # Initialize analyzer
-        analyzer = IntegratedSoilAnalyzer(huggingface_token)
-        
-        # Get field center coordinates
-        field_center = analyzer.get_field_center(id)
-        
-        print(f"\nAnalyzing field: {field_center['name']}")
-        print(f"Coordinates: Lat {field_center['latitude']}, Lon {field_center['longitude']}")
-        
-        # Concurrent data fetching
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            # Submit tasks
-            soil_future = executor.submit(analyzer.get_soilgrid_data, 
-                                          field_center['latitude'], 
-                                          field_center['longitude'])
-            climate_future = executor.submit(analyzer.get_era5_data, 
-                                             field_center['latitude'], 
-                                             field_center['longitude'])
-            
-            # Wait for results
-            soil_data = soil_future.result()
-            climate_data = climate_future.result()
-        
-        # Validate retrieved data
-        if soil_data is None or climate_data is None:
-            raise ValueError("Failed to retrieve complete data")
-        
-        # Perform analysis
-        result = analyzer.analyze_combined_data(soil_data, climate_data)
-        
-        # Attach field metadata to result
-        result['field_metadata'] = field_center
-        
-        return result
-    
-    except Exception as e:
-        print(f"\nCritical error during field analysis: {e}")
-        import traceback
-        traceback.print_exc()
-        return {
-            "success": False,
-            "error": str(e),
-            "field_id": id
+    @staticmethod
+    def get_soilgrid_data(lat: float, lon: float) -> Optional[pd.DataFrame]:
+        url = "https://rest.isric.org/soilgrids/v2.0/properties/query"
+        params = {
+            "lon": lon,
+            "lat": lat,
+            "property": [
+                "bdod", "cec", "cfvo", "clay", "nitrogen", "ocd", 
+                "ocs", "phh2o", "sand", "silt", "soc", 
+                "wv0010", "wv0033", "wv1500"
+            ],
+            "depth": ["0-5cm", "0-30cm", "5-15cm", "15-30cm", "30-60cm"],
+            "value": "mean"
         }
+        
+        try:
+            response = requests.get(url, params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            
+            soil_data = {}
+            for layer in data['properties']['layers']:
+                soil_data[layer['name']] = layer['depths'][0]['values']['mean']
+                
+            return pd.DataFrame([soil_data])
+            
+        except requests.RequestException as e:
+            print(f"SoilGrids API Error: {e}")
+            return None
+
+    def analyze_combined_data(self, soil_data: Union[pd.DataFrame, Dict[str, Any], int], climate_data: Union[Dict[str, Any], str]) -> Dict[str, Any]:
+        # Handle field ID input
+        if isinstance(soil_data, int):
+            field_center = self.get_field_center(soil_data)
+            soil_data = self.get_soilgrid_data(field_center['lat'], field_center['lon'])
+            if soil_data is None:
+                raise ValueError(f"Could not retrieve soil data for field ID {soil_data}")
+        
+        # Convert soil_data to DataFrame if it's a dictionary
+        elif isinstance(soil_data, dict):
+            soil_data = pd.DataFrame([soil_data])
+        
+        # Validate soil_data
+        if not isinstance(soil_data, pd.DataFrame):
+            raise ValueError(f"Invalid soil_data type: {type(soil_data)}. Expected pandas DataFrame, dictionary, or field ID.")
+        
+        if soil_data.empty:
+            raise ValueError("Empty soil data provided")
+        
+        # Handle climate_data parsing
+        if isinstance(climate_data, str):
+            try:
+                climate_data = json.loads(climate_data)
+            except json.JSONDecodeError:
+                climate_data = {"data": {"note": "No climate data available"}}
+        
+        if not isinstance(climate_data, dict):
+            climate_data = {"data": {"note": "Invalid climate data format"}}
+        
+        # Ensure climate_data has the expected structure
+        if "data" not in climate_data:
+            climate_data = {"data": climate_data}
+            
+        combined_data = {
+            "soil_properties": soil_data.to_dict(orient='records')[0],
+            "climate_conditions": climate_data['data']
+        }
+        
+        prompt = self._generate_analysis_prompt(combined_data)
+        
+        for retry in range(self.max_retries):
+            try:
+                self._handle_rate_limit()
+                
+                response = requests.post(
+                    self.model_url,
+                    headers=self.headers,
+                    json={
+                        "inputs": prompt,
+                        "parameters": {
+                            "max_new_tokens": 1000,
+                            "temperature": 0.7,
+                            "top_p": 0.95,
+                            "return_full_text": True
+                        }
+                    },
+                    timeout=45
+                )
+                
+                response.raise_for_status()
+                analysis = self._extract_analysis(response.json())
+                
+                if not analysis.strip():
+                    raise ValueError("Empty analysis received")
+                
+                return {
+                    "success": True,
+                    "model": "falcon-7b-instruct",
+                    "analysis": analysis,
+                    "timestamp": datetime.now().isoformat(),
+                    "metadata": {"retries": retry}
+                }
+                
+            except Exception as e:
+                if retry == self.max_retries - 1:
+                    return {
+                        "success": False,
+                        "error": str(e),
+                        "model": "falcon-7b-instruct",
+                        "timestamp": datetime.now().isoformat(),
+                        "metadata": {"retries": retry + 1}
+                    }
+                time.sleep(self.retry_delay * (2 ** retry))
+
+    def _handle_rate_limit(self):
+        if self.last_request_time:
+            elapsed = (datetime.now() - self.last_request_time).total_seconds()
+            if elapsed < self.min_request_interval:
+                time.sleep(self.min_request_interval - elapsed)
+        self.last_request_time = datetime.now()
+
+    @staticmethod
+    def _generate_analysis_prompt(combined_data: Dict[str, Any]) -> str:
+        return f"""Based on the following soil data, provide specific crop recommendations:
+
+Soil Properties:
+{json.dumps(combined_data['soil_properties'], indent=2)}
+
+Climate Conditions:
+{json.dumps(combined_data['climate_conditions'], indent=2)}
+
+Key soil parameters interpretation:
+- Clay content ({combined_data['soil_properties'].get('clay', 'N/A')}): Affects soil structure and water retention
+- Sand content ({combined_data['soil_properties'].get('sand', 'N/A')}): Influences drainage
+- pH (phh2o) ({combined_data['soil_properties'].get('phh2o', 'N/A')}): Critical for nutrient availability
+- CEC ({combined_data['soil_properties'].get('cec', 'N/A')}): Indicates nutrient holding capacity
+- Nitrogen ({combined_data['soil_properties'].get('nitrogen', 'N/A')}): Essential for plant growth
+- Water retention (wv0033) ({combined_data['soil_properties'].get('wv0033', 'N/A')}): Field capacity
+
+Based on these soil characteristics:
+1. List the top 3-5 most suitable crops for this soil type
+2. For each recommended crop, explain why it's well-suited based on the specific soil values
+3. Include any special management recommendations for the suggested crops
+
+Focus on practical, actionable recommendations that consider both the soil's strengths and limitations."""
+
+    @staticmethod
+    def _extract_analysis(result: Any) -> str:
+        if isinstance(result, list) and result:
+            return result[0].get('generated_text', '')
+        elif isinstance(result, dict):
+            return result.get('generated_text', '')
+        return str(result)
