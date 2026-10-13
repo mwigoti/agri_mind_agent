@@ -11,7 +11,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.gis.geos import Polygon
-from .serializers import FieldSerializer
 from django.core.serializers import serialize
 from django.shortcuts import get_object_or_404
 
