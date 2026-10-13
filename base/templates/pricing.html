@@ -20,7 +20,7 @@
     <link href="{% static 'css/bootstrap/fontawesome.min.css' %}" rel="stylesheet" type="text/css" />
     <link href="{% static 'css/bootstrap/helper.css' %}" rel="stylesheet" type="text/css" />
     <link href="{% static 'css/bootstrap/style.css' %}"  rel="stylesheet" type="text/css" />
-    <link href="{% static 'css/bootstrap/responsive.css' %)" rel="stylesheet" type="text/css" />
+    <link href="{% static 'css/bootstrap/responsive.css' %}" rel="stylesheet" type="text/css" />
 </head>
 <body>
     
@@ -53,7 +53,7 @@
                                           <li><i class="far fa-check"></i>Optimize hashtags</li>
                                           <li><i class="far fa-check"></i>Unlimited users</li>
                                       </ul>
-                                      <a class="price-btn" href="#">Choose plan</a>
+                                      <a class="price-btn" href="{%url 'upgrade'%}?amount=50&Next=processpayment">Choose plan</a>
                                   </div>
                               </div>
                               <div class="col-lg-4">
@@ -69,7 +69,7 @@
                                           <li><i class="far fa-check"></i>Optimize hashtags</li>
                                           <li><i class="far fa-check"></i>Unlimited users</li>
                                       </ul>
-                                      <a class="price-btn" href="#">Choose plan</a>
+                                      <a class="price-btn" href="{%url 'upgrade'%}?amount=100&Next=processpayment">Choose plan</a>
                                   </div>
                               </div>
                               <div class="col-lg-4">
@@ -84,7 +84,7 @@
                                           <li><i class="far fa-check"></i>Optimize hashtags</li>
                                           <li><i class="far fa-check"></i>Unlimited users</li>
                                       </ul>
-                                      <a class="price-btn" href="#">Choose plan</a>
+                                      <a class="price-btn" href="{%url 'upgrade'%}?amount=200&Next=processpayment">Choose plan</a>
                                   </div>
                               </div>
                           </div>
@@ -103,7 +103,7 @@
                                           <li><i class="far fa-check"></i>Optimize hashtags</li>
                                           <li><i class="far fa-check"></i>Unlimited users</li>
                                       </ul>
-                                      <a class="price-btn" href="#">Choose plan</a>
+                                      <a class="price-btn" href="{%url 'upgrade'%}?amount=50&Next=processpayment">Choose plan</a>
                                   </div>
                               </div>
                               <div class="col-lg-4">
@@ -119,7 +119,7 @@
                                           <li><i class="far fa-check"></i>Optimize hashtags</li>
                                           <li><i class="far fa-check"></i>Unlimited users</li>
                                       </ul>
-                                      <a class="price-btn" href="#">Choose plan</a>
+                                      <a class="price-btn" href="{% url 'upgrade' %}?amount=100&Next=processpayment">Choose plan</a>
                                   </div>
                               </div>
                               <div class="col-lg-4">
@@ -134,7 +134,7 @@
                                           <li><i class="far fa-check"></i>Optimize hashtags</li>
                                           <li><i class="far fa-check"></i>Unlimited users</li>
                                       </ul>
-                                      <a class="price-btn" href="#">Choose plan</a>
+                                      <a class="price-btn" href="{% url 'upgrade' %}?amount=200&Next=processpayment">Choose plan</a>
                                   </div>
                               </div>
                           </div>
