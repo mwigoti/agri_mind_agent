@@ -212,3 +212,7 @@ def analyze_field_view(request, id):
     
 def load(request):
     return render(request, 'load.html')
+
+
+def res(request):
+    return render(request, 'result.html')
