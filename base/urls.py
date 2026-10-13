@@ -15,5 +15,5 @@ urlpatterns = [
     path('login/', views.login, name="login"),
     path('pricing/', views.pricing, name="pricing"),
     path('field/<int:id>', views.pricing, name="pricing"),
-    path('calculate-field-center/', views.calculate_field_center, name='calculate-field-center'),
+    
 ]
