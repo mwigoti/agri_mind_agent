@@ -21,6 +21,7 @@ from django.utils.decorators import method_decorator  # Add this import
 from django.views import View
 from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Transform
+from .analysis import analyze_field
 
 
 # Create your views here.
@@ -151,37 +152,16 @@ class DeleteFieldView(APIView):
         return Response({'message': 'Field deleted successfully'}, status=status.HTTP_200_OK)
 
 
-@require_GET
-def get_field_center(request, id):
+def analyze_field_view(request, id):
     try:
-        # Fetch the field by ID
-        field = Field.objects.get(pk=id)
-        
-        # Create a transformer from UTM Zone 37S to WGS84
-        transformer = Transformer.from_crs(
-            "EPSG:3857",  # UTM Zone 37S (WGS 84)
-            "EPSG:4326",   # WGS84 lat/lon
-            always_xy=True  # Ensure x, y order
-        )
-        
-        # Get the centroid of the geometry
-        center = field.geometry.centroid
-        
-        # Transform the coordinates
-        lon, lat = transformer.transform(center.x, center.y)
-        
-        return JsonResponse({
-            "id": field.id,
-            "name": field.name,
-            "latitude": lat,
-            "longitude": lon,
-        })
-    
-    except Field.DoesNotExist:
-        return JsonResponse({
-            "error": f"Field with ID {id} not found"
-        }, status=404)
+        huggingface_token = settings.HUGGINGFACE_TOKEN
+
+        result = analyze_field(id, huggingface_token)
+
+        return JsonResponse(result)
     except Exception as e:
         return JsonResponse({
+            "success": False,
             "error": str(e)
+
         }, status=500)

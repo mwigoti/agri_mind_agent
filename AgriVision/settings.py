@@ -183,3 +183,4 @@ SECURE_SSL_REDIRECT = True  # Redirect all HTTP to HTTPS
 SESSION_COOKIE_SECURE = True  # Ensure session cookie is only sent over HTTPS
 CSRF_COOKIE_SECURE = True  # Ensure CSRF cookie is only sent over HTTPS
 
+HUGGINGFACE_TOKEN=os.getenv("HUGGINGFACE_TOKEN")

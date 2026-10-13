@@ -3,8 +3,7 @@ from .models import *
 from .views import *
 
 urlpatterns = [
-    path('', home, name='home'),
-    
+    path('', home, name='home'),    
     path('services/', services, name='services'),
     path('contact/', contact, name='contact'),
     path('research/', research, name='research'),
@@ -13,11 +12,9 @@ urlpatterns = [
     path('weather/', weather, name='weather'),
     path('upgrade/', upgrade, name="upgrade"),
     path('login/', login, name="login"),
-    path('pricing/', pricing, name="pricing"),
-    
+    path('pricing/', pricing, name="pricing"),    
     path('save-field/', SaveFieldView.as_view(), name='save-field'),
     path('api/myfields/', get_fields_geojson, name='api-myfields'),
     path('api/delete-field/<int:id>/', DeleteFieldView.as_view(), name='delete-field'), 
-    path('api/get-field-center/<int:id>/', get_field_center, name="get-field-center")
-    
+    path('api/analyze-field/<int:id>/', analyze_field_view, name="analyze-field")    
 ]

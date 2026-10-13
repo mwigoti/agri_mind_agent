@@ -238,12 +238,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 analyzeButton.addEventListener("click", function() {
                     const fieldId = field.id; // Use the `field.id` directly from the current context
 
-                    fetch(`/api/get-field-center/${fieldId}/`)
+                    fetch(`/api/analyze-field/${fieldId}/`)
                     .then(response => response.json())
                     .then(data => {
-                        if (data.latitude && data.longitude) {
-                            const { latitude, longitude } = data;
-                            console.log(`Centroid (WGS84): Latitude = ${latitude}, Longitude = ${longitude}`);
+                        if (data.success) {
+                            console.log(data.analysis);
                         } else {
                             console.error("Error analyzing field:", data.error);
                         }
