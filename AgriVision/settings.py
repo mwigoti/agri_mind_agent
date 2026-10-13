@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'base',
     'rest_framework',
     'django.contrib.gis',
-    'rest_framework_gis'
+    'rest_framework_gis',
+    'sslserver'
 
 ]
 AUTHENTICATION_BACKENDS = [

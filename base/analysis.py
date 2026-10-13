@@ -65,7 +65,7 @@ class IntegratedSoilAnalyzer:
             # Create a transformer from Web Mercator (EPSG:3857) to WGS84 (EPSG:4326)
             transformer = Transformer.from_crs(
                 "EPSG:3857",  # Web Mercator
-                "EPSG:4326",  # WGS84 lat/lon
+                "EPSG:4326",  
                 always_xy=True  # Ensure x, y order
             )
             
