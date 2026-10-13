@@ -15,6 +15,6 @@ urlpatterns = [
     path('login/', login, name="login"),
     path('pricing/', pricing, name="pricing"),
     
-    path('save_field/', SaveFieldView.as_view(), name='save-field'),
+    path('save-field/', SaveFieldView.as_view(), name='save-field'),
     
 ]
