@@ -145,7 +145,7 @@ body {
     margin: 10px 0;
 }
 
-.add-fields .add-field-button {
+.add-fields {
     padding: 10px;
     margin-top: 10px;
     background-color: #444;
@@ -154,4 +154,67 @@ body {
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+}
+.add-field-button {
+    /* Base styles */
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    
+    /* Default state */
+    background-color: #2563eb;  /* Blue */
+    color: white;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+    
+    /* Hover state */
+    &:hover {
+        background-color: #1d4ed8;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+    }
+    
+    /* Active/Pressed state */
+    &:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+    }
+    
+    /* Drawing mode state */
+    &.drawing-mode {
+        background-color: #dc2626;  /* Red */
+        box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+    }
+    
+    &.drawing-mode:hover {
+        background-color: #b91c1c;
+        box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3);
+    }
+    
+    /* Disabled state */
+    &:disabled {
+        background-color: #9ca3af;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+}
+
+/* Animation for the plus icon */
+.add-field-button::before {
+    content: "+";
+    margin-right: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+/* Rotate plus to X in drawing mode */
+.add-field-button.drawing-mode::before {
+    transform: rotate(45deg);
 }
