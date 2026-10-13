@@ -192,6 +192,13 @@ def get_fields_geojson(request):
     fields = Field.objects.filter(owner=request.user)  # Query all fields
     serializer = FieldGeoJSONSerializer(fields, many=True)  # Serialize data
     return Response(serializer.data) 
+    rust_url = "http://localhost:8001/receive-data"
+    try:
+        rust_response = requests.post(rust_url, json=serializer.data).json()
+        rust_response.raise_for_status()
+        return Response({"status": "Data sent to Rust", "rust_reply": rust_response.json()})
+    except requests.exceptions.RequestException as e:
+        return Response({"error": str(e)}, status=500)
 @method_decorator(csrf_exempt, name='dispatch')
 class DeleteFieldView(APIView):
     def delete(self, request, id):
