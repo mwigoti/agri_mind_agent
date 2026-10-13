@@ -1,26 +1,23 @@
-from pyproj import Transformer
-from django.views.decorators.http import require_GET
-from django.core.exceptions import ObjectDoesNotExist
+
 from django.shortcuts import render, redirect
 from django.core.mail import send_mail
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.conf import settings
 from django.http import JsonResponse
-import json
+
 from .models import *
 from django.core.mail import send_mail, BadHeaderError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.gis.geos import Polygon
-from django.core.serializers import serialize
+
 from django.shortcuts import get_object_or_404
-from django.views.decorators.csrf import csrf_exempt, csrf_protect, requires_csrf_token, ensure_csrf_cookie
+from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator  # Add this import
-from django.views import View
-from django.contrib.gis.geos import Point
-from django.contrib.gis.db.models.functions import Transform
+
+
 from .analysis import IntegratedSoilAnalyzer
 
 
