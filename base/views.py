@@ -41,6 +41,7 @@ def register(request):
             user = form.save(commit=False)
             user.email = user.email.lower()
             user.save()
+            
             return redirect('map')
     else:
         form = MyUserCreationForm()
@@ -208,3 +209,6 @@ def analyze_field_view(request, id):
             "error": str(e)
 
         }, status=500)
+    
+def load(request):
+    return render(request, 'load.html')
