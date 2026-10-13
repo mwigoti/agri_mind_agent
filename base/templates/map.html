@@ -13,24 +13,23 @@
             "esri/layers/GraphicsLayer",
             "esri/widgets/Sketch",
             "esri/geometry/geometryEngine",
-            "esri/layers/BasemapLayer",
             "esri/Basemap"
-        ], function(Map, MapView, GraphicsLayer, Sketch, geometryEngine, BasemapLayer, Basemap) {
+        ], function(Map, MapView, GraphicsLayer, Sketch, geometryEngine, Basemap) {
               
             // Create the base layers
             const osmBasemap = new Basemap({
                 baseLayers: [
-                    new BasemapLayer({
-                        url: "https://services.arcgisonline.com/ArcGIS/rest/api/MapServer"
-                    })
+                    {
+                        url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer"
+                    }
                 ]
             });
 
             const satelliteBasemap = new Basemap({
                 baseLayers: [
-                    new BasemapLayer({
+                    {
                         url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"
-                    })
+                    }
                 ]
             });
 
@@ -169,9 +168,8 @@
 </head>
 
 <body>
-    
     <div class="container">
-      <!-- Menu Section -->
+        <!-- Menu Section -->
         <div class="menu">
             <div class="logo">
                 <h3>AgriVision</h3>
@@ -242,6 +240,5 @@
         </div>
 
     </div>
-    
 </body>
 </html>
