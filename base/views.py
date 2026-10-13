@@ -151,10 +151,6 @@ class DeleteFieldView(APIView):
         return Response({'message': 'Field deleted successfully'}, status=status.HTTP_200_OK)
 
 
-
-
-
-
 @require_GET
 def get_field_center(request, id):
     try:
@@ -163,7 +159,7 @@ def get_field_center(request, id):
         
         # Create a transformer from UTM Zone 37S to WGS84
         transformer = Transformer.from_crs(
-            "EPSG:32637",  # UTM Zone 37S (WGS 84)
+            "EPSG:3857",  # UTM Zone 37S (WGS 84)
             "EPSG:4326",   # WGS84 lat/lon
             always_xy=True  # Ensure x, y order
         )
