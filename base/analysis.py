@@ -254,4 +254,3 @@ def analyze_field(id: int, huggingface_token: Optional[str] = None) -> Dict[str,
             "error": str(e),
             "field_id": id
         }
-

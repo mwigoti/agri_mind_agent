@@ -91,8 +91,7 @@ import os
 import os
 from urllib.parse import urlparse
 
-DATABASE_URL = os.getenv('DATABASE_URL', '')
-
+DATABASE_URL = os.getenv("DATABASE_URL", '')
 if DATABASE_URL:
     url = urlparse(DATABASE_URL)
     DATABASES = {
@@ -180,7 +179,7 @@ DEFAULT_TO_EMAIL = EMAIL_HOST_USER
 
 
 # Security Settings (adjust these in production)
-SECURE_SSL_REDIRECT = True  # Redirect all HTTP to HTTPS
+SECURE_SSL_REDIRECT = False # Redirect all HTTP to HTTPS
 SESSION_COOKIE_SECURE = True  # Ensure session cookie is only sent over HTTPS
 CSRF_COOKIE_SECURE = True  # Ensure CSRF cookie is only sent over HTTPS
 
