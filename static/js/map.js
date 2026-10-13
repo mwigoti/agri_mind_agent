@@ -1,25 +1,26 @@
 // Initialize the map and set the view to a specific location and zoom level
 var map = L.map('map').setView([0, 0], 2); // Adjust as necessary
 
-// Base layers
+// Define base layers
 var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
-var terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-    maxZoom: 17,
-    attribution: '© OpenTopoMap contributors'
+// Esri Satellite Layer
+var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19,
+    attribution: 'Tiles © Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
 });
 
-// Layer switcher
+// Layer switcher functionality
 document.getElementById('layerSelect').addEventListener('change', function(e) {
     if (e.target.value === 'osm') {
-        map.removeLayer(terrainLayer);
-        map.addLayer(osmLayer);
-    } else if (e.target.value === 'terrain') {
-        map.removeLayer(osmLayer);
-        map.addLayer(terrainLayer);
+        if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
+        if (!map.hasLayer(osmLayer)) map.addLayer(osmLayer);
+    } else if (e.target.value === 'satellite') {
+        if (map.hasLayer(osmLayer)) map.removeLayer(osmLayer);
+        if (!map.hasLayer(satelliteLayer)) map.addLayer(satelliteLayer);
     }
 });
 
