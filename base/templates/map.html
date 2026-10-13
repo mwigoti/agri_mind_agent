@@ -236,7 +236,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 analyzeButton.setAttribute("data-field-id", field.id);
                 analyzeButton.addEventListener("click", function() {
                     const fieldId = analyzeButton.getAttribute("data-field-id");
-                    fetch(`/api/analyze-field/${fieldId}/`)
+                    fetch(`/api/get-field-center/${fieldId}/`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
