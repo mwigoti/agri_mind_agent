@@ -20,5 +20,7 @@ urlpatterns = [
     path('api/myfields/', get_fields_geojson, name='api-myfields'),
     path('api/delete-field/<int:id>/', DeleteFieldView.as_view(), name='delete-field'), 
     path('api/analyze-field/<int:id>/', analyze_field_view, name="analyze-field"),
-    path('res/', res, name='res')    
+    path('res/', res, name='res'),
+    path("create-payment-intent/", create_payment_intent, name="create_payment_intent"), 
+    path("payment-success/", payment_success, name="payment_success"),  
 ]
