@@ -18,6 +18,6 @@ urlpatterns = [
     path('save-field/', SaveFieldView.as_view(), name='save-field'),
     path('api/myfields/', get_fields_geojson, name='api-myfields'),
     path('api/delete-field/<int:id>/', DeleteFieldView.as_view(), name='delete-field'), 
-    path('api/analyze-field/<int:id>/', get_field_center, name="get-field-center")
+    path('api/get-field_-enter/<int:id>/', get_field_center, name="get-field-center")
     
 ]
