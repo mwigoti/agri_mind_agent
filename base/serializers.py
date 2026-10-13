@@ -8,4 +8,4 @@ class FieldGeoJSONSerializer(GeoFeatureModelSerializer):
     class Meta:
         model = Field
         geo_field = 'geometry'
-        fields = ('id', 'name', 'owner', 'created_at', 'geometry')
+        fields = ('id', 'name', 'owner', 'created_at', 'geometry', 'area')

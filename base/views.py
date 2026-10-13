@@ -153,29 +153,32 @@ class SaveFieldView(APIView):
             data = request.data
             name = data.get('name', 'Unnamed Field')
             coordinates = data.get('coordinates')
-            owner=request.user
+            area = data.get('area', 0.0)  # Get area from frontend
+            owner = request.user
 
             if not coordinates or len(coordinates) < 3:
                 return Response({"error": "At least 3 points are required"})
             
-            # close the polygon by repeating first
-
+            # Close the polygon by repeating first coordinate
             if coordinates[0] != coordinates[-1]:
                 coordinates.append(coordinates[0])
 
-            # create polygon 
-
+            # Create polygon 
             polygon = Polygon(coordinates)
 
-            #save to database
-            field=Field.objects.create(owner=owner,name=name, geometry=polygon)
+            # Save to database with the calculated area
+            field = Field.objects.create(
+                owner=owner, 
+                name=name, 
+                geometry=polygon,
+                area=area  # Save the area from frontend
+            )
 
-            serializer= FieldGeoJSONSerializer(field)
+            serializer = FieldGeoJSONSerializer(field)
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
            
 # Retrieve fields as geojson from db
 
