@@ -180,15 +180,15 @@ Climate Conditions:
 {json.dumps(combined_data['climate_conditions'], indent=2)}
 
 Key soil parameters interpretation:
-- Clay content ({combined_data['soil_properties'].get('clay', 'N/A')}): Affects soil structure and water retention
-- Sand content ({combined_data['soil_properties'].get('sand', 'N/A')}): Influences drainage
-- pH (phh2o) ({combined_data['soil_properties'].get('phh2o', 'N/A')}): Critical for nutrient availability
-- CEC ({combined_data['soil_properties'].get('cec', 'N/A')}): Indicates nutrient holding capacity
-- Nitrogen ({combined_data['soil_properties'].get('nitrogen', 'N/A')}): Essential for plant growth
-- Water retention (wv0033) ({combined_data['soil_properties'].get('wv0033', 'N/A')}): Field capacity
+- Clay content ({combined_data['soil_properties'].get('clay', 'N/A')})
+- Sand content ({combined_data['soil_properties'].get('sand', 'N/A')})
+- pH (phh2o) ({combined_data['soil_properties'].get('phh2o', 'N/A')})
+- CEC ({combined_data['soil_properties'].get('cec', 'N/A')})
+- Nitrogen ({combined_data['soil_properties'].get('nitrogen', 'N/A')})
+- Water retention (wv0033) ({combined_data['soil_properties'].get('wv0033', 'N/A')})
 
 Based on these soil characteristics:
-1. List the top 3-5 most suitable crops for this soil type
+1. List the top 5 most suitable crops for this soil type
 2. For each recommended crop, explain why it's well-suited based on the specific soil values
 3. Include any special management recommendations for the suggested crops
 
