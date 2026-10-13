@@ -3,77 +3,162 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CROP Monitoring - AgriVision</title>
-    <link rel="stylesheet" href="{% static 'css/map.css' %}">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>World Imagery Map with Boundaries and Places</title>
+    
+    <!-- ArcGIS CSS and JavaScript API -->
+    <link rel="stylesheet" href="https://js.arcgis.com/3.46/dijit/themes/claro/claro.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/3.46/esri/css/esri.css">
+    <style>
+        html, body, #map { 
+            height: 100%; 
+            width: 100%; 
+            margin: 0; 
+            padding: 0; 
+        }
+        .container {
+            display: flex;
+            height: 100%;
+        }
+        .menu {
+            width: 250px;
+            background-color: #f4f4f4;
+            padding: 10px;
+        }
+        .menu h3 {
+            text-align: center;
+            margin: 10px 0;
+        }
+        .menu ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .menu ul li {
+            padding: 8px;
+            cursor: pointer;
+        }
+        .map-container {
+            flex-grow: 1;
+            position: relative;
+        }
+        .map-controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            background: white;
+            padding: 8px;
+            border-radius: 4px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.4);
+        }
+        .info-panel {
+            position: absolute;
+            top: 80px;
+            left: 10px;
+            width: 200px;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.4);
+            z-index: 100;
+        }
+    </style>
+    <script>
+        var dojoConfig = { parseOnLoad: true };
+    </script>
+    <script src="https://js.arcgis.com/3.46/"></script>
+    <script>
+        require([
+            "esri/map", 
+            "esri/layers/ArcGISTiledMapServiceLayer",
+            "dojo/domReady!"
+        ], function(Map, ArcGISTiledMapServiceLayer) {
+
+            // Initialize the map with a hybrid (satellite + labels) basemap
+            var map = new Map("map", {
+                basemap: "hybrid",
+                center: [-98.5795, 39.8283],
+                zoom: 4
+            });
+
+            // URL for World Boundaries and Places
+            var boundariesURL = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer";
+            var boundariesLayer = new ArcGISTiledMapServiceLayer(boundariesURL);
+
+            // Layer switching functionality
+            document.getElementById("layerSelect").addEventListener("change", function(e) {
+                map.removeAllLayers();
+
+                if (e.target.value === "osm") {
+                    map.setBasemap("streets");
+                } else if (e.target.value === "satellite") {
+                    map.setBasemap("hybrid"); // Satellite with labels
+                } else if (e.target.value === "satelliteBoundaries") {
+                    map.setBasemap("hybrid"); // Base map for satellite
+                    map.addLayer(boundariesLayer); // Add boundaries and places
+                }
+            });
+        });
+    </script>
 </head>
-<body>
+<body class="claro">
     <div class="container">
+        <!-- Sidebar Menu -->
         <div class="menu">
             <div class="logo">
                 <h3>AgriVision</h3>
             </div>
             <nav>
                 <ul>
-                    <li id="toggleButton">Hide Info Panel</li>
+                    <li>Hide Info Panel</li>
                     <li>Season 2024</li>
-                    <li>Get started</li>
+                    <li>Get Started</li>
                     <li class="active">Monitoring</li>
-                    <li><a href="{% url 'weather' %}">Weather</a></li>
+                    <li><a href="#">Weather</a></li>
                     <li>Overview</li>
-                    <li>VRA maps</li>
-                    <li>Field activity log</li>
-                    <li>Data manager</li>
-                    <li>Field manager</li>
+                    <li>VRA Maps</li>
+                    <li>Field Activity Log</li>
+                    <li>Data Manager</li>
+                    <li>Field Manager</li>
                     <li>Notifications</li>
                     <li>Request A Demo</li>
                     <li>Upgrade</li>
                 </ul>
             </nav>
         </div>
-        
+
+        <!-- Main Map Container -->
         <div class="map-container">
-            <div class="search-bar">
-                <input type="text" placeholder="Search location">
-                <button class="search-button">Search</button>
-            </div>
+            <div id="map"></div>
             
-            <div id="map" style="height: 100vh; width: 100%;"></div>
-            
+            <!-- Map Controls for Layer Switching -->
             <div class="map-controls">
-                <div class="layer-controls">
-                    <label for="layerSelect">Map Layer:</label>
-                    <select id="layerSelect">
-                        <option value="osm">OSM</option>
-                        <option value="satellite">Satellite</option>
-                        <option value="satelliteBoundaries">Satellite with Boundaries</option>
-                    </select>
-                </div>
+                <label for="layerSelect">Map Layer:</label>
+                <select id="layerSelect">
+                    <option value="osm">OSM</option>
+                    <option value="satellite">Satellite</option>
+                    <option value="satelliteBoundaries">Satellite with Boundaries</option>
+                </select>
             </div>
             
+            <!-- Info Panel -->
             <div class="info-panel">
-                <h3>Global view</h3>
+                <h3>Global View</h3>
                 <p>0 ha</p>
                 <div class="search-filter">
                     <input type="text" placeholder="Search">
                     <button>Filter</button>
                 </div>
                 <div class="no-fields-message">
-                    <p>No fields in this season. <a href="#">Update season</a></p>
+                    <p>No fields in this season. <a href="#">Update Season</a></p>
                 </div>
                 <div class="add-fields">
-                    <h4>Add your fields</h4>
+                    <h4>Add Your Fields</h4>
                     <p>Browse satellite images, vegetation indices, weather data, and more</p>
                     <button class="add-field-button">+ ADD FIELD</button>
                 </div>
             </div>
         </div>
     </div>
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-    <script src="https://unpkg.com/esri-leaflet@3.0.0/dist/esri-leaflet.js"></script>
-    <script src="{% static 'js/map.js' %}"></script>
 </body>
 </html>
