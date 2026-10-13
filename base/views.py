@@ -16,6 +16,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt, csrf_protect, requires_csrf_token, ensure_csrf_cookie
 from django.utils.decorators import method_decorator  # Add this import
 from django.views import View
+from django.contrib.gis.geos import Point
 
 
 # Create your views here.
@@ -144,3 +145,16 @@ class DeleteFieldView(APIView):
         field = get_object_or_404(Field, id=id)
         field.delete()
         return Response({'message': 'Field deleted successfully'}, status=status.HTTP_200_OK)
+
+def get_field_center(id):
+    try:
+        field = Field.objects.get(id=id)
+
+        center = field.geometry.centroid
+
+        return {
+            "Latitude": center.y,
+            "Longitude": center.x
+        }
+    except Field.DoesNotExist:
+        raise ValueError(f"Field with ID {id} does not exist")
