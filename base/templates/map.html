@@ -241,7 +241,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     fetch(`/api/analyze-field/${fieldId}/`)
                     .then(response => response.json())
                     .then(data => {
-                        if (data.success) {
+                        if (data.properties) {
                             console.log(data.analysis);
                         } else {
                             console.error("Error analyzing field:", data.error);

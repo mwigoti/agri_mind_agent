@@ -1,4 +1,8 @@
 venv/
 /venv
 venv
+cert.pem
+/cert.pem
+key.pem/
 
+/key.pem
