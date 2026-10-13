@@ -85,7 +85,40 @@ class IntegratedSoilAnalyzer:
             raise ValueError(f"Field with ID {id} not found")
         except Exception as e:
             raise RuntimeError(f"Error retrieving field center: {e}")
-
+    def get_soilgrid_data(self, lat: float, lon: float) -> Optional[pd.DataFrame]:
+    
+        base_url = "https://rest.isric.org"
+        endpoint = f"soilgrids/v2.0/properties/query?lat={lat}&lon={lon}"
+        
+        try:
+            # Timeout set to 30 seconds to prevent long-running requests
+            response = requests.get(f"{base_url}/{endpoint}", timeout=30)
+            response.raise_for_status()
+            
+            # Parse the JSON response
+            data = response.json()
+            properties = data.get('properties', {}).get('layers', [])
+            
+            # Extract soil properties
+            soil_data = {}
+            for prop in properties:
+                # Safely extract mean value, defaulting to None if not available
+                soil_data[prop['name']] = prop['depths'][0]['values'].get('mean')
+            
+            # Convert to DataFrame, handling potential empty data
+            df = pd.DataFrame([soil_data])
+            
+            return df
+        
+        except requests.RequestException as e:
+            print(f"SoilGrids API Request Error: {e}")
+            return None
+        except (KeyError, IndexError, ValueError) as e:
+            print(f"SoilGrids Data Parsing Error: {e}")
+            return None
+        except Exception as e:
+            print(f"Unexpected error fetching SoilGrids data: {e}")
+            return None
     def get_era5_data(self, latitude: float, longitude: float, analysis_date: Optional[str] = None) -> Dict[str, Any]:
         """Fetch ERA5 climate data"""
         # Use current date if no specific date provided
