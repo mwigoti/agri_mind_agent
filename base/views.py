@@ -116,7 +116,7 @@ class SaveFieldView(APIView):
             #save to database
             field=Field.objects.create(name=name, geometry=polygon)
 
-            serializer= FieldSerializer(field)
+            serializer= FieldGeoJSONSerializer(field)
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
