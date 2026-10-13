@@ -81,14 +81,7 @@ class IntegratedSoilAnalyzer:
         params = {
             "latitude": lat,
             "longitude": lon,
-            "hourly": [
-                "temperature_2m",
-                "relative_humidity_2m",
-                "precipitation_probability",
-                "wind_speed_10m",
-                "wind_direction_10m",
-                "weathercode"
-            ],
+           
             "daily": [
                 "weathercode",
                 "temperature_2m_max",
@@ -96,7 +89,8 @@ class IntegratedSoilAnalyzer:
                 "sunrise",
                 "sunset",
                 "precipitation_probability_max",
-                "uv_index_max"
+                "uv_index_max",
+                "apparent_temperature_mean"
             ],
             "forecast_days": days,
             "timezone": "auto"
@@ -166,6 +160,7 @@ class IntegratedSoilAnalyzer:
                     "date": daily_data['time'][i],
                     "max_temp": float(daily_data['temperature_2m_max'][i]),
                     "min_temp": float(daily_data['temperature_2m_min'][i]),
+                    "avg_temp" : float(daily_data['apparent_temperature_mean'][i]),
                     "weather_condition": self.interpret_weather_code(
                         int(daily_data['weathercode'][i])
                     ),
@@ -181,19 +176,7 @@ class IntegratedSoilAnalyzer:
                 
                 processed['daily_details'].append(daily_entry)
 
-            # Calculate averages only if data exists
-            if processed['daily_details']:
-                processed['summary']['avg_max_temp'] = round(
-                    sum(d['max_temp'] for d in processed['daily_details']) / len(processed['daily_details']), 1
-                )
-                processed['summary']['avg_min_temp'] = round(
-                    sum(d['min_temp'] for d in processed['daily_details']) / len(processed['daily_details']), 1
-                )
-                processed['summary']['dominant_weather'] = max(
-                    processed['summary']['weather_types'].items(),
-                    key=lambda x: x[1],
-                    default=("Unknown", 0)
-                )[0]
+           
 
         except (KeyError, IndexError, TypeError) as e:
             print(f"Error processing climate data: {e}")
