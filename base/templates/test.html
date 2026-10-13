@@ -1,20 +1,85 @@
-document.getElementById("myFieldsButton").addEventListener("click", function() {
-    fetch('/api/myfields/')  // Fetch the GeoJSON data from the server
-        .then(response => response.json())
-        .then(data => {
-            console.log(data); // Log the GeoJSON data
+document.addEventListener("DOMContentLoaded", function () {
+    var myFieldsButton = document.getElementById("myFieldsButton");
+    var myFieldsModal = document.getElementById("myFieldsModal");
+    var closeModal = document.getElementById("closeModal");
+    var fieldsTableBody = document.querySelector("#fieldsTable tbody");
 
-            // Add the fields to the map
-            var fieldsLayer = new esri.layers.GraphicsLayer();
-            map.addLayer(fieldsLayer);
+    // Show the modal
+    myFieldsButton.addEventListener("click", function () {
+        // Fetch the fields data
+        fetch('/api/myfields/')
+            .then(response => response.json())
+            .then(data => {
+                console.log("Fields Data:", data);
 
-            // Loop through the GeoJSON data and add each feature to the map
-            var geojson = data;
-            var jsonParser = new esri.tasks.GeoJSON();
-            geojson.features.forEach(function(feature) {
-                var graphic = new Graphic(feature.geometry, new SimpleFillSymbol().setColor(new Color([0, 255, 0, 0.25])));
-                fieldsLayer.add(graphic);
-            });
-        })
-        .catch(error => console.error('Error fetching fields:', error));
+                // Clear existing rows
+                fieldsTableBody.innerHTML = "";
+
+                // Populate the table with field data
+                data.features.forEach((field, index) => {
+                    var row = document.createElement("tr");
+
+                    var idCell = document.createElement("td");
+                    idCell.textContent = field.id;
+
+                    var nameCell = document.createElement("td");
+                    nameCell.textContent = field.properties.name;
+
+                    var createdAtCell = document.createElement("td");
+                    createdAtCell.textContent = field.properties.created_at;
+
+                    var actionsCell = document.createElement("td");
+
+                    // Create Analysis Button
+                    var analyzeButton = document.createElement("button");
+                    analyzeButton.textContent = "Analyze";
+                    analyzeButton.addEventListener("click", function () {
+                        alert(`Analyzing field: ${field.properties.name}`);
+                        // Add your analysis logic here
+                    });
+
+                    // Create Delete Button
+                    var deleteButton = document.createElement("button");
+                    deleteButton.textContent = "Delete";
+                    deleteButton.addEventListener("click", function () {
+                        if (confirm(`Are you sure you want to delete ${field.properties.name}?`)) {
+                            deleteField(field.id);
+                        }
+                    });
+
+                    actionsCell.appendChild(analyzeButton);
+                    actionsCell.appendChild(deleteButton);
+
+                    row.appendChild(idCell);
+                    row.appendChild(nameCell);
+                    row.appendChild(createdAtCell);
+                    row.appendChild(actionsCell);
+
+                    fieldsTableBody.appendChild(row);
+                });
+
+                // Show the modal
+                myFieldsModal.style.display = "block";
+            })
+            .catch(error => console.error('Error fetching fields:', error));
+    });
+
+    // Close the modal
+    closeModal.addEventListener("click", function () {
+        myFieldsModal.style.display = "none";
+    });
+
+    // Function to delete a field
+    function deleteField(fieldId) {
+        fetch(`/api/delete-field/${fieldId}/`, { method: 'DELETE' })
+            .then(response => {
+                if (response.ok) {
+                    alert("Field deleted successfully!");
+                    myFieldsModal.style.display = "none"; // Close the modal after deletion
+                } else {
+                    alert("Failed to delete field.");
+                }
+            })
+            .catch(error => console.error('Error deleting field:', error));
+    }
 });

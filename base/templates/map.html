@@ -196,6 +196,97 @@ function resetDrawing(map, markers) {
 }
 
 
+var myFieldsButton = document.getElementById("myFieldsButton");
+var myFieldsModal = document.getElementById("myFieldsModal");
+var closeModal = document.getElementById("closeModal");
+var fieldsTableBody = document.querySelector("#fieldsTable tbody");
+
+//show modal
+
+myFieldsButton.addEventListener("click", function() {
+    // fetch fields data
+
+    fetch('/api/myfields/')
+    .then(response => response.json())
+    .then(data => {
+        console.log(data);
+        
+        //clear existing rows
+        fieldsTableBody.innerHTML="";
+
+        //populate table
+        data.features.forEach((field, index) => {
+            var row = document.createElement("tr");
+            var idCell = document.createElement("td");
+            idCell.textContent= field.idCell;
+
+            var nameCell = document.createElement("td");
+
+            nameCell.textContent = field.properties.name;
+            var createdAtCell = document.createElement("td");
+            createdAtCell.textContent = field.properties.Created_at;
+            var actionsCell = document.createElement("td");
+
+            // analysis button
+
+            var analyzeButton = document.createElement("button");
+            analyze.addEventListener("click", function() {
+                alert('analyzing field: ${field.properties.name}')
+                // add analysis logic
+            })
+
+            // delete button
+
+            var deleteButton = document.createElement("button");
+            deleteButton.addEventListener("click", function() {
+                if (confirm(`Are you sure you want to delete ${field.properties.name}?`)) {
+                    deleteField(field.id)
+                }
+            });
+
+            actionsCell.appendChild(analyzeButton);
+            actionsCell.appendChild(deleteButton);
+
+            row,appendChild(idCell);
+            row.appendChild(nameCell);
+            row.appendChild(createdAtCell);
+            row.appendChild(actionsCell);
+
+            fieldsTableBody.appendChild(row)
+        });
+        // show modal
+        myFieldsModal.style.display = "block";
+
+    })
+    .catch(error => console.error('Error Fetching fields:', error));
+
+});
+
+// close modal
+
+closeModal.addEventListener("click", function() {
+    myFieldsModal.style.display = "none";
+
+});
+
+// delete field
+
+function deleteField(fieldId) {
+    fetch(`/api/delete-field/${fieldId}`, { method: 'DELETE' })
+    .then(response => {
+        if (response.ok) {
+            alert("field deleted successfully!");
+            
+        } else {
+            alert("Failed to delete field!");
+
+        }
+    })
+    .catch(error => console.error('Error deleting Field:', error));
+}
+
+
+
 
 </script>
 </head>
@@ -208,7 +299,7 @@ function resetDrawing(map, markers) {
             <nav>
                 <ul>
                     <li>Hide Info Panel</li>
-                    <li>Season 2024</li>
+                    <li id="myFieldsButton">Season 2024</li>
                     <li>Get Started</li>
                     <li>Monitoring</li>
                     <li>Weather</li>
@@ -223,7 +314,75 @@ function resetDrawing(map, markers) {
                 </ul>
             </nav>
         </div>
+        <div id="myFieldsModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close" id="closeModal">&times;</span>
+                <h2>My Fields</h2>
+                <table id="fieldsTable" border="1">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Field rows will be dynamically added here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
         
+        <style>
+            /* Modal styling */
+            .modal {
+                display: none; /* Hidden by default */
+                position: fixed;
+                z-index: 1000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: auto;
+                background-color: rgba(0, 0, 0, 0.4);
+            }
+        
+            .modal-content {
+                background-color: #fefefe;
+                margin: 15% auto;
+                padding: 20px;
+                border: 1px solid #888;
+                width: 80%;
+            }
+        
+            .close {
+                color: #aaa;
+                float: right;
+                font-size: 28px;
+                font-weight: bold;
+            }
+        
+            .close:hover,
+            .close:focus {
+                color: black;
+                text-decoration: none;
+                cursor: pointer;
+            }
+        
+            table {
+                width: 100%;
+                text-align: left;
+            }
+        
+            th, td {
+                padding: 10px;
+            }
+        
+            button {
+                margin-right: 5px;
+            }
+        </style>
         <div class="map-container">
             <div id="map"></div>
             <div class="map-controls">
