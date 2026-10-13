@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farm Data Wrapped</title>
+    <link rel="stylesheet" href="{% static 'styles.css' %}">
+</head>
+<body>
+    <div class="background-animation"></div>
+    <div class="container">
+        <h1>Your Farm Data Wrapped</h1>
+        <div class="loading-bar">
+            <div class="progress"></div>
+        </div>
+        <div class="cards">
+            <div class="card" id="card1">
+                <h2>🌱 Crop Yield</h2>
+                <p id="yield">Loading...</p>
+            </div>
+            <div class="card" id="card2">
+                <h2>💧 Water Usage</h2>
+                <p id="water">Loading...</p>
+            </div>
+            <div class="card" id="card3">
+                <h2>🌞 Sunlight Hours</h2>
+                <p id="sunlight">Loading...</p>
+            </div>
+            <div class="card" id="card4">
+                <h2>🌾 Soil Health</h2>
+                <p id="soil">Loading...</p>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
