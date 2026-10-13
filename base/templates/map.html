@@ -231,8 +231,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 // analysis button
 
-                var analyzeButton = document.createElement("button").setAttribute("data-field-id", fieldId);
+                var analyzeButton = document.createElement("button")
                 analyzeButton.textContent = "Analyze";
+                analyzeButton.setAttribute("data-field-id", field.id);
                 analyzeButton.addEventListener("click", function() {
                     const fieldId = analyzeButton.getAttribute("data-field-id");
                     fetch(`/api/analyze-field/${fieldId}/`)
