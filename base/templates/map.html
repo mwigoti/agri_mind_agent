@@ -34,7 +34,7 @@ require([
     // Initialize the map with a hybrid basemap
     var map = new Map("map", {
         basemap: "hybrid",
-        center: [-98.5795, 39.8283],
+        center: [-1.23, 36.8283],
         zoom: 4
     });
 
@@ -181,8 +181,8 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
                 sendCoordinatesToDjango(markerCoordinates);
             }
 
-            markerCoordinates = [];
-            resetDrawing(map, markers);
+        markerCoordinates = [];
+        resetDrawing(map, markers);
         }
     });
 }
@@ -244,11 +244,19 @@ function resetDrawing(map, markers) {
                 <div class="no-fields-message">
                     <p>No fields in this season. <a href="#">Update Season</a></p>
                 </div>
-                <div class="add-fields">
+                <div class="add-fields" id="addFields">
                     <h4>Add Your Fields</h4>
                     <p>Browse satellite images, vegetation indices, weather data, and more</p>
-                    <button class="add-field-button">+ ADD FIELD</button>
+                    <button class="add-field-button" id="addField">+ ADD FIELD</button>
                 </div>
+
+            </div>
+
+            <div id="save-panel" style="display: none;">
+                <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                <input type="text" id="fieldName" placeholder="Enter field name">
+                <button id="saveField">Save Field</button>
+                <button id="cancelField">Cancel</button>
             </div>
         </div>
     </div>
