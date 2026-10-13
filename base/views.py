@@ -17,6 +17,7 @@ from django.views.decorators.csrf import csrf_exempt, csrf_protect, requires_csr
 from django.utils.decorators import method_decorator  # Add this import
 from django.views import View
 from django.contrib.gis.geos import Point
+from django.contrib.gis.db.models.functions import Transform
 
 
 # Create your views here.
@@ -150,11 +151,12 @@ def get_field_center(id):
     try:
         field = Field.objects.get(id=id)
 
-        center = field.geometry.centroid
+        center = field.geometry.transform(4326, clone=True).centroid
 
         return {
             "Latitude": center.y,
             "Longitude": center.x
         }
+        return JsonResponse({"success": True, "centroid" : response_data})
     except Field.DoesNotExist:
         raise ValueError(f"Field with ID {id} does not exist")
