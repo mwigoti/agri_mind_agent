@@ -6,6 +6,12 @@ from django.core.mail import send_mail
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.conf import settings
+from django.http import JsonResponse
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_http_methods
+import json
+from math import sqrt
+
 from django.core.mail import send_mail, BadHeaderError
 
 
@@ -87,3 +93,54 @@ def signin(request):
 
 def pricing(request):
     return render(request, 'pricing.html')
+
+@ensure_csrf_cookie
+@require_http_methods(["POST"])
+def calculate_field_center(request):
+    try:
+        data = json.loads(request.body)
+        coordinates = data.get('coordinates', [])
+        
+        if not coordinates or len(coordinates) < 3:
+            return JsonResponse({'error': 'At least three points are required'}, status=400)
+        
+        # Calculate center
+        x_coords = [point[0] for point in coordinates]
+        y_coords = [point[1] for point in coordinates]
+        
+        center_x = sum(x_coords) / len(coordinates)
+        center_y = sum(y_coords) / len(coordinates)
+        
+        # Calculate approximate area using the shoelace formula
+        area = calculate_area(coordinates)
+        
+        # Convert area from square meters to hectares
+        area_hectares = abs(area) / 10000  # 1 hectare = 10000 square meters
+        
+        return JsonResponse({
+            'center': {
+                'lng': center_x,
+                'lat': center_y
+            },
+            'area': area_hectares,
+            'num_points': len(coordinates)
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def calculate_area(coordinates):
+    """
+    Calculate area using the shoelace formula (Gauss's area formula)
+    """
+    n = len(coordinates)
+    area = 0.0
+    
+    for i in range(n):
+        j = (i + 1) % n
+        area += coordinates[i][0] * coordinates[j][1]
+        area -= coordinates[j][0] * coordinates[i][1]
+    
+    return area / 2.0
