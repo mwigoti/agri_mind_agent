@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MObiCO₂ Logo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    .logo-badge {
+      width: 300px;
+      height: 300px;
+      border: 2px solid #2E8B57;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      position: relative;
+    }
+
+    /* CO2 Molecule */
+    .molecule {
+      position: relative;
+      width: 150px;
+      height: 100px;
+      margin-top: 10px;
+    }
+
+    .atom {
+      position: absolute;
+      border-radius: 50%;
+    }
+
+    .carbon {
+      width: 30px;
+      height: 30px;
+      background-color: #333;
+      top: 35%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .oxygen {
+      width: 22px;
+      height: 22px;
+      background-color: #2E8B57;
+    }
+
+    .oxygen.left {
+      top: 20%;
+      left: 10%;
+    }
+
+    .oxygen.right {
+      top: 20%;
+      right: 10%;
+    }
+
+    .bond {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      border: 2px solid #2E8B57;
+      border-color: transparent transparent #2E8B57 transparent;
+      border-radius: 50%;
+      top: 20%;
+    }
+
+    .bond.left {
+      left: 20%;
+      transform: rotate(-30deg);
+    }
+
+    .bond.right {
+      right: 20%;
+      transform: rotate(30deg);
+    }
+
+    /* Leaf Arrow */
+    .leaf-arrow {
+      position: absolute;
+      top: 5px;
+      left: 50%;
+      transform: translateX(-50%) rotate(45deg);
+      width: 120px;
+      height: 120px;
+      border: 2px solid #2E8B57;
+      border-radius: 50%;
+      border-right: none;
+      border-bottom: none;
+    }
+
+    .arrowhead {
+      position: absolute;
+      width: 0;
+      height: 0;
+      border-left: 10px solid #2E8B57;
+      border-top: 10px solid transparent;
+      border-bottom: 10px solid transparent;
+      right: -5px;
+      top: 5px;
+      transform: rotate(45deg);
+    }
+
+    /* Text Part */
+    .logo-text {
+      text-align: center;
+      margin-top: auto;
+    }
+
+    .brand {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .brand .mobi {
+      color: #333;
+    }
+
+    .brand .co2 {
+      color: #2E8B57;
+    }
+
+    .brand sub {
+      font-size: 14px;
+      vertical-align: sub;
+    }
+
+    .tagline {
+      font-size: 14px;
+      color: #3CB371;
+      font-weight: 400;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="logo-badge">
+  <!-- Leaf Arrow -->
+  <div class="leaf-arrow">
+    <div class="arrowhead"></div>
+  </div>
+
+  <!-- Molecule -->
+  <div class="molecule">
+    <div class="atom oxygen left"></div>
+    <div class="atom carbon"></div>
+    <div class="atom oxygen right"></div>
+    <div class="bond left"></div>
+    <div class="bond right"></div>
+  </div>
+
+  <!-- Text -->
+  <div class="logo-text">
+    <div class="brand">
+      <span class="mobi">MObi</span><span class="co2">CO<sub>2</sub></span>
+    </div>
+    <div class="tagline">Carbon in Motion</div>
+  </div>
+</div>
+
+</body>
+</html>
