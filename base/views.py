@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.gis.geos import Polygon
 from .serializers import FieldSerializer
+from django.core.serializers import serialize
 
 
 # Create your views here.
@@ -122,3 +123,9 @@ class SaveFieldView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
            
+# Retrieve fields as geojson from db
+
+def get_fields_geojson(request):
+    geojson_fields = serialize('geojson', Field.objects.all(), geometry_field='geometry', fields=('name',))
+
+    return JsonResponse(geojson_fields, safe=False)
