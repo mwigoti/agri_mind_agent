@@ -195,28 +195,8 @@ function resetDrawing(map, markers) {
     markers.length = 0;
 }
 
-document.getElementById("myFieldsButton").addEventListener("click", function() {
-    fetch('/api/myfields')
-    .then(response => response.json())
-    .then(data => {
-        console.log(data);
 
-        var fieldsLayer = new esri.layers.GraphicsLayer();
-        map.addLayer(fieldsLayer);
 
-        // loop through geojson features
-
-        var geojson = data;
-        var jsonParser = new esri.tasks.GeoJSON();
-        geojson.features.forEach(function(feature) {
-            var graphic = new Graphic(feature.geometry, new SimpleFillSymbol().setColor(new Color([0, 255, 0, 0.25])));
-            fieldsLayer.add(graphic);
-
-        });
-
-    })
-    .catch(error => console.error('Error fetching fields:', error));
-});
 </script>
 </head>
 <body class="claro">
