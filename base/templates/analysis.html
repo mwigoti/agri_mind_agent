@@ -5,13 +5,109 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Soil Analysis</title>
   <style>
-    pre {
-      background-color: #f4f4f4;
-      padding: 10px;
-      border-radius: 5px;
-      white-space: pre-wrap;
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     }
-  </style>
+
+    body {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        min-height: 100vh;
+        padding: 2rem;
+    }
+
+    h1 {
+        color: #2c3e50;
+        text-align: center;
+        margin-bottom: 2rem;
+        font-size: 2.5rem;
+        font-weight: 600;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    #result {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+        max-width: 800px;
+        margin: 0 auto;
+        font-size: 1rem;
+        line-height: 1.6;
+        color: #34495e;
+        border: 1px solid #e0e0e0;
+        position: relative;
+        min-height: 200px;
+        white-space: pre-wrap;
+        font-family: 'Courier New', Courier, monospace;
+    }
+
+    #result:before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 12px;
+        pointer-events: none;
+        border: 2px solid rgba(39, 174, 96, 0.1);
+    }
+
+    #result.loading {
+        background: linear-gradient(90deg, #f8f9fa 25%, #e9ecef 50%, #f8f9fa 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+    }
+
+    @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+
+    .error {
+        color: #e74c3c !important;
+        background: #fdeded !important;
+        border-color: #f5c6cb !important;
+    }
+
+    @media (max-width: 768px) {
+        body {
+            padding: 1rem;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        #result {
+            padding: 1.5rem;
+            font-size: 0.9rem;
+        }
+    }
+
+    /* Decorative elements */
+    .analysis-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .analysis-header::before,
+    .analysis-header::after {
+        content: '';
+        flex: 1;
+        height: 2px;
+        background: linear-gradient(90deg, transparent 0%, rgba(39, 174, 96, 0.3) 50%, transparent 100%);
+    }
+</style>
+
+
 </head>
 <body>
   <h1>Soil Analysis for Field ID: {{ id }}</h1>
