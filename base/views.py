@@ -5,22 +5,24 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.conf import settings
 from django.http import JsonResponse
-
+from django.contrib.auth import authenticate, login
+from django.shortcuts import render, redirect
+from django.contrib import messages
 from .models import *
 from django.core.mail import send_mail, BadHeaderError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.gis.geos import Polygon
-
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator  # Add this import
-
-
+from django.contrib.auth import get_user_model
+from django.contrib.auth import logout
 from .analysis import IntegratedSoilAnalyzer
 
-
+CustomUser = get_user_model()
 # Create your views here.
 def home(request):
     return render(request, 'index.html')
@@ -36,14 +38,43 @@ def register(request):
         form = MyUserCreationForm(request.POST)
         
         if form.is_valid():
-            form.save()
-            return redirect('map')  # Redirect to a login page or another view
+            user = form.save(commit=False)
+            user.email = user.email.lower()
+            user.save()
+            return redirect('map')
     else:
         form = MyUserCreationForm()
-    return render(request, 'register.html', {"form": form, "page":page})
+    
+    return render(request, 'register.html', {"form": form, "page": page})
 
-def login(request):
-    return render(request, 'register.html')
+def login_view(request):
+    page = 'login'
+    if request.user.is_authenticated:
+        return redirect('map')
+
+    if request.method == 'POST':
+        email = request.POST.get('email').lower()
+        password = request.POST.get('password')
+
+        try:
+            user = CustomUser.objects.get(email=email)
+        except:
+            messages.error(request, 'User does not exist')
+
+        user = authenticate(request, email=email, password=password)
+
+        if user is not None:
+            login(request, user)
+            return redirect('map')
+        else:
+            messages.error(request, 'Username OR password does not exit')
+
+    context = {'page': page}
+    return render(request, 'login.html', context)
+@login_required(login_url="login")
+def logout_user(request):
+    logout(request)
+    return redirect("home")
 
 def services(request):
     return render(request, 'service.html')
@@ -98,6 +129,7 @@ def research(request):
 def signup(request):
     return render(request, 'signup.html')
 
+@login_required(login_url="login")
 def map(request):
     return render(request, 'map.html')
 
@@ -107,11 +139,10 @@ def weather(request):
 def upgrade(request):
     return render(request, 'upgrade.html')
 
-def signin(request):
-    return render(request, 'login.html')
 
 def pricing(request):
     return render(request, 'pricing.html')
+
 
 class SaveFieldView(APIView):
     def post(self, request, *args, **kwargs):
@@ -119,6 +150,7 @@ class SaveFieldView(APIView):
             data = request.data
             name = data.get('name', 'Unnamed Field')
             coordinates = data.get('coordinates')
+            owner=request.user
 
             if not coordinates or len(coordinates) < 3:
                 return Response({"error": "At least 3 points are required"})
@@ -133,7 +165,7 @@ class SaveFieldView(APIView):
             polygon = Polygon(coordinates)
 
             #save to database
-            field=Field.objects.create(name=name, geometry=polygon)
+            field=Field.objects.create(owner=owner,name=name, geometry=polygon)
 
             serializer= FieldGeoJSONSerializer(field)
 
@@ -151,7 +183,7 @@ from .serializers import FieldGeoJSONSerializer
 
 @api_view(['GET'])
 def get_fields_geojson(request):
-    fields = Field.objects.all()  # Query all fields
+    fields = Field.objects.filter(owner=request.user)  # Query all fields
     serializer = FieldGeoJSONSerializer(fields, many=True)  # Serialize data
     return Response(serializer.data) 
 @method_decorator(csrf_exempt, name='dispatch')

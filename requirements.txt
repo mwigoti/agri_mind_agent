@@ -42,5 +42,5 @@ xarray
 cfgrib
 netCDF4
 django_extensions
-
+django-widget-tweaks
 
