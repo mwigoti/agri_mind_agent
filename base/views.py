@@ -1,4 +1,4 @@
-
+from pyproj import Transformer
 from django.views.decorators.http import require_GET
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render, redirect
@@ -152,9 +152,8 @@ class DeleteFieldView(APIView):
 
 
 
-from django.contrib.gis.geos import Point
-from django.http import JsonResponse
-from django.views.decorators.http import require_GET
+
+
 
 @require_GET
 def get_field_center(request, id):
@@ -162,18 +161,28 @@ def get_field_center(request, id):
         # Fetch the field by ID
         field = Field.objects.get(pk=id)
         
-        # Transform from UTM zone 37S to WGS 84 (standard lat/lon)
-        transformed_geometry = field.geometry.transform(4326, clone=True)
+        # Create a transformer from UTM Zone 37S to WGS84
+        transformer = Transformer.from_crs(
+            "EPSG:32637",  # UTM Zone 37S (WGS 84)
+            "EPSG:4326",   # WGS84 lat/lon
+            always_xy=True  # Ensure x, y order
+        )
         
-        # Calculate centroid after transformation
-        center = transformed_geometry.centroid
+        # Get the centroid of the geometry
+        center = field.geometry.centroid
+        
+        # Transform the coordinates
+        lon, lat = transformer.transform(center.x, center.y)
         
         return JsonResponse({
             "id": field.id,
             "name": field.name,
-            "original_srid": field.geometry.srid, 
-            "latitude": center.y,
-            "longitude": center.x,
+            "original_coordinates": {
+                "x": center.x,
+                "y": center.y,
+            },
+            "latitude": lat,
+            "longitude": lon,
         })
     
     except Field.DoesNotExist:
