@@ -7,6 +7,8 @@
     {% csrf_token %}
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+
     <title>AgriVision - map</title>
     
     <!-- ArcGIS CSS and JavaScript API -->
@@ -274,29 +276,49 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // delete field
 
-    function deleteField(id) {
-    console.log(`Attempting to delete field with ID: ${id}`);
-    fetch(`/api/delete-field/${id}/`, { 
-        method: 'DELETE', 
-        headers: { 'Content-Type': 'application/json' }
-    })
-    .then(response => {
-        console.log(`Response status: ${response.status}`);
-        if (response.ok) {
-            alert("Field deleted successfully!");
-            location.reload(); // Reload to reflect changes
-        } else {
-            return response.json().then(data => {
-                console.error("Error response from server:", data);
-                throw new Error(data.error || "Failed to delete field!");
-            });
+    function getCSRFToken() {
+        // retrieve from meta tag
+        const csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
+        if (csrfMetaTag) {
+            return csrfMetaTag.getAttribute('content');
+
         }
-    })
-    .catch(error => {
-        console.error("Error deleting field:", error);
-        alert(error.message || "An unexpected error occurred.");
-    });
-}
+        console.error("CSRF token missing");
+        return null;
+    }
+    function deleteField(id) {
+        const csrfToken = getCSRFToken();
+        if (!csrfToken) {
+            alert ("csrf token missing cannot proceed with request");
+            return;
+        }
+
+        console.log(`attempting to delete field with id: ${id}`);
+        fetch(`/api/delete-field/${id}/`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => {
+            console.log(`Response status: ${response.status}`);
+            if (response.ok) {
+                alert("Field deleted successfully!");
+                location.reload();
+            } else {
+                return response.json().then(data => {
+                    console.error("Error from server:", data);
+                    throw new Error(data.detail || "Failed to delete field!");
+
+                });
+            }
+        })
+        .catch(error => {
+            console.error("error deleting field", error);
+            alert(error.message || "An unexpected error occured. ");
+        });
+    }
 });
 
 
