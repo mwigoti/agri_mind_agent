@@ -1,48 +1,46 @@
-document.addEventListener("DOMContentLoaded", function() {
-    // Initialize the map using Esri ArcGIS API
-    require([
-        "esri/map", 
-        "esri/layers/ArcGISTiledMapServiceLayer",
-        "esri/graphic",
-        "esri/geometry/Polygon",
-        "esri/geometry/Point",
-        "esri/symbols/SimpleMarkerSymbol",
-        "esri/symbols/SimpleFillSymbol",
-        "esri/Color",
-        "dojo/domReady!"
-    ], function(Map, ArcGISTiledMapServiceLayer, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
-        
-        // Initialize the map with a hybrid (satellite + labels) basemap
-        var map = new Map("map", {
-            basemap: "hybrid",
-            center: [-98.5795, 39.8283],
-            zoom: 4
-        });
-
-        // URL for World Boundaries and Places
-        var boundariesURL = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer";
-        var boundariesLayer = new ArcGISTiledMapServiceLayer(boundariesURL);
-
-        // Layer switching functionality
-        var layerSelect = document.getElementById("layerSelect");
-        layerSelect.addEventListener("change", function(e) {
-            map.removeAllLayers();
-            if (e.target.value === "osm") {
-                map.setBasemap("streets");
-            } else if (e.target.value === "satellite") {
-                map.setBasemap("hybrid"); // Satellite with labels
-            } else if (e.target.value === "satelliteBoundaries") {
-                map.setBasemap("hybrid"); // Base map for satellite
-                map.addLayer(boundariesLayer); // Add boundaries and places
-            }
-        });
-
-        // Setup info panel toggle functionality
-        setupInfoPanelToggle();
-
-        // Setup polygon drawing functionality with markers
-        setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color);
+// Initialize the map using Esri ArcGIS API
+require([
+    "esri/map", 
+    "esri/layers/ArcGISTiledMapServiceLayer",
+    "esri/graphic",
+    "esri/geometry/Polygon",
+    "esri/geometry/Point",
+    "esri/symbols/SimpleMarkerSymbol",
+    "esri/symbols/SimpleFillSymbol",
+    "esri/Color",
+    "dojo/domReady!"
+], function(Map, ArcGISTiledMapServiceLayer, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
+    
+    // Initialize the map with a hybrid (satellite + labels) basemap
+    var map = new Map("map", {
+        basemap: "hybrid",
+        center: [-98.5795, 39.8283],
+        zoom: 4
     });
+
+    // URL for World Boundaries and Places
+    var boundariesURL = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer";
+    var boundariesLayer = new ArcGISTiledMapServiceLayer(boundariesURL);
+
+    // Layer switching functionality
+    var layerSelect = document.getElementById("layerSelect");
+    layerSelect.addEventListener("change", function(e) {
+        map.removeAllLayers();
+        if (e.target.value === "osm") {
+            map.setBasemap("streets");
+        } else if (e.target.value === "satellite") {
+            map.setBasemap("hybrid"); // Satellite with labels
+        } else if (e.target.value === "satelliteBoundaries") {
+            map.setBasemap("hybrid"); // Base map for satellite
+            map.addLayer(boundariesLayer); // Add boundaries and places
+        }
+    });
+
+    // Setup info panel toggle functionality
+    setupInfoPanelToggle();
+
+    // Setup polygon drawing functionality with markers
+    setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color);
 });
 
 // Toggle Info Panel functionality
