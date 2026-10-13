@@ -41,4 +41,6 @@ cdsapi
 xarray
 cfgrib
 netCDF4
+django_extensions
+
 
