@@ -195,95 +195,96 @@ function resetDrawing(map, markers) {
     markers.length = 0;
 }
 
+document.addEventListener("DOMContentLoaded", function() {
+    var myFieldsButton = document.getElementById("myFieldsButton");
+    var myFieldsModal = document.getElementById("myFieldsModal");
+    var closeModal = document.getElementById("closeModal");
+    var fieldsTableBody = document.querySelector("#fieldsTable tbody");
 
-var myFieldsButton = document.getElementById("myFieldsButton");
-var myFieldsModal = document.getElementById("myFieldsModal");
-var closeModal = document.getElementById("closeModal");
-var fieldsTableBody = document.querySelector("#fieldsTable tbody");
+    //show modal
 
-//show modal
+    myFieldsButton.addEventListener("click", function() {
+        // fetch fields data
 
-myFieldsButton.addEventListener("click", function() {
-    // fetch fields data
-
-    fetch('/api/myfields/')
-    .then(response => response.json())
-    .then(data => {
-        console.log(data);
-        
-        //clear existing rows
-        fieldsTableBody.innerHTML="";
-
-        //populate table
-        data.features.forEach((field, index) => {
-            var row = document.createElement("tr");
-            var idCell = document.createElement("td");
-            idCell.textContent= field.idCell;
-
-            var nameCell = document.createElement("td");
-
-            nameCell.textContent = field.properties.name;
-            var createdAtCell = document.createElement("td");
-            createdAtCell.textContent = field.properties.Created_at;
-            var actionsCell = document.createElement("td");
-
-            // analysis button
-
-            var analyzeButton = document.createElement("button");
-            analyze.addEventListener("click", function() {
-                alert('analyzing field: ${field.properties.name}')
-                // add analysis logic
-            })
-
-            // delete button
-
-            var deleteButton = document.createElement("button");
-            deleteButton.addEventListener("click", function() {
-                if (confirm(`Are you sure you want to delete ${field.properties.name}?`)) {
-                    deleteField(field.id)
-                }
-            });
-
-            actionsCell.appendChild(analyzeButton);
-            actionsCell.appendChild(deleteButton);
-
-            row,appendChild(idCell);
-            row.appendChild(nameCell);
-            row.appendChild(createdAtCell);
-            row.appendChild(actionsCell);
-
-            fieldsTableBody.appendChild(row)
-        });
-        // show modal
-        myFieldsModal.style.display = "block";
-
-    })
-    .catch(error => console.error('Error Fetching fields:', error));
-
-});
-
-// close modal
-
-closeModal.addEventListener("click", function() {
-    myFieldsModal.style.display = "none";
-
-});
-
-// delete field
-
-function deleteField(fieldId) {
-    fetch(`/api/delete-field/${fieldId}`, { method: 'DELETE' })
-    .then(response => {
-        if (response.ok) {
-            alert("field deleted successfully!");
+        fetch('/api/myfields/')
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);
             
-        } else {
-            alert("Failed to delete field!");
+            //clear existing rows
+            fieldsTableBody.innerHTML="";
 
-        }
-    })
-    .catch(error => console.error('Error deleting Field:', error));
-}
+            //populate table
+            data.features.forEach((field, index) => {
+                var row = document.createElement("tr");
+                var idCell = document.createElement("td");
+                idCell.textContent= field.idCell;
+
+                var nameCell = document.createElement("td");
+
+                nameCell.textContent = field.properties.name;
+                var createdAtCell = document.createElement("td");
+                createdAtCell.textContent = field.properties.Created_at;
+                var actionsCell = document.createElement("td");
+
+                // analysis button
+
+                var analyzeButton = document.createElement("button");
+                analyze.addEventListener("click", function() {
+                    alert('analyzing field: ${field.properties.name}')
+                    // add analysis logic
+                })
+
+                // delete button
+
+                var deleteButton = document.createElement("button");
+                deleteButton.addEventListener("click", function() {
+                    if (confirm(`Are you sure you want to delete ${field.properties.name}?`)) {
+                        deleteField(field.id)
+                    }
+                });
+
+                actionsCell.appendChild(analyzeButton);
+                actionsCell.appendChild(deleteButton);
+
+                row,appendChild(idCell);
+                row.appendChild(nameCell);
+                row.appendChild(createdAtCell);
+                row.appendChild(actionsCell);
+
+                fieldsTableBody.appendChild(row)
+            });
+            // show modal
+            myFieldsModal.style.display = "block";
+
+        })
+        .catch(error => console.error('Error Fetching fields:', error));
+
+    });
+
+    // close modal
+
+    closeModal.addEventListener("click", function() {
+        myFieldsModal.style.display = "none";
+
+    });
+
+    // delete field
+
+    function deleteField(fieldId) {
+        fetch(`/api/delete-field/${fieldId}`, { method: 'DELETE' })
+        .then(response => {
+            if (response.ok) {
+                alert("field deleted successfully!");
+                
+            } else {
+                alert("Failed to delete field!");
+
+            }
+        })
+        .catch(error => console.error('Error deleting Field:', error));
+    }
+});
 
 
 
