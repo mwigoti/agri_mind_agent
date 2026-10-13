@@ -13,6 +13,7 @@ from rest_framework import status
 from django.contrib.gis.geos import Polygon
 from .serializers import FieldSerializer
 from django.core.serializers import serialize
+from django.shortcuts import get_object_or_404
 
 
 # Create your views here.
@@ -129,3 +130,10 @@ def get_fields_geojson(request):
     geojson_fields = serialize('geojson', Field.objects.all(), geometry_field='geometry', fields=('name',))
 
     return JsonResponse(geojson_fields, safe=False)
+
+def delete_field(request, field_id):
+    if request.method == 'DELETE':
+        field = get_object_or_404(Field, id=field_id)
+        field.delete()
+        return JsonResponse({'message': 'field deleted successfully'}, status=200)
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
