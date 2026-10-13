@@ -20,4 +20,4 @@ def configure_cds_api():
         print(f"CDS API consig error: {e}")
         return False
     
-    configure_cds_api()
+configure_cds_api()
