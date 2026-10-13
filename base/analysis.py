@@ -77,7 +77,7 @@ class IntegratedSoilAnalyzer:
         except requests.RequestException as e:
             print(f"SoilGrids API Error: {e}")
             return None
-
+    
     def analyze_combined_data(self, soil_data: Union[pd.DataFrame, Dict[str, Any], int], climate_data: Union[Dict[str, Any], str]) -> Dict[str, Any]:
         # Handle field ID input
         if isinstance(soil_data, int):
