@@ -13,6 +13,9 @@ from rest_framework import status
 from django.contrib.gis.geos import Polygon
 from django.core.serializers import serialize
 from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import csrf_exempt, csrf_protect, requires_csrf_token, ensure_csrf_cookie
+from django.utils.decorators import method_decorator  # Add this import
+from django.views import View
 
 
 # Create your views here.
@@ -135,7 +138,7 @@ def get_fields_geojson(request):
     fields = Field.objects.all()  # Query all fields
     serializer = FieldGeoJSONSerializer(fields, many=True)  # Serialize data
     return Response(serializer.data) 
-
+@method_decorator(csrf_exempt, name='dispatch')
 class DeleteFieldView(APIView):
     def delete(self, request, id):
         field = get_object_or_404(Field, id=id)

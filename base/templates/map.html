@@ -272,17 +272,19 @@ document.addEventListener("DOMContentLoaded", function() {
     // delete field
 
     function deleteField(id) {
+    console.log(`Attempting to delete field with ID: ${id}`);
     fetch(`/api/delete-field/${id}/`, { 
         method: 'DELETE', 
         headers: { 'Content-Type': 'application/json' }
     })
     .then(response => {
+        console.log(`Response status: ${response.status}`);
         if (response.ok) {
             alert("Field deleted successfully!");
-            // Optionally reload or update the UI
-            location.reload(); // Reload the page to reflect changes
+            location.reload(); // Reload to reflect changes
         } else {
             return response.json().then(data => {
+                console.error("Error response from server:", data);
                 throw new Error(data.error || "Failed to delete field!");
             });
         }
