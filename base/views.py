@@ -1,3 +1,6 @@
+
+from django.views.decorators.http import require_GET
+from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render, redirect
 from django.core.mail import send_mail
 from django.shortcuts import render, redirect
@@ -147,18 +150,29 @@ class DeleteFieldView(APIView):
         field.delete()
         return Response({'message': 'Field deleted successfully'}, status=status.HTTP_200_OK)
 
-def get_field_center(request):
+
+
+@require_GET  
+def get_field_center(request, id):
     try:
-        # Fetch the field by ID
-        field = Field.objects.get(id)
-
-        # Transform geometry to WGS84 and calculate the centroid
+        
+        field = Field.objects.get(pk=id)
+        
+       
         center = field.geometry.transform(4326, clone=True).centroid
-
-        # Return the centroid's coordinates
-        return {
+        
+        return JsonResponse({
+            "id": field.id,
+            "name": field.name,
             "latitude": center.y,
             "longitude": center.x,
-        }
+        })
+    
     except Field.DoesNotExist:
-        raise ValueError(f"Field with ID {id} does not exist")
+        return JsonResponse({
+            "error": f"Field with ID {id} not found"
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            "error": str(e)
+        }, status=500)
