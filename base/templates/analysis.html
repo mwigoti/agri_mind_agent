@@ -3,48 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Field Analysis</title>
+  <title>Soil Analysis</title>
+  <style>
+    pre {
+      background-color: #f4f4f4;
+      padding: 10px;
+      border-radius: 5px;
+      white-space: pre-wrap;
+    }
+  </style>
 </head>
 <body>
-  <p id="result">Loading...</p>
+  <h1>Soil Analysis for Field ID: {{ id }}</h1>
+  <pre id="result">Loading...</pre>
 
   <script>
     async function fetchSoilAnalysis() {
-        const resultElement = document.getElementById('result');
-        const fieldId = "{{ id|escapejs }}"; // Properly escape Django variable
-        
-        if (!fieldId) {
-            resultElement.textContent = "Error: Field ID not provided!";
-            return;
+    const resultElement = document.getElementById('result');
+    const fieldId = "{{ id }}";  // Get the field ID from Django
+
+    try {
+        const response = await fetch(`/api/analyze-field/${fieldId}/`, {  
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'  // Mark this as an AJAX request
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ERROR status: ${response.status}`);
         }
 
-        try {
-            const response = await fetch(`/api/analyze-field/${fieldId}/`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                }
-            });
+        const data = await response.json();
 
-            if (!response.ok) {
-                throw new Error(`HTTP ERROR status: ${response.status}`);
-            }
+        console.log("API Response:", data);  // Debugging log
 
-            const data = await response.json();
-
-            if (data.success) {
-                resultElement.textContent = JSON.stringify(data, null, 2);
-            } else {
-                resultElement.textContent = `Error: ${data.error || 'Unknown error occurred'}`;
-            }
-        } catch (error) {
-            resultElement.textContent = `Error: ${error.message}`;
+        if (data.success && data.result) {
+            const analysis = data.result.analysis || "No analysis available.";
+            resultElement.textContent = analysis;
+        } else {
+            resultElement.textContent = `Error: ${data.error || 'Unknown error occurred'}`;
         }
+    } catch (error) {
+        resultElement.textContent = `Error: ${error.message}`;
     }
+}
 
-    // Fetch analysis when page loads
-    fetchSoilAnalysis();
+fetchSoilAnalysis();
+
   </script>
 </body>
 </html>

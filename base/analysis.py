@@ -189,7 +189,7 @@ Key soil parameters interpretation:
 
 Based on these soil characteristics:
 1. List the top 5 most suitable crops for this soil type
-2. For each recommended crop, explain why it's well-suited based on the specific soil values
+2. For each recommended crop, explain in depth why it's well-suited based on the specific soil values
 3. Include any special management recommendations for the suggested crops
 
 Focus on practical, actionable recommendations that consider both the soil's strengths and limitations."""

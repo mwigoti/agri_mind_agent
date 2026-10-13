@@ -201,16 +201,19 @@ def analyze_field_view(request, id):
     try:
         huggingface_token = settings.HUGGINGFACE_TOKEN
         analyzer = IntegratedSoilAnalyzer()
-
         result = analyzer.analyze_combined_data(id, huggingface_token)
 
-        return render(request, 'analysis.html', {"result": result, "id": id})
-    except Exception as e:
-        return JsonResponse({
-            "success": False,
-            "error": str(e)
+        # Ensure 'analysis' exists
+        if "analysis" not in result:
+            result["analysis"] = "No analysis available."
 
-        }, status=500)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':  # If AJAX request
+            return JsonResponse({"success": True, "result": result})
+
+        return render(request, 'analysis.html', {"result": result, "id": id})
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
         
 def load(request):
     return render(request, 'load.html')
