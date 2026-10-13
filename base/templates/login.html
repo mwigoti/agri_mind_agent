@@ -1,41 +1,74 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-{% load static %}
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link rel="stylesheet" href="{% static 'css/auth.css' %}">
-    <title>Login | AsmrProg</title>
-</head>
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400&display=swap" rel="stylesheet">
 
-<body>
-    <div class="container" id="container">
-        <div class="form-container sign-in">
-            <form>
-                <h1>Sign In</h1>
-                <div class="social-icons">
-                    <a href="#" class="icon"><i class="fa-brands fa-google-plus-g"></i></a>
-                    <a href="#" class="icon"><i class="fa-brands fa-facebook-f"></i></a>
-                    <a href="#" class="icon"><i class="fa-brands fa-github"></i></a>
-                    <a href="#" class="icon"><i class="fa-brands fa-linkedin-in"></i></a>
+    {% load static %}
+
+    <!-- Local Stylesheets -->
+    
+    <link rel="stylesheet" href="{% static 'css/owl.carousel.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+
+    <title>Login</title>
+  </head>
+  <body>
+    <div class="d-md-flex half">
+      <div class="bg" style="background-image: url('{% static "images/image3.webp" %}');"></div>
+      <div class="contents">
+        <div class="container">
+          <div class="row align-items-center justify-content-center">
+            <div class="col-md-12">
+              <div class="form-block mx-auto">
+                <div class="text-center mb-5">
+                  <h3 class="text-uppercase">Login<strong></strong></h3>
                 </div>
-                <span>or use your email password</span>
-                <input type="email" placeholder="Email">
-                <input type="password" placeholder="Password">
-                <a href="#">Forget Your Password?</a>
-                <button>Sign In</button>
-            </form>
-        </div>
-        <div class="toggle-panel toggle-right">
-            <h1>Hello, Friend!</h1>
-            <p>Register with your personal details to use all of site features</p>
-            <a href="{% url 'register' %}">
-                <button class="hidden" id="register">Sign Up</button>
-            </a>
-        </div>
-    </div>
-    <script src="{% static 'script.js' %}"></script>
-</body>
+                <form action="#" method="post">
+                  {% csrf_token %}
+                  <div class="form-group first">
+                    <label for="username">Username</label>
+                    <input type="text" class="form-control" placeholder="your-email@gmail.com" id="username" name="username">
+                  </div>
+                  <div class="form-group last mb-3">
+                    <label for="password">Password</label>
+                    <input type="password" class="form-control" placeholder="Your Password" id="password" name="password">
+                  </div>
+                  
+                  <div class="d-sm-flex mb-5 align-items-center">
+                    <label class="control control--checkbox mb-3 mb-sm-0"><span class="caption">Remember me</span>
+                      <input type="checkbox" checked="checked"/>
+                      <div class="control__indicator"></div>
+                    </label>
+                    <span class="ml-auto"><a href="#" class="forgot-pass">Forgot Password</a></span> 
+                  </div>
 
+                  <input type="submit" value="Log In" class="btn btn-block py-2 btn-primary ">
+
+                  <span class="text-center my-3 d-block">or</span>
+                  
+                  <div class="">
+                    <a href="#" class="btn btn-block py-2 btn-facebook">
+                      <span class="icon-facebook mr-3"></span> Login with Facebook
+                    </a>
+                    <a href="#" class="btn btn-block py-2 btn-google"><span class="icon-google mr-3"></span> Login with Google</a>
+                  </div>
+                  <a href="{% url 'register' %}" class="ml-auto">Create Account</a>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="{% static 'js/jquery-3.3.1.min.js' %}"></script>
+    <script src="{% static 'js/popper.min.js' %}"></script>
+    <script src="{% static 'js/bootstrap.min.js' %}"></script>
+    <script src="{% static 'js/login.js' %}"></script>
+  </body>
 </html>

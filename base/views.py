@@ -95,7 +95,7 @@ def upgrade(request):
     return render(request, 'upgrade.html')
 
 def signin(request):
-    return render(request, 'signin.html')
+    return render(request, 'login.html')
 
 def pricing(request):
     return render(request, 'pricing.html')

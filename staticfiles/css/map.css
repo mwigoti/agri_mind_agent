@@ -1,33 +1,32 @@
 body {
     margin: 0;
     font-family: Arial, sans-serif;
+    scroll-behavior: none;
 }
 
 .container {
     display: flex;
+    height: 100vh;
 }
 
 .menu {
     width: 250px;
     background-color: #556B2F;
     color: #f1f1f1;
-    height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 757px;
-    position: relative;
 }
 
-.menu .logo img {
-    width: 100%;
+.menu .logo h3 {
+    text-align: center;
     padding: 10px;
 }
 
 .menu nav ul {
     list-style: none;
     padding: 0;
-    height: 100vh;
+    margin: 0;
 }
 
 .menu nav ul li {
@@ -41,25 +40,6 @@ body {
 
 .menu nav ul li:hover {
     background-color: #555;
-}
-
-.menu-footer {
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    background-color: #556B2F;
-    margin-top: 0px;
-}
-
-.demo-button,
-.upgrade-button {
-    padding: 10px;
-    margin: 5px 0;
-    cursor: pointer;
-    background-color: #444;
-    color: white;
-    border: none;
-    text-align: center;
 }
 
 .map-container {
@@ -94,20 +74,20 @@ body {
 
 #map {
     flex-grow: 1;
-    height: 100vh; /* Make map fill the available vertical space */
+    height: 100%;
+    position: relative;
     z-index: 0;
 }
 
 .map-controls {
     position: absolute;
-    top: 50px;
-    right: 10px;
+    top: 10px;
+    left: 10px;
     background: rgba(255, 255, 255, 0.8);
     padding: 10px;
     border-radius: 5px;
 }
 
-.zoom-controls button,
 .layer-controls select {
     display: block;
     margin-bottom: 10px;
@@ -116,17 +96,17 @@ body {
 }
 
 .info-panel {
-    display: none;
-    padding: 10px;
+    position: absolute;
+    top: 80px;
+    left: 10px;
+    width: 200px;
     background-color: #444;
-    border-top: 1px solid #ccc;
+    color: white;
+    padding: 10px;
+    border-radius: 4px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    position: absolute;
-    width: 300px;
-    height: 500px;
-    margin-top: 150px;
 }
 
 .info-panel h3 {
@@ -139,8 +119,8 @@ body {
 
 .info-panel .search-filter {
     display: flex;
-    margin-top: 10px;
     width: 100%;
+    margin-top: 10px;
 }
 
 .info-panel .search-filter input {
@@ -160,22 +140,82 @@ body {
     cursor: pointer;
 }
 
-.no-fields-message {
-    text-align: center;
-    margin: 10px 0;
-}
-
+.no-fields-message,
 .add-fields {
     text-align: center;
     margin: 10px 0;
 }
 
-.add-fields .add-field-button {
+.add-fields {
     padding: 10px;
     margin-top: 10px;
-    cursor: pointer;
     background-color: #444;
     color: white;
     border: none;
     border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.add-field-button {
+    /* Base styles */
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    
+    /* Default state */
+    background-color: #2563eb;  /* Blue */
+    color: white;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+    
+    /* Hover state */
+    &:hover {
+        background-color: #1d4ed8;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+    }
+    
+    /* Active/Pressed state */
+    &:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+    }
+    
+    /* Drawing mode state */
+    &.drawing-mode {
+        background-color: #dc2626;  /* Red */
+        box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+    }
+    
+    &.drawing-mode:hover {
+        background-color: #b91c1c;
+        box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3);
+    }
+    
+    /* Disabled state */
+    &:disabled {
+        background-color: #9ca3af;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+}
+
+/* Animation for the plus icon */
+.add-field-button::before {
+    content: "+";
+    margin-right: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+/* Rotate plus to X in drawing mode */
+.add-field-button.drawing-mode::before {
+    transform: rotate(45deg);
 }
