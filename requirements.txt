@@ -37,4 +37,8 @@ djangorestframework==3.15.2
 djangorestframework-gis==1.1
 psycopg2==2.9.3
 pyproj==3.7.0
+cdsapi
+xarray
+cfgrib
+netCDF4
 
