@@ -1,201 +1,15 @@
 {% load static %}
-{% csrf_token %}
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>AgriVision - map</title>
-    
-    <!-- ArcGIS CSS and JavaScript API -->
-    <link rel="stylesheet" href="https://js.arcgis.com/3.46/dijit/themes/claro/claro.css">
-    <link rel="stylesheet" href="https://js.arcgis.com/3.46/esri/css/esri.css">
-    <link rel="stylesheet" href="{% static 'css/map.css' %}">
-    <script>
-        var dojoConfig = { parseOnLoad: true };
-    </script>
-    <script src="https://js.arcgis.com/3.46/"></script>
-    
-    <script>
-    var dojoConfig = { parseOnLoad: true };
-
-require([
-    "esri/map", 
-    "esri/layers/ArcGISTiledMapServiceLayer",
-    "esri/graphic",
-    "esri/geometry/Polygon",
-    "esri/geometry/Point",
-    "esri/symbols/SimpleMarkerSymbol",
-    "esri/symbols/SimpleFillSymbol",
-    "esri/Color",
-    "dojo/domReady!"
-], function(Map, ArcGISTiledMapServiceLayer, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
-    
-    // Initialize the map with a hybrid basemap
-    var map = new Map("map", {
-        basemap: "hybrid",
-        center: [-98.5795, 39.8283],
-        zoom: 4
-    });
-
-    // URL for World Boundaries and Places
-    var boundariesURL = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer";
-    var boundariesLayer = new ArcGISTiledMapServiceLayer(boundariesURL);
-
-    // Layer switching functionality
-    var layerSelect = document.getElementById("layerSelect");
-    layerSelect.addEventListener("change", function(e) {
-        map.removeAllLayers();
-        if (e.target.value === "osm") {
-            map.setBasemap("streets");
-        } else if (e.target.value === "satellite") {
-            map.setBasemap("hybrid");
-        } else if (e.target.value === "satelliteBoundaries") {
-            map.setBasemap("hybrid");
-            map.addLayer(boundariesLayer);
-        }
-    });
-
-    setupInfoPanelToggle();
-    setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color);
-});
-
-function setupInfoPanelToggle() {
-    const infoPanel = document.querySelector(".info-panel");
-    const toggleButton = document.querySelector(".menu ul li:first-child");
-
-    if (!infoPanel || !toggleButton) {
-        console.error("Required elements not found.");
-        return;
-    }
-
-    infoPanel.style.display = "block";
-    toggleButton.addEventListener("click", function() {
-        const isVisible = infoPanel.style.display === "block";
-        infoPanel.style.display = isVisible ? "none" : "block";
-        toggleButton.textContent = isVisible ? "Show Info Panel" : "Hide Info Panel";
-    });
-}
-
-function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
-    let isDrawingMode = false;
-    let markerCoordinates = [];
-    const markers = [];
-
-    function handleMapClick(event) {
-        if (!isDrawingMode) return;
-
-        const point = new Point(event.mapPoint.x, event.mapPoint.y, map.spatialReference);
-        const markerSymbol = new SimpleMarkerSymbol().setColor(new Color([255, 0, 0])).setSize(10);
-        const markerGraphic = new Graphic(point, markerSymbol);
-        map.graphics.add(markerGraphic);
-        
-        markerCoordinates.push([point.x, point.y]);
-        markers.push(markerGraphic);
-
-        if (markerCoordinates.length >= 3) {
-            drawPolygon(markerCoordinates, map, Polygon, SimpleFillSymbol, Color);
-        }
-    }
-
-    function drawPolygon(coords, map, Polygon, SimpleFillSymbol, Color) {
-        map.graphics.clear();
-
-        const polygon = new Polygon(map.spatialReference);
-        polygon.addRing(coords);
-
-        const fillSymbol = new SimpleFillSymbol().setColor(new Color([0, 255, 0, 0.25]));
-        const polygonGraphic = new Graphic(polygon, fillSymbol);
-        map.graphics.add(polygonGraphic);
-    }
-
-    function sendCoordinatesToDjango(coordinates) {
-        // Get CSRF token
-        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        
-        fetch('/calculate-field-center/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken
-            },
-            body: JSON.stringify({
-                coordinates: coordinates
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                console.error('Error:', data.error);
-                alert('Error calculating field center: ' + data.error);
-            } else {
-                console.log('Field center:', data.center);
-                // Update info panel with calculated data
-                updateInfoPanel(data);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error sending coordinates to server');
-        });
-    }
-
-    function updateInfoPanel(data) {
-        const infoPanel = document.querySelector('.info-panel');
-        if (infoPanel) {
-            // Update area if provided
-            if (data.area) {
-                const areaElement = infoPanel.querySelector('h3 + div');
-                if (areaElement) {
-                    areaElement.textContent = `${data.area.toFixed(2)} ha`;
-                }
-            }
-            
-            // Add center coordinates if needed
-            if (data.center) {
-                const centerElement = document.createElement('div');
-                centerElement.textContent = `Center: ${data.center.lng.toFixed(4)}, ${data.center.lat.toFixed(4)}`;
-                infoPanel.appendChild(centerElement);
-            }
-        }
-    }
-
-    const addFieldButton = document.querySelector(".add-field-button");
-    addFieldButton.addEventListener("click", function() {
-        isDrawingMode = !isDrawingMode;
-
-        if (isDrawingMode) {
-            addFieldButton.textContent = "Finish Field";
-            addFieldButton.style.backgroundColor = "#ff4444";
-            map.on("click", handleMapClick);
-        } else {
-            addFieldButton.textContent = "+ Add Field";
-            addFieldButton.style.backgroundColor = "";
-            map.off("click", handleMapClick);
-
-            if (markerCoordinates.length < 3) {
-                alert("At least three points are required to create a polygon.");
-                resetDrawing(map, markers);
-            } else {
-                // Send coordinates to Django for processing
-                sendCoordinatesToDjango(markerCoordinates);
-            }
-
-            markerCoordinates = [];
-            resetDrawing(map, markers);
-        }
-    });
-}
-
-function resetDrawing(map, markers) {
-    markers.forEach(marker => map.graphics.remove(marker));
-    markers.length = 0;
-}
-</script>
+    <title>AgriVision - Field Management</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.27/esri/themes/light/main.css"/>
+    <link rel="stylesheet" href="{% static 'map.css' %}">
+    <script src="https://js.arcgis.com/4.27/" data-dojo-config="parseOnLoad:true"></script>
 </head>
-<body class="claro">
+<body>
     <div class="container">
-        <!-- Sidebar Menu -->
+      <!-- Menu Section -->
         <div class="menu">
             <div class="logo">
                 <h3>AgriVision</h3>
@@ -205,8 +19,8 @@ function resetDrawing(map, markers) {
                     <li>Hide Info Panel</li>
                     <li>Season 2024</li>
                     <li>Get Started</li>
-                    <li class="active">Monitoring</li>
-                    <li><a href="#">Weather</a></li>
+                    <li>Monitoring</li>
+                    <li>Weather</li>
                     <li>Overview</li>
                     <li>VRA Maps</li>
                     <li>Field Activity Log</li>
@@ -219,39 +33,212 @@ function resetDrawing(map, markers) {
             </nav>
         </div>
 
-        <!-- Main Map Container -->
+        <!-- Map Container -->
         <div class="map-container">
             <div id="map"></div>
-            
-            <!-- Map Controls for Layer Switching -->
-            <div class="map-controls">
-                <label for="layerSelect">Map Layer:</label>
-                <select id="layerSelect">
+
+            <!-- Map Controls -->
+            <div class="map-controls layer-controls">
+                <select id="baseLayer">
                     <option value="osm">OSM</option>
                     <option value="satellite">Satellite</option>
-                    <option value="satelliteBoundaries">Satellite with Boundaries</option>
+                    <option value="satellite-bounds">Satellite with Boundaries</option>
                 </select>
             </div>
-            
+
             <!-- Info Panel -->
             <div class="info-panel">
                 <h3>Global View</h3>
-                <p>0 ha</p>
+                <p><span id="area">0</span> ha</p>
+
+                <!-- Search Filter -->
                 <div class="search-filter">
-                    <input type="text" placeholder="Search">
-                    <button>Filter</button>
+                    <input type="text" placeholder="Filter fields...">
+                    <button class="search-button">Search</button>
                 </div>
-                <div class="no-fields-message">
-                    <p>No fields in this season. <a href="#">Update Season</a></p>
+
+                <!-- No Fields Message -->
+                <div class="no-fields-message" id="no-fields-message">
+                    No fields in this season. <a href="#" id="updateSeason">Update Season</a>
                 </div>
+
+                <!-- Add Fields Section -->
                 <div class="add-fields">
                     <h4>Add Your Fields</h4>
                     <p>Browse satellite images, vegetation indices, weather data, and more</p>
-                    <button class="add-field-button">+ ADD FIELD</button>
+                    <button class="add-field-button" id="addField">+ ADD FIELD</button>
+                </div>
+
+                <!-- Save Panel -->
+                <div id="save-panel" style="display: none;">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                    <input type="text" id="fieldName" placeholder="Enter field name">
+                    <button class="save-button" id="saveField">Save Field</button>
+                    <button class="cancel-button" id="cancelField">Cancel</button>
                 </div>
             </div>
         </div>
+
     </div>
-   
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/layers/GraphicsLayer",
+            "esri/widgets/Sketch",
+            "esri/geometry/geometryEngine",
+            "esri/layers/BasemapLayer",
+            "esri/Basemap"
+        ], function(Map, MapView, GraphicsLayer, Sketch, geometryEngine, BasemapLayer, Basemap) {
+              
+            // Create the base layers
+            const osmBasemap = new Basemap({
+                baseLayers: [
+                    new BasemapLayer({
+                        url: "https://services.arcgisonline.com/ArcGIS/rest/api/MapServer"
+                    })
+                ]
+            });
+
+            const satelliteBasemap = new Basemap({
+                baseLayers: [
+                    new BasemapLayer({
+                        url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"
+                    })
+                ]
+            });
+
+            // Create the map
+            const map = new Map({
+                basemap: osmBasemap
+            });
+
+            // Create the view
+            const view = new MapView({
+                container: "map",
+                map: map,
+                center: [0, 0],
+                zoom: 2
+            });
+
+            // Create a graphics layer for the drawings
+            const graphicsLayer = new GraphicsLayer();
+            map.add(graphicsLayer);
+
+            // Create sketch widget
+            let sketch;
+            let currentPolygon = null;
+
+            // Handle Add Field button click
+            document.getElementById('addField').addEventListener('click', function() {
+                document.getElementById('save-panel').style.display = 'block';
+                document.getElementById('addField').style.display = 'none';
+
+                // Initialize sketch if not already done
+                if (!sketch) {
+                    sketch = new Sketch({
+                        view: view,
+                        layer: graphicsLayer,
+                        creationMode: 'single',
+                        availableCreateTools: ['polygon'],
+                        visibleElements: {
+                            createTools: { polygon: true },
+                            selectionTools: false,
+                            settingsMenu: false
+                        }
+                    });
+
+                    view.ui.add(sketch, 'top-right');
+
+                    // Handle sketch creation
+                    sketch.on('create', function(event) {
+                        if (event.state === 'complete') {
+                            currentPolygon = event.graphic.geometry;
+                            // Calculate area in hectares
+                            const area = geometryEngine.geodesicArea(currentPolygon, 'hectares');
+                            document.getElementById('area').textContent = area.toFixed(2);
+                        }
+                    });
+                }
+
+                sketch.create('polygon');
+            });
+
+            // Handle save button click
+            document.getElementById('saveField').addEventListener('click', function() {
+                const fieldName = document.getElementById('fieldName').value;
+                
+                if (!fieldName) {
+                    alert('Please enter a field name');
+                    return;
+                }
+                
+                if (!currentPolygon) {
+                    alert('Please draw a field first');
+                    return;
+                }
+
+                // Prepare the field data
+                const fieldData = {
+                    name: fieldName,
+                    polygon: currentPolygon.toJSON()
+                };
+
+                // Send to backend
+                fetch('/api/fields/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify(fieldData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert('Field saved successfully!');
+                    resetDrawingState();
+                })
+                .catch(error => {
+                    console.error('Error saving field:', error);
+                    alert('Error saving field');
+                });
+            });
+
+            // Handle cancel button click
+            document.getElementById('cancelField').addEventListener('click', function() {
+                resetDrawingState();
+            });
+
+            // Function to reset drawing state
+            function resetDrawingState() {
+                graphicsLayer.removeAll();
+                currentPolygon = null;
+                document.getElementById('fieldName').value = '';
+                document.getElementById('area').textContent = '0';
+                document.getElementById('save-panel').style.display = 'none';
+                document.getElementById('addField').style.display = 'block';
+                if (sketch) {
+                    sketch.cancel();
+                }
+            }
+
+            // Handle base layer changes
+            document.getElementById('baseLayer').addEventListener('change', function(e) {
+                const selected = e.target.value;
+                switch(selected) {
+                    case 'osm':
+                        map.basemap = osmBasemap;
+                        break;
+                    case 'satellite':
+                        map.basemap = satelliteBasemap;
+                        break;
+                    case 'satellite-bounds':
+                        map.basemap = satelliteBasemap;
+                        // Add boundary layer if available
+                        break;
+                }
+            });
+        });
+    </script>
 </body>
 </html>
