@@ -10,6 +10,7 @@ urlpatterns = [
     path('research/', research, name='research'),
     path('register/', register, name='register'),
     path('map/', map, name='map'),
+    path('load/', load, name='load'),
     path('weather/', weather, name='weather'),
     path('upgrade/', upgrade, name="upgrade"),
     path('login/', login_view, name="login"),
