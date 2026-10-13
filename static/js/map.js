@@ -34,34 +34,8 @@ function initializeMap() {
         });
     }
 
-    // Add a feature group to hold drawn items
-    const drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    // Add draw control to the map for polygon drawing
-    const drawControl = new L.Control.Draw({
-        edit: { featureGroup: drawnItems },
-        draw: {
-            polygon: true,
-            polyline: false,
-            circle: false,
-            rectangle: false,
-            marker: false,
-            circlemarker: false
-        }
-    });
-    map.addControl(drawControl);
-
-    // Capture polygon coordinates when a new polygon is created
-    map.on(L.Draw.Event.CREATED, function(event) {
-        const layer = event.layer;
-        const coordinates = layer.getLatLngs()[0].map(function(latlng) {
-            return [latlng.lat, latlng.lng];
-        });
-        console.log("Polygon coordinates:", coordinates); // Placeholder for further processing
-
-        drawnItems.addLayer(layer);
-    });
+    // Return the map object to use in other functions
+    return map;
 }
 
 // Toggle Info Panel functionality
@@ -85,8 +59,57 @@ function setupInfoPanelToggle() {
     });
 }
 
-// Initialize map and setup toggle when DOM is fully loaded
+// Function to enable marker-based polygon creation
+function setupPolygonDrawing(map) {
+    // Create an array to store marker coordinates
+    const markerCoordinates = [];
+    const markers = new L.FeatureGroup();
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(markers);
+    map.addLayer(drawnItems);
+
+    // Add click event to add markers on map
+    map.on('click', function(e) {
+        // Get the clicked location coordinates
+        const { lat, lng } = e.latlng;
+
+        // Add marker to the map
+        const marker = L.marker([lat, lng]).addTo(map);
+        markers.addLayer(marker);
+
+        // Store the coordinates of the marker
+        markerCoordinates.push([lat, lng]);
+
+        // Log marker coordinates
+        console.log("Marker added at:", [lat, lng]);
+    });
+
+    // Event listener for the "Add Field" button to create polygon from markers
+    const addFieldButton = document.querySelector(".add-field-button");
+    addFieldButton.addEventListener("click", function() {
+        if (markerCoordinates.length < 3) {
+            alert("At least three points are required to draw a polygon.");
+            return;
+        }
+
+        // Create a polygon from the marker coordinates
+        const polygon = L.polygon(markerCoordinates, { color: 'blue' });
+        drawnItems.addLayer(polygon);
+
+        // Clear markers after creating the polygon
+        markers.clearLayers();
+
+        // Log all marker coordinates as polygon vertices
+        console.log("Polygon created with vertices:", markerCoordinates);
+
+        // Clear the stored coordinates
+        markerCoordinates.length = 0;
+    });
+}
+
+// Initialize map, setup toggle and polygon drawing when DOM is fully loaded
 document.addEventListener("DOMContentLoaded", function() {
-    initializeMap();
+    const map = initializeMap();
     setupInfoPanelToggle();
+    setupPolygonDrawing(map);
 });

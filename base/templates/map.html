@@ -6,48 +6,16 @@
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>World Imagery Map with Boundaries and Places</title>
     
-    <!-- ArcGIS CSS and JavaScript API -->
+    <!-- ArcGIS and Leaflet CSS and JavaScript API -->
     <link rel="stylesheet" href="https://js.arcgis.com/3.46/dijit/themes/claro/claro.css">
     <link rel="stylesheet" href="https://js.arcgis.com/3.46/esri/css/esri.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="{% static 'css/map.css' %}">
-    <script>
-        var dojoConfig = { parseOnLoad: true };
-    </script>
+    
     <script src="https://js.arcgis.com/3.46/"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/esri-leaflet"></script>
     <script src="{% static 'js/map.js' %}"></script>
-    <script>
-        require([
-            "esri/map", 
-            "esri/layers/ArcGISTiledMapServiceLayer",
-            "dojo/domReady!"
-        ], function(Map, ArcGISTiledMapServiceLayer) {
-
-            // Initialize the map with a hybrid (satellite + labels) basemap
-            var map = new Map("map", {
-                basemap: "hybrid",
-                center: [-98.5795, 39.8283],
-                zoom: 4
-            });
-
-            // URL for World Boundaries and Places
-            var boundariesURL = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer";
-            var boundariesLayer = new ArcGISTiledMapServiceLayer(boundariesURL);
-
-            // Layer switching functionality
-            document.getElementById("layerSelect").addEventListener("change", function(e) {
-                map.removeAllLayers();
-
-                if (e.target.value === "osm") {
-                    map.setBasemap("streets");
-                } else if (e.target.value === "satellite") {
-                    map.setBasemap("hybrid"); // Satellite with labels
-                } else if (e.target.value === "satelliteBoundaries") {
-                    map.setBasemap("hybrid"); // Base map for satellite
-                    map.addLayer(boundariesLayer); // Add boundaries and places
-                }
-            });
-        });
-    </script>
 </head>
 <body class="claro">
     <div class="container">
@@ -58,7 +26,7 @@
             </div>
             <nav>
                 <ul>
-                    <li>Hide Info Panel</li>
+                    <li>Hide Info Panel</li> <!-- This acts as the toggle button for the info panel -->
                     <li>Season 2024</li>
                     <li>Get Started</li>
                     <li class="active">Monitoring</li>
@@ -77,8 +45,8 @@
 
         <!-- Main Map Container -->
         <div class="map-container">
-            <div id="map"></div>
-            
+            <div id="map" style="height: 600px;"></div> <!-- Map Div -->
+
             <!-- Map Controls for Layer Switching -->
             <div class="map-controls">
                 <label for="layerSelect">Map Layer:</label>
