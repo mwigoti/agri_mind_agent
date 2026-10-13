@@ -1,7 +1,8 @@
-from rest_framework import serializers
+from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from .models import Field
 
-class FieldSerializer(serializers.ModelSerializer):
+class FieldGeoJSONSerializer(GeoFeatureModelSerializer):
     class Meta:
         model = Field
-        fields= ['id', 'name', 'geometry']
+        fields = ('id', 'name', 'geometry', 'created_at') 
+        geo_field = 'geometry'  
