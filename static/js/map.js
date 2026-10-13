@@ -1,55 +1,72 @@
-document.addEventListener('DOMContentLoaded', function() {
-    initMap();
-    setupEventListeners();
-});
+// Function to initialize and render the map in the 'map' div
+function initializeMap() {
+    // Access the div with id 'map' and initialize the map
+    var map = L.map('map').setView([0, 0], 2); // Adjust as necessary
 
-let map;
-
-function initMap() {
-    map = L.map('map').setView([0, 0], 2);  // Set initial view to the center of the world with zoom level 2
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    // Define base layers
+    var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    console.log("Map initialized");
-}
+    // Esri World Imagery Layer
+    var satelliteLayer = L.esri.basemapLayer('Imagery');
 
-function setupEventListeners() {
-    // Menu item click
-    document.querySelectorAll('.menu nav ul li').forEach(item => {
-        item.addEventListener('click', function() {
-            document.querySelector('.menu nav ul li.active')?.classList.remove('active');
-            this.classList.add('active');
+    // Esri World Boundaries and Places Reference Layer
+    var boundariesLayer = L.esri.basemapLayer('ImageryLabels');
+
+    // Layer switcher functionality
+    var layerSelect = document.getElementById('layerSelect');
+    if (layerSelect) {
+        layerSelect.addEventListener('change', function(e) {
+            // Clear all layers before adding the selected one
+            map.eachLayer(function(layer) {
+                map.removeLayer(layer);
+            });
+
+            // Add the selected layer based on the dropdown choice
+            if (e.target.value === 'osm') {
+                map.addLayer(osmLayer);
+            } else if (e.target.value === 'satellite') {
+                map.addLayer(satelliteLayer);
+            } else if (e.target.value === 'satelliteBoundaries') {
+                map.addLayer(satelliteLayer);
+                map.addLayer(boundariesLayer); // Add boundaries on top
+            }
         });
-    });
+    }
 
-    // Zoom controls
-    document.querySelector('.zoom-in').addEventListener('click', function() {
-        map.zoomIn();
-    });
+    // Add a feature group to hold drawn items
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
 
-    document.querySelector('.zoom-out').addEventListener('click', function() {
-        map.zoomOut();
-    });
-
-    // Layer controls
-    document.querySelector('.layer-controls select').addEventListener('change', function() {
-        // Update the map layer based on the selected value
-        console.log("Layer changed to: " + this.value);
-    });
-}
-document.addEventListener('DOMContentLoaded', (event) => {
-    const infoPanel = document.querySelector('.info-panel');
-    const toggleButton = document.getElementById('toggleButton');
-    
-    toggleButton.addEventListener('click', () => {
-        if (infoPanel.style.display === 'none') {
-            infoPanel.style.display = 'block';
-            toggleButton.textContent = 'Hide Info Panel';
-        } else {
-            infoPanel.style.display = 'none';
-            toggleButton.textContent = 'Show Info Panel';
+    // Add draw control to the map for polygon drawing
+    var drawControl = new L.Control.Draw({
+        edit: {
+            featureGroup: drawnItems
+        },
+        draw: {
+            polygon: true,
+            polyline: false,
+            circle: false,
+            rectangle: false,
+            marker: false,
+            circlemarker: false
         }
     });
-});
+    map.addControl(drawControl);
+
+    // Capture polygon coordinates when a new polygon is created
+    map.on(L.Draw.Event.CREATED, function(event) {
+        var layer = event.layer;
+        var coordinates = layer.getLatLngs()[0].map(function(latlng) {
+            return [latlng.lat, latlng.lng];
+        });
+        console.log("Polygon coordinates:", coordinates); // Replace with integration to soil analysis algorithm
+
+        drawnItems.addLayer(layer);
+    });
+}
+
+// Wait until DOM is fully loaded before initializing the map
+document.addEventListener("DOMContentLoaded", initializeMap);
