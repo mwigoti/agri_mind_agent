@@ -26,8 +26,21 @@ def home(request):
     return render(request, 'index.html')
 
 
+from django.shortcuts import render, redirect
+from .forms import MyUserCreationForm
+
 def register(request):
-    return render(request, 'register.html')
+    page = "register"
+    
+    if request.method == 'POST':
+        form = MyUserCreationForm(request.POST)
+        
+        if form.is_valid():
+            form.save()
+            return redirect('map')  # Redirect to a login page or another view
+    else:
+        form = MyUserCreationForm()
+    return render(request, 'register.html', {"form": form, "page":page})
 
 def login(request):
     return render(request, 'register.html')

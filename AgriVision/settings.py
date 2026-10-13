@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import os
 
+from django.conf import settings
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -186,5 +188,7 @@ CSRF_COOKIE_SECURE = True  # Ensure CSRF cookie is only sent over HTTPS
 
 HUGGINGFACE_TOKEN=os.getenv("HUGGINGFACE_TOKEN")
 
+
 AUTH_USER_MODEL = 'base.CustomUser'
+
 
