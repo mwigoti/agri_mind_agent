@@ -1,0 +1,176 @@
+/*======================
+   01. Google fonts
+========================*/
+@font-face {
+  font-family: Gilroy-Regular;
+  src: url(../webfonts/Gilroy-Regular.ttf);
+}
+
+@font-face {
+  font-family: Gilroy-Medium;
+  src: url(../webfonts/Gilroy-Medium.ttf);
+}
+
+@font-face {
+  font-family: Gilroy-Bold;
+  src: url(../webfonts/Gilroy-Bold.ttf);
+}
+
+/*======================
+   02. Basic css
+========================*/
+html,
+body,
+div,
+span,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+a,
+strong,
+i,
+ol,
+ul,
+li,
+form,
+label,
+footer,
+header,
+menu,
+nav,
+section {
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	line-height: 26px;
+	background: #5B549D;
+	color: #fff;
+	font-family: Gilroy-Regular;
+}
+
+ol,
+ul {
+	list-style: none;
+}
+
+a:hover {
+	text-decoration: none;
+}
+
+button:focus, input:focus, textarea:focus {
+	outline: 0;
+}
+
+
+.head-text {
+	font-size: 40px;
+	font-family: Gilroy-Bold;
+}
+
+.custom-nav {
+	border-bottom: transparent;
+	justify-content: center;
+	margin-top: 30px;
+}
+
+.custom-nav li a {
+    background-color: transparent !important;
+    border: transparent !important;
+    padding: 5px 20px;
+    color: #ffffff !important;
+    border-radius: 30px !important;
+}
+
+.custom-nav li a.active {
+    background: linear-gradient(270deg, #000000 0%, #467 100%);
+    box-shadow: 0px 15px 30px rgb(20 102 204 / 16%);
+    color: #ffffff;
+}
+
+.price-box {
+	 width: 300px;
+    margin: 60px auto auto auto;
+}
+
+.price-box h2 {
+    font-size: 35px;
+    font-family: Gilroy-Bold;
+} 
+
+.price-box h2 span {
+	font-size: 16px;
+}
+
+.price-box h3 {
+    font-size: 26px;
+    margin-top: 20px;
+    font-family: Gilroy-Medium;
+}
+
+.price-box p {
+    font-size: 14px;
+    line-height: 20px;
+    margin-top: 15px;
+}
+
+.price-box ul li {
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.price-box ul li i {
+	margin-right: 10px;
+}
+
+.price-btn {
+    background: rgba(254, 154, 26, 0.1);
+    border-radius: 32px;
+    padding: 15px 60px;
+    display: inline-block;
+    color: #FE9A1A;
+    font-family: 'Gilroy-Bold';
+    -webkit-transition: .3s;
+    -o-transition: .3s;
+    transition: .3s;
+    margin-top: 20px;
+}
+
+.price-btn:hover {
+	background: #FE9A1A;
+	color: #ffffff;
+}
+
+.price-middle-box {
+    background: linear-gradient(262.63deg, #FE9A1A 0%, #FF1E74 100%);
+    border-radius: 32px;
+    padding: 60px 30px 40px 30px;
+}
+
+.most-popular {
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    padding: 10px 15px;
+    background: #ffffff;
+    color: #FE9A1A;
+    border-radius: 30px;
+    font-size: 14px;
+    line-height: 16px;
+    text-transform: uppercase;
+}
+
+.price-middle-box .price-btn {
+	background: #ffffff;
+	color: #000000;
+}
+
+.price-middle-box .price-btn:hover {
+	background: #FE9A1A;
+	color: #ffffff;
+}
