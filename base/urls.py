@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import models
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -12,5 +13,7 @@ urlpatterns = [
     path('weather/', views.weather, name='weather'),
     path('upgrade/', views.upgrade, name="upgrade"),
     path('login/', views.login, name="login"),
-    path('pricing/', views.pricing, name="pricing")
+    path('pricing/', views.pricing, name="pricing"),
+    path('field/<int:id>', views.pricing, name="pricing")
+
 ]
