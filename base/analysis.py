@@ -428,6 +428,8 @@ class IntegratedSoilAnalyzer:
             if elapsed < self.min_request_interval:
                 time.sleep(self.min_request_interval - elapsed)
         self.last_request_time = datetime.now()
+        
+    
 
     def _generate_concise_prompt(self, combined_data: Dict[str, Any]) -> str:
         """Generate a more concise prompt to reduce token usage"""
@@ -465,14 +467,17 @@ Provide:
 4. Irrigation strategy based on water retention and precipitation
 
 
-Keep analysis detailed and practical for sustainable farming."""
-            
+Keep analysis CONCISE and practical for sustainable farming."""
+
+from typing import Dict, Optional, Any
+
+class DataExtractor:
     @staticmethod
-    def _extract_analysis(result: Any) -> str:
+    def extract_analysis(result: Any) -> str:
         """Extract and clean analysis from HuggingFace chat completions response"""
         print(f"DEBUG: Extracting analysis from result type: {type(result)}")
         raw_text = ''
-
+        
         # Handle the chat completions response format
         if isinstance(result, dict):
             if 'choices' in result and result['choices']:
@@ -485,19 +490,241 @@ Keep analysis detailed and practical for sustainable farming."""
                 raw_text = result['generated_text']
             elif 'content' in result:
                 raw_text = result['content']
-
         elif isinstance(result, list) and result:
             if isinstance(result[0], dict):
                 if 'generated_text' in result[0]:
                     raw_text = result[0]['generated_text']
                 elif 'message' in result[0]:
                     raw_text = result[0]['message'].get('content', '')
+                else:
+                    raw_text = str(result[0])
             else:
-                raw_text = str(result[0])
-        else:
-            raw_text = str(result)
-
+                raw_text = str(result)
+        
         # Clean up unwanted characters like '#' and '*'
         cleaned_text = re.sub(r'[#*]', '', raw_text)
         return cleaned_text.strip()
+
+    @staticmethod
+    def extract_soil_data(analysis_text: str) -> Dict[str, Optional[float]]:
+        """
+        Extract soil composition and nutrient data from analysis text using regex
+        """
+        if not analysis_text:
+            return {}
+        
+        # Make text lowercase for easier matching
+        text = analysis_text.lower()
+        
+        # Dictionary to store extracted values
+        extracted_data = {}
+        
+        # Regex patterns for soil composition (%)
+        patterns = {
+            # Sand patterns - various formats
+            'sand': [
+                r'sand[:\s]*(\d+\.?\d*)%?',
+                r'sand\s*content[:\s]*(\d+\.?\d*)%?',
+                r'(\d+\.?\d*)%?\s*sand',
+                r'-\s*sand[:\s]*(\d+\.?\d*)%?'
+            ],
+            
+            # Clay patterns
+            'clay': [
+                r'clay[:\s]*(\d+\.?\d*)%?',
+                r'clay\s*content[:\s]*(\d+\.?\d*)%?',
+                r'(\d+\.?\d*)%?\s*clay',
+                r'-\s*clay[:\s]*(\d+\.?\d*)%?'
+            ],
+            
+            # Silt patterns
+            'silt': [
+                r'silt[:\s]*(\d+\.?\d*)%?',
+                r'silt\s*content[:\s]*(\d+\.?\d*)%?',
+                r'(\d+\.?\d*)%?\s*silt',
+                r'-\s*silt[:\s]*(\d+\.?\d*)%?'
+            ],
+            
+            # pH patterns
+            'ph': [
+                r'ph[:\s]*(\d+\.?\d*)',
+                r'ph\s*level[:\s]*(\d+\.?\d*)',
+                r'acidity[:\s]*(\d+\.?\d*)',
+                r'alkalinity[:\s]*(\d+\.?\d*)'
+            ],
+            
+            # Nitrogen patterns (ppm, mg/kg, %)
+            'nitrogen': [
+                r'nitrogen[:\s]*(\d+\.?\d*)',
+                r'n[:\s]*(\d+\.?\d*)\s*(?:ppm|mg/kg|%)',
+                r'total\s*nitrogen[:\s]*(\d+\.?\d*)',
+                r'-\s*nitrogen[:\s]*(\d+\.?\d*)'
+            ],
+            
+            # Organic Carbon/Matter patterns
+            'organic_carbon': [
+                r'organic\s*carbon[:\s]*(\d+\.?\d*)%?',
+                r'soc[:\s]*(\d+\.?\d*)%?',
+                r'carbon\s*content[:\s]*(\d+\.?\d*)%?',
+                r'organic\s*matter[:\s]*(\d+\.?\d*)%?'
+            ],
+            
+            # CEC (Cation Exchange Capacity) patterns
+            'cec': [
+                r'cec[:\s]*(\d+\.?\d*)',
+                r'cation\s*exchange\s*capacity[:\s]*(\d+\.?\d*)',
+                r'exchange\s*capacity[:\s]*(\d+\.?\d*)'
+            ],
+            
+            # Phosphorus patterns
+            'phosphorus': [
+                r'phosphorus[:\s]*(\d+\.?\d*)',
+                r'p[:\s]*(\d+\.?\d*)\s*(?:ppm|mg/kg)',
+                r'available\s*phosphorus[:\s]*(\d+\.?\d*)'
+            ],
+            
+            # Potassium patterns
+            'potassium': [
+                r'potassium[:\s]*(\d+\.?\d*)',
+                r'k[:\s]*(\d+\.?\d*)\s*(?:ppm|mg/kg)',
+                r'available\s*potassium[:\s]*(\d+\.?\d*)'
+            ]
+        }
+        
+        # Extract values using patterns
+        for data_type, pattern_list in patterns.items():
+            for pattern in pattern_list:
+                match = re.search(pattern, text)
+                if match:
+                    try:
+                        extracted_data[data_type] = float(match.group(1))
+                        break  # Use first successful match
+                    except (ValueError, IndexError):
+                        continue
+        
+        return extracted_data
+
+    @staticmethod
+    def extract_climate_data(analysis_text: str) -> Dict[str, Optional[float]]:
+        """
+        Extract climate data from analysis text using regex
+        """
+        if not analysis_text:
+            return {}
+        
+        text = analysis_text.lower()
+        extracted_data = {}
+        
+        patterns = {
+            # Temperature patterns
+            'avg_temp': [
+                r'average\s*temperature[:\s]*(\d+\.?\d*)',
+                r'mean\s*temperature[:\s]*(\d+\.?\d*)',
+                r'temp[:\s]*(\d+\.?\d*)°?c'
+            ],
+            
+            'max_temp': [
+                r'maximum\s*temperature[:\s]*(\d+\.?\d*)',
+                r'max\s*temp[:\s]*(\d+\.?\d*)°?c',
+                r'highest\s*temperature[:\s]*(\d+\.?\d*)'
+            ],
+            
+            'min_temp': [
+                r'minimum\s*temperature[:\s]*(\d+\.?\d*)',
+                r'min\s*temp[:\s]*(\d+\.?\d*)°?c',
+                r'lowest\s*temperature[:\s]*(\d+\.?\d*)'
+            ],
+            
+            # Rainfall/Precipitation patterns
+            'rainfall': [
+                r'rainfall[:\s]*(\d+\.?\d*)',
+                r'precipitation[:\s]*(\d+\.?\d*)',
+                r'annual\s*rainfall[:\s]*(\d+\.?\d*)',
+                r'rain[:\s]*(\d+\.?\d*)\s*mm'
+            ],
+            
+            # Humidity patterns
+            'humidity': [
+                r'humidity[:\s]*(\d+\.?\d*)%?',
+                r'relative\s*humidity[:\s]*(\d+\.?\d*)%?'
+            ]
+        }
+        
+        for data_type, pattern_list in patterns.items():
+            for pattern in pattern_list:
+                match = re.search(pattern, text)
+                if match:
+                    try:
+                        extracted_data[data_type] = float(match.group(1))
+                        break
+                    except (ValueError, IndexError):
+                        continue
+        
+        return extracted_data
+
+    @staticmethod
+    def extract_recommendations(analysis_text: str) -> str:
+        """
+        Extract recommendations section from analysis text
+        """
+        if not analysis_text:
+            return ''
+        
+        # Split into lines for processing
+        lines = analysis_text.split('\n')
+        recommendations = []
+        in_recommendations_section = False
+        
+        # Pattern matching for recommendation sections
+        recommendation_indicators = [
+            r'^1\.\s*top\s*\d+\s*suitable\s*crops',
+            r'^2\.\s*climate\s*risks',
+            r'^3\.\s*planting\s*timing',
+            r'^4\.\s*irrigation\s*strategy',
+            r'recommendations?:',
+            r'suggested?\s*crops?:',
+            r'best\s*practices?:'
+        ]
+        
+        for line in lines:
+            line_lower = line.lower().strip()
+            
+            # Check if this line starts a recommendations section
+            for pattern in recommendation_indicators:
+                if re.match(pattern, line_lower):
+                    in_recommendations_section = True
+                    recommendations.append(line)
+                    break
+            else:
+                if in_recommendations_section:
+                    # Continue adding lines until we hit a clear section break
+                    if line.strip() == '' and len(recommendations) > 5:
+                        # Stop if we hit multiple empty lines (likely end of section)
+                        break
+                    recommendations.append(line)
+        
+        return '\n'.join(recommendations)
+
+# Usage example:
+def process_analysis_data(analysis_text: str) -> Dict[str, Any]:
+    """
+    Complete function to extract all relevant data from analysis text
+    """
+    extractor = DataExtractor()
     
+    # Extract soil data
+    soil_data = extractor.extract_soil_data(analysis_text)
+    
+    # Extract climate data
+    climate_data = extractor.extract_climate_data(analysis_text)
+    
+    # Extract recommendations
+    recommendations = extractor.extract_recommendations(analysis_text)
+    
+    return {
+        'soil_properties': soil_data,
+        'climate_conditions': climate_data,
+        'recommendations': recommendations,
+        'raw_analysis': analysis_text
+    }
+
