@@ -204,14 +204,14 @@ def analyze_field_view(request, id):
 
         result = analyzer.analyze_combined_data(id, huggingface_token)
 
-        return JsonResponse(result)
+        return render(request, 'analysis.html', {"result": result, "id": id})
     except Exception as e:
         return JsonResponse({
             "success": False,
             "error": str(e)
 
         }, status=500)
-    
+        
 def load(request):
     return render(request, 'load.html')
 
@@ -242,3 +242,4 @@ def create_payment_intent(request):
             return JsonResponse({"error": str(e)}, status=400)
 def payment_success(request):
     return render(request, 'payment_success.html')
+

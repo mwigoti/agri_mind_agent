@@ -1,11 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Field Analysis</title>
 </head>
 <body>
-    {{ analysis }}
+  <p id="result">Loading...</p>
+
+  <script>
+    async function fetchSoilAnalysis() {
+        const resultElement = document.getElementById('result');
+        const fieldId = "{{ id|escapejs }}"; // Properly escape Django variable
+        
+        if (!fieldId) {
+            resultElement.textContent = "Error: Field ID not provided!";
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/analyze-field/${fieldId}/`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ERROR status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                resultElement.textContent = JSON.stringify(data, null, 2);
+            } else {
+                resultElement.textContent = `Error: ${data.error || 'Unknown error occurred'}`;
+            }
+        } catch (error) {
+            resultElement.textContent = `Error: ${error.message}`;
+        }
+    }
+
+    // Fetch analysis when page loads
+    fetchSoilAnalysis();
+  </script>
 </body>
 </html>
