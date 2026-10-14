@@ -303,67 +303,162 @@
 
     <script>
         // Store chart instances
-        let nutrientChart = null;
-        let compositionChart = null;
+let nutrientChart = null;
+let compositionChart = null;
 
-        // --- Configuration for Charts ---
-        const chartOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    labels: { color: '#e8eaed', font: { size: 14 } }
-                }
-            },
-            scales: {
-                y: {
-                    ticks: { color: '#cbd5e0', font: { size: 12 } },
-                    grid: { color: 'rgba(203, 213, 224, 0.1)' }
-                },
-                x: {
-                    ticks: { color: '#cbd5e0', font: { size: 12 } },
-                    grid: { color: 'rgba(203, 213, 224, 0.1)' }
-                }
+// --- Configuration for Charts ---
+const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            labels: { color: '#e8eaed', font: { size: 14 } }
+        }
+    },
+    scales: {
+        y: {
+            ticks: { color: '#cbd5e0', font: { size: 12 } },
+            grid: { color: 'rgba(203, 213, 224, 0.1)' }
+        },
+        x: {
+            ticks: { color: '#cbd5e0', font: { size: 12 } },
+            grid: { color: 'rgba(203, 213, 224, 0.1)' }
+        }
+    }
+};
+
+// --- Main Logic on Page Load ---
+document.addEventListener('DOMContentLoaded', function () {
+    // Fetch data asynchronously instead of embedding it directly
+    fetch(window.location.pathname, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Network response was not ok: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success && data.result) {
+            // Check if analysis is available
+            if (data.result.analysis) {
+                populatePage(data.result);
+            } else {
+                throw new Error('Analysis is not available. Please try again later.');
             }
-        };
+        } else {
+            throw new Error(data.error || 'Failed to retrieve analysis data.');
+        }
+    })
+    .catch(error => {
+        console.error("Failed to fetch analysis:", error);
+        displayError(error.message);
+    });
 
-        // --- Main Logic on Page Load ---
-        document.addEventListener('DOMContentLoaded', function () {
-            // Fetch data asynchronously instead of embedding it directly
-            fetch(window.location.pathname, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Network response was not ok: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success && data.result) {
-                    // Check if analysis is available
-                    if (data.result.analysis) {
-                        populatePage(data.result);
-                    } else {
-                        throw new Error('Analysis is not available. Please try again later.');
-                    }
-                } else {
-                    throw new Error(data.error || 'Failed to retrieve analysis data.');
-                }
-            })
-            .catch(error => {
-                console.error("Failed to fetch analysis:", error);
-                displayError(error.message);
-            });
+    setupActionButtons();
+});
 
-            setupActionButtons();
-        });
+// --- Helper Functions ---
 
-        // --- Data Population Functions ---
+/**
+ * Display text content with fallback
+ */
+function displayText(element, text, fallback = 'No data available.') {
+    if (!element) return;
+    
+    element.innerHTML = '';
+    
+    if (text && text.trim()) {
+        // Format the text for better readability
+        const formattedText = formatAnalysisText(text);
+        element.innerHTML = formattedText;
+    } else {
+        element.innerHTML = `<p style="color: #94a3b8; font-style: italic;">${fallback}</p>`;
+    }
+}
+
+/**
+ * Format analysis text for better display
+ */
+function formatAnalysisText(text) {
+    if (!text) return '';
+    
+    // Convert markdown-style headers to HTML
+    let formatted = text
+        .replace(/### (.*?)(\n|$)/g, '<h3 style="color: #4ade80; margin-top: 1rem; margin-bottom: 0.5rem;">$1</h3>')
+        .replace(/## (.*?)(\n|$)/g, '<h2 style="color: #4ade80; margin-top: 1.5rem; margin-bottom: 0.75rem;">$2</h2>')
+        .replace(/# (.*?)(\n|$)/g, '<h1 style="color: #4ade80; margin-top: 2rem; margin-bottom: 1rem;">$1</h1>');
+    
+    // Convert **bold** to <strong>
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #a3e635;">$1</strong>');
+    
+    // Convert bullet points
+    formatted = formatted.replace(/^\s*[-*]\s+(.+)$/gm, '<li style="margin-left: 1.5rem; margin-bottom: 0.5rem;">$1</li>');
+    
+    // Wrap consecutive <li> in <ul>
+    formatted = formatted.replace(/(<li[^>]*>.*?<\/li>\s*)+/gs, '<ul style="list-style-type: disc; margin: 0.5rem 0;">$&</ul>');
+    
+    // Convert numbered lists
+    formatted = formatted.replace(/^\s*(\d+)\.\s+(.+)$/gm, '<li style="margin-left: 1.5rem; margin-bottom: 0.5rem;">$2</li>');
+    formatted = formatted.replace(/(<li[^>]*>.*?<\/li>\s*)+/gs, function(match) {
+        if (match.includes('margin-left')) {
+            return '<ol style="list-style-type: decimal; margin: 0.5rem 0;">' + match + '</ol>';
+        }
+        return match;
+    });
+    
+    // Convert line breaks to <br>
+    formatted = formatted.replace(/\n\n/g, '<br><br>');
+    formatted = formatted.replace(/\n/g, '<br>');
+    
+    return formatted;
+}
+
+/**
+ * Extract recommendations from analysis text
+ */
+function extractRecommendations(analysisText) {
+    if (!analysisText) return '';
+    
+    const lines = analysisText.split('\n');
+    const recommendations = [];
+    let inRecommendationsSection = false;
+    
+    const recommendationIndicators = [
+        /^1\.\s*top\s*\d+\s*suitable\s*crops/i,
+        /^2\.\s*climate\s*risks/i,
+        /^3\.\s*planting\s*timing/i,
+        /^4\.\s*irrigation\s*strategy/i,
+        /recommendations?:/i,
+        /suggested?\s*crops?:/i,
+        /best\s*practices?:/i
+    ];
+    
+    for (const line of lines) {
+        const lineLower = line.toLowerCase().trim();
         
-        // Enhanced JavaScript functions for your HTML template
+        // Check if this line starts a recommendations section
+        const isRecommendationStart = recommendationIndicators.some(pattern => pattern.test(lineLower));
+        
+        if (isRecommendationStart) {
+            inRecommendationsSection = true;
+            recommendations.push(line);
+        } else if (inRecommendationsSection) {
+            // Continue adding lines until we hit multiple empty lines
+            if (line.trim() === '' && recommendations.length > 5) {
+                break;
+            }
+            recommendations.push(line);
+        }
+    }
+    
+    return recommendations.length > 0 ? recommendations.join('\n') : analysisText;
+}
 
-// Enhanced data extraction function
+/**
+ * Extract data from analysis text using regex patterns
+ */
 function extractDataFromAnalysis(analysisText) {
     if (!analysisText) return {};
     
@@ -397,7 +492,7 @@ function extractDataFromAnalysis(analysisText) {
         ],
         nitrogen: [
             /nitrogen[:\s]*(\d+\.?\d*)/,
-            /n[:\s]*(\d+\.?\d*)\s*(?:ppm|mg\/kg|%)/,
+            /n[:\s]*(\d+\.?\d*)\s*(?:ppm|mg\/kg|%|g\/kg)/,
             /total\s*nitrogen[:\s]*(\d+\.?\d*)/,
             /-\s*nitrogen[:\s]*(\d+\.?\d*)/
         ],
@@ -414,12 +509,12 @@ function extractDataFromAnalysis(analysisText) {
         ],
         phosphorus: [
             /phosphorus[:\s]*(\d+\.?\d*)/,
-            /p[:\s]*(\d+\.?\d*)\s*(?:ppm|mg\/kg)/,
+            /p[:\s]*(\d+\.?\d*)\s*(?:ppm|mg\/kg|g\/kg)/,
             /available\s*phosphorus[:\s]*(\d+\.?\d*)/
         ],
         potassium: [
             /potassium[:\s]*(\d+\.?\d*)/,
-            /k[:\s]*(\d+\.?\d*)\s*(?:ppm|mg\/kg)/,
+            /k[:\s]*(\d+\.?\d*)\s*(?:ppm|mg\/kg|g\/kg)/,
             /available\s*potassium[:\s]*(\d+\.?\d*)/
         ]
     };
@@ -441,7 +536,9 @@ function extractDataFromAnalysis(analysisText) {
     return extractedData;
 }
 
-// Updated populatePage function
+/**
+ * Populate page with analysis data
+ */
 function populatePage(data) {
     const resultDiv = document.getElementById('result');
     const recommendationDiv = document.getElementById('recommendation-list');
@@ -470,22 +567,25 @@ function populatePage(data) {
     generateCharts(mergedData);
 }
 
-// Enhanced updateFieldInformation function
+/**
+ * Update field information section
+ */
 function updateFieldInformation(data) {
     const fieldInfoDiv = document.getElementById('field-details');
     if (!fieldInfoDiv) return;
 
     const soil = data.soil_properties || {};
     const climate = (data.climate_conditions && data.climate_conditions.summary) || {};
+    const fieldInfo = data.field_info || {};
 
     // Use extracted data or fallback to original data
     const items = {
-        "Field ID": data.field_id || "{{ id }}", 
-        "pH": soil.ph?.toFixed(1) || 'N/A',
-        "Area": data.area ? `${data.area} ha` : "{{ area }} ha",
-        "Sand %": soil.sand?.toFixed(1) || 'N/A',
-        "Clay %": soil.clay?.toFixed(1) || 'N/A',
-        "Nitrogen": soil.nitrogen?.toFixed(2) || 'N/A'
+        "Field Name": fieldInfo.name || "Unknown",
+        "Area (ha)": fieldInfo.area ? fieldInfo.area.toFixed(2) : 'N/A',
+        "pH Level": soil.ph ? soil.ph.toFixed(1) : 'N/A',
+        "Sand %": soil.sand ? soil.sand.toFixed(1) : 'N/A',
+        "Clay %": soil.clay ? soil.clay.toFixed(1) : 'N/A',
+        "Silt %": soil.silt ? soil.silt.toFixed(1) : 'N/A'
     };
     
     let html = '';
@@ -499,27 +599,30 @@ function updateFieldInformation(data) {
     fieldInfoDiv.innerHTML = html;
 }
 
-// Enhanced generateCharts function
+/**
+ * Generate charts for soil composition and nutrients
+ */
 function generateCharts(data) {
+    // Destroy existing charts if they exist
     if (nutrientChart) nutrientChart.destroy();
     if (compositionChart) compositionChart.destroy();
 
     const soil = data.soil_properties || {};
     
-    // Soil Composition Chart
+    // Soil Composition Chart (Doughnut)
     const compCtx = document.getElementById('compositionChart')?.getContext('2d');
     if (compCtx) {
-        const sand = soil.sand || 0;
-        const clay = soil.clay || 0;
-        const silt = soil.silt || 0;
+        const sand = getNumericValue(soil, 'sand', 0);
+        const clay = getNumericValue(soil, 'clay', 0);
+        const silt = getNumericValue(soil, 'silt', 0);
         
-        // Ensure values add up to 100% if they're all present
+        // Calculate percentages if total is not 100
         const total = sand + clay + silt;
         const normalizedData = total > 0 ? [
             (sand / total) * 100,
             (clay / total) * 100,
             (silt / total) * 100
-        ] : [sand, clay, silt];
+        ] : [33.3, 33.3, 33.3]; // Default if no data
         
         compositionChart = new Chart(compCtx, {
             type: 'doughnut',
@@ -533,15 +636,17 @@ function generateCharts(data) {
                 }]
             },
             options: { 
-                ...chartOptions, 
-                scales: {},
+                responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
-                    ...chartOptions.plugins,
+                    legend: {
+                        labels: { color: '#e8eaed', font: { size: 12 } }
+                    },
                     title: {
                         display: true,
-                        text: 'Soil Composition',
+                        text: 'Soil Texture Composition',
                         color: '#e8eaed',
-                        font: { size: 16 }
+                        font: { size: 14, weight: 'bold' }
                     }
                 }
             }
@@ -552,17 +657,23 @@ function generateCharts(data) {
     const nutrientCtx = document.getElementById('nutrientChart')?.getContext('2d');
     if (nutrientCtx) {
         const nutrients = {
-            'Nitrogen': soil.nitrogen || 0,
-            'Phosphorus': soil.phosphorus || 0,
-            'Potassium': soil.potassium || 0,
-            'Organic Carbon': soil.organic_carbon || soil.soc || 0,
-            'CEC': soil.cec || 0
+            'N (g/kg)': getNumericValue(soil, 'nitrogen') || getNumericValue(soil, 'total_nitrogen'),
+            'P (g/kg)': getNumericValue(soil, 'phosphorus') || getNumericValue(soil, 'total_phosphorus'),
+            'K (g/kg)': getNumericValue(soil, 'potassium') || getNumericValue(soil, 'total_potassium'),
+            'Org C (%)': getNumericValue(soil, 'organic_carbon') || getNumericValue(soil, 'soc'),
+            'CEC': getNumericValue(soil, 'cec')
         };
         
         // Filter out zero values for cleaner display
         const nonZeroNutrients = Object.entries(nutrients).filter(([_, value]) => value > 0);
-        const labels = nonZeroNutrients.map(([label, _]) => label);
-        const values = nonZeroNutrients.map(([_, value]) => value);
+        
+        // If no data, show placeholder
+        const labels = nonZeroNutrients.length > 0 
+            ? nonZeroNutrients.map(([label, _]) => label)
+            : ['N', 'P', 'K', 'Org C', 'CEC'];
+        const values = nonZeroNutrients.length > 0 
+            ? nonZeroNutrients.map(([_, value]) => value)
+            : [0, 0, 0, 0, 0];
         
         nutrientChart = new Chart(nutrientCtx, {
             type: 'bar',
@@ -571,18 +682,34 @@ function generateCharts(data) {
                 datasets: [{
                     label: 'Value',
                     data: values,
-                    backgroundColor: ['#4ade80', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6']
+                    backgroundColor: ['#4ade80', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6'],
+                    borderColor: '#1a2332',
+                    borderWidth: 2
                 }]
             },
             options: {
-                ...chartOptions,
+                responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
-                    ...chartOptions.plugins,
+                    legend: {
+                        display: false
+                    },
                     title: {
                         display: true,
-                        text: 'Key Nutrient Levels',
+                        text: 'Key Soil Nutrients',
                         color: '#e8eaed',
-                        font: { size: 16 }
+                        font: { size: 14, weight: 'bold' }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#cbd5e0', font: { size: 11 } },
+                        grid: { color: 'rgba(203, 213, 224, 0.1)' }
+                    },
+                    x: {
+                        ticks: { color: '#cbd5e0', font: { size: 10 } },
+                        grid: { display: false }
                     }
                 }
             }
@@ -590,33 +717,53 @@ function generateCharts(data) {
     }
 }
 
-// Helper function to safely get numeric values
+/**
+ * Helper function to safely get numeric values
+ */
 function getNumericValue(obj, key, fallback = 0) {
+    if (!obj) return fallback;
     const value = obj[key];
     return (typeof value === 'number' && !isNaN(value)) ? value : fallback;
 }
 
-// Enhanced error handling
+/**
+ * Display error message
+ */
 function displayError(errorMessage) {
     const resultDiv = document.getElementById('result');
     resultDiv.classList.remove('loading');
     resultDiv.classList.add('error');
     resultDiv.innerHTML = `
-        <div style="text-align: center;">
-            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #f87171; margin-bottom: 1rem;"></i>
-            <h3>Analysis Error</h3>
-            <p>${errorMessage}</p>
-            <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #4ade80; border: none; border-radius: 5px; cursor: pointer;">
-                Retry Analysis
+        <div style="text-align: center; padding: 2rem;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f87171; margin-bottom: 1rem;"></i>
+            <h3 style="color: #f87171; margin-bottom: 1rem;">Analysis Error</h3>
+            <p style="color: #cbd5e0; margin-bottom: 1.5rem;">${errorMessage}</p>
+            <button onclick="location.reload()" style="padding: 0.75rem 1.5rem; background: #4ade80; color: #0f1419; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem;">
+                <i class="fas fa-redo"></i> Retry Analysis
             </button>
         </div>
     `;
 }
-        
-        function setupActionButtons() {
-            document.getElementById('download-report')?.addEventListener('click', () => alert('Download feature coming soon.'));
-            document.getElementById('share-report')?.addEventListener('click', () => alert('Share feature coming soon.'));
-        }
+
+/**
+ * Setup action buttons
+ */
+function setupActionButtons() {
+    const downloadBtn = document.getElementById('download-report');
+    const shareBtn = document.getElementById('share-report');
+    
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', () => {
+            alert('Download feature coming soon. This will generate a PDF report of your field analysis.');
+        });
+    }
+    
+    if (shareBtn) {
+        shareBtn.addEventListener('click', () => {
+            alert('Share feature coming soon. This will allow you to share your analysis via email or link.');
+        });
+    }
+}
     </script>
 </body>
 </html>
