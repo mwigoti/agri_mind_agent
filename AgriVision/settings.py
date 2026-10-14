@@ -192,4 +192,9 @@ HUGGINGFACE_TOKEN=os.getenv("HUGGINGFACE_TOKEN")
 
 AUTH_USER_MODEL = 'base.CustomUser'
 
+from decouple import config
+
+STRIPE_PUBLIC_KEY=config("STRIPE_PUBLIC_KEY")
+STRIPE_SECRET_KEY=config("STRIPE_SECRET_KEY")
+
 

@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.contrib.auth import authenticate, login
 from django.shortcuts import render, redirect
 from django.contrib import messages
+import stripe.error
 from .models import *
 from django.core.mail import send_mail, BadHeaderError
 from rest_framework.views import APIView
@@ -217,3 +218,27 @@ def load(request):
 
 def res(request):
     return render(request, 'result.html')
+
+import stripe
+import json
+
+stripe.api_key= settings.STRIPE_SECRET_KEY
+
+def create_payment_intent(request):
+    if request.method =="POST":
+        try:
+            data = json.loads(request.body)
+            amount = int(float(data["amount"]))
+
+            intent = stripe.PaymentIntent.create(
+                amount=amount,
+                currency="usd",
+                payment_method_types=["card"]
+            )
+
+            return JsonResponse({"clientSecret": intent.client_secret})
+        
+        except stripe.error.StripeError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+def payment_success(request):
+    return render(request, 'payment_success.html')
