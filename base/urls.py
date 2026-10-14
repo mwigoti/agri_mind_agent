@@ -10,6 +10,7 @@ urlpatterns = [
     path('research/', research, name='research'),
     path('register/', register, name='register'),
     path('map/', map, name='map'),
+    path('health/', health, name='health')
     
     # Auth and pricing
     path('login/', login_view, name="login"),
