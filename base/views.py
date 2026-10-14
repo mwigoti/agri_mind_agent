@@ -1,13 +1,13 @@
-
 from django.shortcuts import render, redirect
 from django.core.mail import send_mail
-from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.conf import settings
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login
-from django.shortcuts import render, redirect
-from django.contrib import messages
+import json
+from django.utils.decorators import method_decorator
+from django.contrib.gis.geos import GEOSGeometry
+import logging
 import stripe.error
 from .models import *
 from django.core.mail import send_mail, BadHeaderError
@@ -28,8 +28,6 @@ CustomUser = get_user_model()
 def home(request):
     return render(request, 'index.html')
 
-
-from django.shortcuts import render, redirect
 from .forms import MyUserCreationForm
 
 def register(request):
@@ -182,7 +180,6 @@ class SaveFieldView(APIView):
            
 # Retrieve fields as geojson from db
 
-from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .models import Field
 from .serializers import FieldGeoJSONSerializer
@@ -192,13 +189,7 @@ def get_fields_geojson(request):
     fields = Field.objects.filter(owner=request.user)  # Query all fields
     serializer = FieldGeoJSONSerializer(fields, many=True)  # Serialize data
     return Response(serializer.data) 
-    rust_url = "http://localhost:8001/receive-data"
-    try:
-        rust_response = requests.post(rust_url, json=serializer.data).json()
-        rust_response.raise_for_status()
-        return Response({"status": "Data sent to Rust", "rust_reply": rust_response.json()})
-    except requests.exceptions.RequestException as e:
-        return Response({"error": str(e)}, status=500)
+    
 @method_decorator(csrf_exempt, name='dispatch')
 class DeleteFieldView(APIView):
     def delete(self, request, id):
@@ -206,8 +197,6 @@ class DeleteFieldView(APIView):
         field.delete()
         return Response({'message': 'Field deleted successfully'}, status=status.HTTP_200_OK)
 
-
-from django.http import JsonResponse
 from django.shortcuts import render
 
 def analyze_field_view(request, id):
@@ -238,7 +227,7 @@ def res(request):
 
 # views.py
 import requests
-from django.http import JsonResponse
+
 
 def check_analysis_engine(request):
     try:
@@ -248,20 +237,7 @@ def check_analysis_engine(request):
         return JsonResponse({"error": str(e)})
 # Add this to your views.py
 
-import requests
-import json
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.contrib.gis.geos import GEOSGeometry
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from .models import Field
-from .serializers import FieldGeoJSONSerializer
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -442,17 +418,4 @@ def check_vra_engine_status(request):
             "message": f"Error checking service: {str(e)}"
         })
 
-# Add these URL patterns to your urls.py:
-"""
-from django.urls import path
-from . import views
 
-urlpatterns = [
-    # ... your existing URLs ...
-    
-    # VRA Analysis URLs
-    path('api/vra-analysis/<int:field_id>/', views.VRAAnalysisView.as_view(), name='vra_analysis_api'),
-    path('vra-analysis/<int:field_id>/', views.vra_analysis_page, name='vra_analysis_page'),
-    path('api/vra-engine-status/', views.check_vra_engine_status, name='vra_engine_status'),
-]
-"""
