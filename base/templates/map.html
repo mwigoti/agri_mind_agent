@@ -260,13 +260,13 @@
                 const name = e.target.dataset.name;
                 if (confirm(`Are you sure you want to delete ${name}?`)) deleteField(id);
             } else if (e.target.classList.contains('analyze-btn')) {
-                window.location.href = `/api/analyze-field/${e.target.dataset.id}/`;
+                window.location.href = `/api/analyze-field/${e.target.dataset.id}`;
             }
         });
 
         vraTableBody.addEventListener('click', e => {
             if (e.target.classList.contains('analyze-vra-btn')) {
-                window.location.href = '/vra_pageanalysis';
+                window.location.href = `/vra_pageanalysis/${e.target.dataset.id}/`;
             }
         });
 

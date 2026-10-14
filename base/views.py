@@ -582,5 +582,44 @@ def check_vra_engine_status(request):
         })
         
         
-def vra_page(request):
-    return render(request, 'vra_analysis.html')
+@login_required(login_url="login")
+def vra_page(request, field_id=None):
+    """
+    VRA Analysis page that properly handles field ID
+    """
+    try:
+        if field_id:
+            # Get the specific field
+            field = get_object_or_404(Field, id=field_id, owner=request.user)
+            context = {
+                'field_id': field.id,
+                'field_name': field.name,
+                'field_area': field.area,
+            }
+        else:
+            # No field ID provided - show field selection or redirect
+            user_fields = Field.objects.filter(owner=request.user)
+            if user_fields.count() == 1:
+                # If user has only one field, use that
+                field = user_fields.first()
+                return redirect('vra-page', field_id=field.id)
+            elif user_fields.count() > 1:
+               
+                context = {
+                    'fields': user_fields,
+                    'show_field_selector': True
+                }
+            else:
+                # No fields - redirect to map
+                messages.error(request, 'Please create a field first before running VRA analysis')
+                return redirect('map')
+        
+        return render(request, 'vra_analysis.html', context)
+        
+    except Field.DoesNotExist:
+        messages.error(request, 'Field not found or access denied')
+        return redirect('map')
+    except Exception as e:
+        logger.error(f"Error in vra_page: {str(e)}")
+        messages.error(request, 'An error occurred loading the VRA analysis page')
+        return redirect('map')

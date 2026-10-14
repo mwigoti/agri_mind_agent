@@ -1,53 +1,63 @@
 [package]
 name = "vra-analysis-engine"
-version = "2.0.0"
+version = "4.0.0"
 edition = "2021"
-description = "Variable Rate Application Analysis Engine for Precision Agriculture"
+description = "Enhanced Variable Rate Application Analysis Engine with Streaming K-means and CRS Support"
 authors = ["Your Name <your.email@example.com>"]
+license = "MIT"
+repository = "https://github.com/yourusername/vra-analysis-engine"
+keywords = ["agriculture", "precision", "satellite", "clustering", "geospatial"]
+categories = ["science", "agriculture", "geospatial"]
 
 [dependencies]
 # Web framework
 actix-web = "4.4"
-tokio = { version = "1.0", features = ["full"] }
-gdal = "0.16"
+tokio = { version = "1.35", features = ["full", "rt-multi-thread", "macros"] }
 
-futures-util = "0.3"
+proj = "=0.27.0"  # or earlier if needed
+
+
+# Geospatial and raster processing
+gdal = { version = "0.16", features = ["array"] }
+
+
+# Machine learning and clustering
 linfa = "0.7"
 linfa-clustering = "0.7"
-fastrand = "2.0"
+fastrand = "2.1"  # Updated version
+ndarray = { version = "0.15", features = ["serde"] }
 
-
-
-
-
-
-tempfile = "3.0"
+# Async utilities
 futures = "0.3"
+futures-util = "0.3"
+tokio-stream = "0.1"  # Added for better streaming support
 
-# Serialization
-serde = { version = "1.0", features = ["derive"] }
+# File and temporary storage
+tempfile = "3.8"
+
+# Serialization and data formats
+serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 
-#HTTP client
-reqwest = { version = "0.11", features = ["stream", "json"] }
+# HTTP client with streaming support
+reqwest = { version = "0.11", features = ["stream", "json", "rustls-tls"], default-features = false }
 
-
-
-# Geospatial processing
-geo = "0.26"
+# Geospatial data structures and processing
+geo = "0.27"  # Updated version
 geo-types = "0.7"
-geojson = "0.24"
+geojson = { version = "0.24", features = ["geo-types"] }
 
-# Encoding
+# Encoding and data conversion
 base64 = "0.21"
+bytes = "1.5"
 
-# Environment variables
+# Environment configuration
 dotenv = "0.15"
 
-# Date and time
-chrono = { version = "0.4", features = ["serde"] }
+# Date, time, and timezone handling
+chrono = { version = "0.4", features = ["serde", "clock"] }
 
-# Logging
+# Logging and monitoring
 log = "0.4"
 env_logger = "0.10"
 
@@ -55,30 +65,106 @@ env_logger = "0.10"
 thiserror = "1.0"
 anyhow = "1.0"
 
-# Optional: For more advanced image processing
-image = "0.24"
-ndarray = "0.15"
-bytes = "1.10.1"
+# Image processing and visualization
+image = { version = "0.24", features = ["png", "jpeg"] }
 
-# Optional: For statistical calculations
-# statrs = "0.16"
+# Statistical calculations (optional but useful)
+statrs = "0.16"
+
+# Memory management and optimization
+rayon = "1.8"  # For parallel processing
+
+# Additional utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }  # For unique identifiers
+url = "2.4"  # For URL parsing and validation
+
+# Optional: Enhanced mathematical operations
+num-traits = "0.2"
+num-complex = "0.4"
+
+# Optional: Configuration management
+config = "0.13"  # For advanced configuration handling
+
+# Optional: Metrics and monitoring
+prometheus = { version = "0.13", optional = true }
+
+# Optional: Database connectivity (if you want to store results)
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid"], optional = true }
 
 [dev-dependencies]
 # Testing dependencies
 tokio-test = "0.4"
+criterion = { version = "0.5", features = ["html_reports"] }  # For benchmarking
+proptest = "1.4"  # For property-based testing
+mock_instant = "0.3"  # For time mocking in tests
 
 [[bin]]
 name = "vra-engine"
 path = "src/main.rs"
 
+[features]
+default = ["basic"]
+basic = []
+metrics = ["prometheus"]
+database = ["sqlx"]
+full = ["metrics", "database"]
+
 [profile.release]
 # Optimize for performance
 opt-level = 3
-lto = true
+lto = "fat"  # More aggressive link-time optimization
 codegen-units = 1
 panic = "abort"
+strip = true  # Remove debug symbols for smaller binary
+overflow-checks = false  # Disable overflow checks in release for performance
 
 [profile.dev]
 # Faster compilation for development
 opt-level = 0
 debug = true
+incremental = true
+
+[profile.test]
+# Optimize tests slightly
+opt-level = 1
+debug = true
+
+[profile.bench]
+# Optimize benchmarks
+opt-level = 3
+debug = false
+lto = true
+
+# Cargo configuration for better compilation
+[build]
+# Use all available CPU cores for compilation
+jobs = 0  # 0 means use all available cores
+
+# Package metadata for documentation
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+# Workspace configuration (if this becomes part of a larger project)
+[workspace]
+members = [
+    ".",
+    # Add other related crates here if needed
+]
+
+# Example configuration for containerization
+[package.metadata.docker]
+image = "rust:1.75-slim"
+expose = ["8001"]
+cmd = ["./target/release/vra-engine"]
+
+# Compilation optimization hints
+[target.'cfg(target_os = "linux")'.dependencies]
+# Linux-specific optimizations can go here
+
+[target.'cfg(target_os = "windows")'.dependencies]
+# Windows-specific dependencies can go here
+
+# Optional: Custom build script configuration
+# [build-dependencies]
+# Built script dependencies would go here if needed
