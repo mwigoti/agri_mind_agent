@@ -18,7 +18,8 @@ proj = "=0.27.0"  # or earlier if needed
 
 
 # Geospatial and raster processing
-gdal = { version = "0.16", features = ["array"] }
+
+gdal = { git = "https://github.com/georust/gdal", features = ["array", "bindgen"] }
 
 
 # Machine learning and clustering

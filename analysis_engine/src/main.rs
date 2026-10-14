@@ -30,7 +30,7 @@ async fn generate_vra_maps_enhanced(
                 response
             },
             Err(e) => {
-                println!("❌ Error processing field {}: {}", analysis_request.field_id, e);
+                println!("Error processing field {}: {}", analysis_request.field_id, e);
                 // Create fallback response
                 let field = Field {
                     id: analysis_request.field_id as u32,
@@ -1348,7 +1348,7 @@ impl PlanetaryComputerConfig {
             None
         )?;
         
-        let data = Array2::from_shape_vec((crop_height, crop_width), buffer.data)?;
+        let data = Array2::from_shape_vec((crop_height, crop_width), buffer.data().to_vec())?;
         
         let mut new_geotransform = gt;
         new_geotransform[0] = gt[0] + min_col as f64 * gt[1];
@@ -1382,7 +1382,6 @@ struct GeometryBounds {
     min_y: f64,
     max_y: f64,
 }
-use geojson::Value;
 
 // Fixed bounds calculation function
 fn calculate_bounds(geometry: &GeoJsonGeometry) -> AnyhowResult<GeometryBounds> {

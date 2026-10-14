@@ -1859,6 +1859,9 @@
     // ========================================
     // DATA
     // ========================================
+    // ========================================
+    // DATA
+    // ========================================
     const CROP_TYPES = [
       { id: 'maize', name: 'Maize', icon: '🌽' },
       { id: 'wheat', name: 'Wheat', icon: '🌾' },
@@ -1875,544 +1878,107 @@
     let currentFieldForRegistration = null;
     let selectedCrop = null;
     let selectedIrrigation = '';
-    
 
     // ========================================
-    // DOM ELEMENTS
-    // ========================================
-    const fieldsView = document.getElementById('fields-view');
-    const monitoringView = document.getElementById('monitoring-view');
-    const fieldList = document.getElementById('field-list');
-    const modalOverlay = document.getElementById('modal-overlay');
-    const mapInfoCard = document.getElementById('map-info-card');
-    const selectTrigger = document.getElementById('select-trigger');
-    const selectDropdown = document.getElementById('select-dropdown');
-    const cropOptions = document.getElementById('crop-options');
-    const cropSearch = document.getElementById('crop-search');
-    const advancedToggle = document.getElementById('advanced-toggle');
-    const advancedContent = document.getElementById('advanced-content');
-    const submitBtn = document.getElementById('submit-btn');
-    const cancelBtn = document.getElementById('cancel-btn');
-    const backBtn = document.getElementById('back-btn');
-    const plantingDateInput = document.getElementById('planting-date-input');
-
-    // ========================================
-    // UTILITY FUNCTIONS
-    // ========================================
-    // Helper function to get CSRF token
-    function getCSRFToken() {
-    const name = 'csrftoken';
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim();
-        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-            break;
-        }
-        }
-    }
-    return cookieValue;
-    }
-
-    // Helper function to transform NDVI data from backend
-    function transformNDVIData(ndviArray) {
-    if (!Array.isArray(ndviArray) || ndviArray.length === 0) {
-        return null;
-    }
-    
-    return ndviArray.map(reading => ({
-        date: new Date(reading.date || reading.capture_date),
-        value: parseFloat(reading.value || reading.ndvi_value),
-        status: reading.status || determineHealthStatus(reading.value || reading.ndvi_value)
-    }));
-    }
-
-    // Helper function to determine health status from NDVI value
-    function determineHealthStatus(ndviValue) {
-    const value = parseFloat(ndviValue);
-    if (value >= 0.6) return 'healthy';
-    if (value >= 0.4) return 'moderate';
-    return 'stressed';
-    }
-    function getGrowthStage(plantingDate) {
-      const days = Math.floor((Date.now() - plantingDate.getTime()) / (1000 * 60 * 60 * 24));
-      if (days < 14) return { name: 'Germination', progress: 15, days };
-      if (days < 45) return { name: 'Vegetative', progress: 40, days };
-      if (days < 90) return { name: 'Flowering', progress: 70, days };
-      return { name: 'Maturation', progress: 90, days };
-    }
-
-    function formatDate(date) {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-
-    function formatShortDate(date) {
-      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    }
-
-    // ========================================
-    // RENDER FUNCTIONS
-    // ========================================
-    function renderFields() {
-      fieldList.innerHTML = fields.map(field => {
-        const hasCrop = !!field.crop;
-        const isActive = field.crop?.status === 'active';
-        const isEnded = field.crop?.status === 'harvested' || field.crop?.status === 'failed';
-        const isSelected = selectedFieldId === field.name;
-        const stage = isActive ? getGrowthStage(field.crop.plantingDate) : null;
-
-        return `
-          <div class="field-card ${isSelected ? 'selected' : ''}" data-field-id="${field.id}">
-            <div class="field-card-header">
-              <div class="field-card-info">
-                <h3>${field.name}</h3>
-                <p>${field.area.toFixed(2)} hectares</p>
-              </div>
-              ${!hasCrop ? '<span class="badge badge-muted">No crop</span>' : ''}
-              ${isActive ? '<span class="badge badge-success"><span class="badge-dot"></span>Active</span>' : ''}
-              ${isEnded ? `<span class="badge badge-muted"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"/><path d="M14 13H10"/><path d="M5 7l3-4h8l3 4"/></svg>${field.crop?.status === 'harvested' ? 'Harvested' : 'Ended'}</span>` : ''}
-            </div>
-            ${isActive && field.crop ? `
-              <div class="crop-detail">
-                <div class="crop-icon">${field.crop.type.icon}</div>
-                <div class="crop-info">
-                  <strong>${field.crop.type.name}</strong>
-                  <span>${stage.name} stage</span>
-                </div>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-              </div>
-            ` : ''}
-            ${isEnded && field.crop ? `
-              <div class="previous-crop">
-                <span>${field.crop.type.icon}</span>
-                Previous: ${field.crop.type.name}
-              </div>
-            ` : ''}
-            ${!hasCrop ? `
-              <button class="btn btn-primary btn-sm" style="width: 100%" data-action="register" data-field-id="${field.id}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                Register Crop
-              </button>
-            ` : ''}
-            ${isActive ? `
-              <button class="btn btn-secondary btn-sm" style="width: 100%" data-action="view" data-field-id="${field.id}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                View Monitoring
-              </button>
-            ` : ''}
-            ${isEnded ? `
-              <button class="btn btn-primary btn-sm" style="width: 100%" data-action="register" data-field-id="${field.id}">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                Register New Crop
-              </button>
-            ` : ''}
-          </div>
-        `;
-      }).join('');
-
-      updateStats();
-    }
-
-    function renderCropOptions(filter = '') {
-      const filtered = CROP_TYPES.filter(c => c.name.toLowerCase().includes(filter.toLowerCase()));
-      cropOptions.innerHTML = filtered.map(crop => `
-        <div class="select-option ${selectedCrop?.id === crop.id ? 'selected' : ''}" data-crop-id="${crop.id}">
-          <span class="emoji">${crop.icon}</span>
-          <span>${crop.name}</span>
-          ${selectedCrop?.id === crop.id ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-        </div>
-      `).join('') || '<p style="padding: 1.5rem; text-align: center; color: hsl(var(--muted-foreground));">No crops found</p>';
-    }
-
-    function renderTrendChart(ndviData) {
-      const trendChart = document.getElementById('trend-chart');
-      trendChart.innerHTML = ndviData.map(reading => `
-        <div class="trend-bar-wrapper">
-          <div class="trend-bar ${reading.status}" style="height: ${reading.value * 100}%"></div>
-          <span class="trend-label">${reading.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-        </div>
-      `).join('');
-    }
-
-    function updateStats() {
-      document.getElementById('total-fields').textContent = fields.length;
-      document.getElementById('total-area').textContent = fields.reduce((sum, f) => sum + f.area, 0).toFixed(3) + ' ha';
-      document.getElementById('active-crops').textContent = fields.filter(f => f.crop?.status === 'active').length;
-      document.querySelector('.field-list-header').textContent = `${fields.length} field${fields.length !== 1 ? 's' : ''}`;
-    }
-
-    function updateMapSelection() {
-      document.querySelectorAll('.map-polygon').forEach(polygon => {
-        const fieldId = polygon.dataset.field;
-        const field = fields.find(f => f.id === fieldId);
-        const isActive = field?.crop?.status === 'active';
-        
-        polygon.classList.remove('selected', 'active', 'inactive');
-        
-        if (selectedFieldId === fieldId) {
-          polygon.classList.add('selected');
-        } else if (isActive) {
-          polygon.classList.add('active');
-        } else {
-          polygon.classList.add('inactive');
-        }
-      });
-
-      if (selectedFieldId) {
-        const field = fields.find(f => f.id === selectedFieldId);
-        if (field) {
-          mapInfoCard.classList.remove('hidden');
-          document.getElementById('map-info-name').textContent = field.name;
-        
-          // Position the info card
-          const positions = {
-            '1': { top: '85px', left: '85px' },
-            '2': { top: '95px', left: '210px' },
-            '3': { top: '210px', left: '140px' }
-          };
-          const pos = positions[selectedFieldId] || { top: '50%', left: '50%' };
-          mapInfoCard.style.top = pos.top;
-          mapInfoCard.style.left = pos.left;
-        }  // <-- THIS WAS MISSING
-      } else {
-        mapInfoCard.classList.add('hidden');
-      }
-    }
-
-    function showMonitoringView(field) {
-      fieldsView.classList.add('hidden');
-      monitoringView.classList.remove('hidden');
-
-      const crop = field.crop;
-      const stage = getGrowthStage(crop.plantingDate);
-      const latestNDVI = crop.ndviData?.[crop.ndviData.length - 1];
-      const hasNDVIData = crop.ndviData && crop.ndviData.length > 0;
-
-      document.getElementById('monitoring-crop-icon').textContent = crop.type.icon;
-      document.getElementById('monitoring-field-name').textContent = field.name;
-      document.getElementById('monitoring-field-info').textContent = `${field.area.toFixed(1)} ha • ${crop.type.name}`;
-      document.getElementById('growth-stage').textContent = `${stage.name} stage`;
-      document.getElementById('days-since-planting').textContent = stage.days;
-      document.getElementById('progress-fill').style.width = `${stage.progress}%`;
-      document.getElementById('planting-date').textContent = formatDate(crop.plantingDate);
-      document.getElementById('irrigation-type').textContent = crop.irrigationType ? crop.irrigationType.charAt(0).toUpperCase() + crop.irrigationType.slice(1) : 'Not specified';
-      document.getElementById('variety').textContent = crop.variety || 'Standard';
-
-      const healthCard = document.getElementById('health-card');
-      const waitingCard = document.getElementById('waiting-card');
-      const trendSection = document.getElementById('trend-section');
-      const statusBadge = document.getElementById('monitoring-status-badge');
-
-      if (hasNDVIData && latestNDVI) {
-        healthCard.classList.remove('hidden');
-        waitingCard.classList.add('hidden');
-        trendSection.classList.remove('hidden');
-        statusBadge.classList.remove('hidden');
-
-        document.getElementById('ndvi-value').textContent = latestNDVI.value.toFixed(2);
-        document.getElementById('health-status-text').textContent = latestNDVI.status;
-        document.getElementById('monitoring-status-text').textContent = latestNDVI.status.charAt(0).toUpperCase() + latestNDVI.status.slice(1);
-        document.getElementById('last-capture').textContent = `Last satellite capture: ${formatShortDate(latestNDVI.date)}`;
-
-        renderTrendChart(crop.ndviData);
-      } else {
-        healthCard.classList.add('hidden');
-        waitingCard.classList.remove('hidden');
-        trendSection.classList.add('hidden');
-        statusBadge.classList.add('hidden');
-      }
-    }
-
-    function hideMonitoringView() {
-      monitoringView.classList.add('hidden');
-      fieldsView.classList.remove('hidden');
-    }
-
-    function openModal(field) {
-      currentFieldForRegistration = field;
-      selectedCrop = null;
-      selectedIrrigation = '';
-      
-      document.getElementById('modal-field-info').textContent = `${field.name} • ${field.area.toFixed(1)} ha`;
-      document.getElementById('select-display').innerHTML = '<span class="select-placeholder">Select a crop...</span>';
-      plantingDateInput.value = '';
-      plantingDateInput.max = new Date().toISOString().split('T')[0];
-      document.getElementById('variety-input').value = '';
-      document.getElementById('notes-input').value = '';
-      
-      document.querySelectorAll('.irrigation-btn').forEach(btn => btn.classList.remove('selected'));
-      
-      advancedContent.classList.add('hidden');
-      advancedToggle.classList.remove('open');
-      document.getElementById('advanced-toggle-text').textContent = 'Show advanced options';
-      
-      submitBtn.disabled = true;
-      
-      renderCropOptions();
-      modalOverlay.classList.remove('hidden');
-    }
-
-    function closeModal() {
-      modalOverlay.classList.add('hidden');
-      selectDropdown.classList.add('hidden');
-      selectTrigger.classList.remove('open');
-    }
-
-    function validateForm() {
-      submitBtn.disabled = !(selectedCrop && plantingDateInput.value);
-    }
-
-    // ========================================
-    // EVENT LISTENERS
-    // ========================================
-    fieldList.addEventListener('click', (e) => {
-      const card = e.target.closest('.field-card');
-      const actionBtn = e.target.closest('[data-action]');
-      
-      if (actionBtn) {
-        e.stopPropagation();
-        const fieldId = actionBtn.dataset.fieldId;
-        const action = actionBtn.dataset.action;
-        const field = fields.find(f => f.id === fieldId);
-        
-        if (action === 'register') {
-          openModal(field);
-        } else if (action === 'view') {
-          showMonitoringView(field);
-        }
-        return;
-      }
-      
-      if (card) {
-        selectedFieldId = card.dataset.fieldId;
-        renderFields();
-        updateMapSelection();
-      }
-    });
-
-    document.querySelectorAll('.map-polygon').forEach(polygon => {
-      polygon.addEventListener('click', () => {
-        selectedFieldId = polygon.dataset.field;
-        renderFields();
-        updateMapSelection();
-      });
-    });
-
-    selectTrigger.addEventListener('click', () => {
-      const isOpen = selectDropdown.classList.toggle('hidden');
-      selectTrigger.classList.toggle('open', !selectDropdown.classList.contains('hidden'));
-      if (!selectDropdown.classList.contains('hidden')) {
-        cropSearch.value = '';
-        renderCropOptions();
-        cropSearch.focus();
-      }
-    });
-
-    cropSearch.addEventListener('input', (e) => {
-      renderCropOptions(e.target.value);
-    });
-
-    cropOptions.addEventListener('click', (e) => {
-      const option = e.target.closest('.select-option');
-      if (option) {
-        const cropId = option.dataset.cropId;
-        selectedCrop = CROP_TYPES.find(c => c.id === cropId);
-        document.getElementById('select-display').innerHTML = `
-          <span class="select-value">
-            <span class="emoji">${selectedCrop.icon}</span>
-            <strong>${selectedCrop.name}</strong>
-          </span>
-        `;
-        selectDropdown.classList.add('hidden');
-        selectTrigger.classList.remove('open');
-        renderCropOptions();
-        validateForm();
-      }
-    });
-
-    plantingDateInput.addEventListener('change', validateForm);
-
-    advancedToggle.addEventListener('click', () => {
-      const isOpen = advancedContent.classList.toggle('hidden');
-      advancedToggle.classList.toggle('open', !isOpen);
-      document.getElementById('advanced-toggle-text').textContent = isOpen ? 'Show advanced options' : 'Hide advanced options';
-    });
-
-    document.querySelectorAll('.irrigation-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.irrigation-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        selectedIrrigation = btn.dataset.irrigation;
-      });
-    });
-
-    cancelBtn.addEventListener('click', closeModal);
-
-    modalOverlay.addEventListener('click', (e) => {
-      if (e.target === modalOverlay) closeModal();
-    });
-
-    submitBtn.addEventListener('click', async () => {
-      if (!currentFieldForRegistration || !selectedCrop || !plantingDateInput.value) return;
-
-      // Disable button and show loading state
-      submitBtn.disabled = true;
-      const originalButtonHTML = submitBtn.innerHTML;
-      submitBtn.innerHTML = 'Saving...';
-
-      try {
-        // Prepare the crop data for backend
-        const cropData = {
-          field_id: currentFieldForRegistration.id,
-          crop_type: selectedCrop.id,
-          planting_date: plantingDateInput.value,
-          variety: document.getElementById('variety-input').value || null,
-          irrigation_type: selectedIrrigation || null,
-          notes: document.getElementById('notes-input').value || null,
-          status: 'active'
-        };
-
-        // Send to backend
-        const response = await fetch("/api/register-crop/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCSRFToken()
-          },
-          body: JSON.stringify(cropData)
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log("Crop registered successfully:", result);
-
-        // Update local fields array with the new crop
-        const fieldIndex = fields.findIndex(f => f.id === currentFieldForRegistration.id);
-        fields[fieldIndex].crop = {
-          type: selectedCrop,
-          plantingDate: new Date(plantingDateInput.value),
-          status: 'active',
-          variety: document.getElementById('variety-input').value || undefined,
-          irrigationType: selectedIrrigation || undefined,
-          notes: document.getElementById('notes-input').value || undefined,
-          ndviData: null
-        };
-
-        closeModal();
-        renderFields();
-        updateMapSelection();
-
-        // Optional: Show success notification
-        alert('Crop registered successfully! Monitoring will begin in 5-7 days.');
-
-      } catch (error) {
-        console.error("Error registering crop:", error);
-        alert('Failed to register crop. Please try again.');
-        
-        // Re-enable button and restore original text
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalButtonHTML;
-      }
-    });
-
-    backBtn.addEventListener('click', hideMonitoringView);
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.custom-select')) {
-        selectDropdown.classList.add('hidden');
-        selectTrigger.classList.remove('open');
-      }
-    });
-
-    // ========================================
-    // INITIALIZE
-    // ========================================
-    // ========================================
-// INITIALIZE
+// CROP REGISTRATION TO DATABASE
 // ========================================
-    async function initializeApp() {
-    try {
-        const response = await fetch("/api/myfields/", {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCSRFToken()
-        }
-        });
-
-        if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("Fields data received:", data);
-
-        // Handle different possible response structures
-        let rawFields = [];
-
-        if (data.type === "FeatureCollection" && Array.isArray(data.features)) {
-          rawFields = data.features;
-        } else if (Array.isArray(data)) {
-          rawFields = data;
-        } else if (data.fields) {
-          rawFields = data.fields;
-        }
-
-       fields = rawFields.map(feature => {
-        const props = feature.properties || {};
-
-        // Match crop type if present
-        const cropType = props.crop_type
-          ? CROP_TYPES.find(
-              c =>
-                c.id === props.crop_type ||
-                c.name.toLowerCase() === String(props.crop_type).toLowerCase()
-            )
-          : null;
-
-        return {
-          id: feature.id?.toString(),
-          name: props.name || `Field ${feature.id}`,
-          area: parseFloat(props.area) || 0,
-          geometry: feature.geometry, 
-
-          crop: props.has_active_crop
-            ? {
-                type: cropType || CROP_TYPES[0],
-                plantingDate: props.planting_date
-                  ? new Date(props.planting_date)
-                  : new Date(),
-                status: props.crop_status || "active",
-                variety: props.variety,
-                irrigationType: props.irrigation_type,
-                notes: props.notes,
-                ndviData: props.ndvi_data
-                  ? transformNDVIData(props.ndvi_data)
-                  : null
-              }
-            : null
-        };
-      });
-
-
-        // Initialize the UI with fetched data
-        renderFields();
-        updateMapSelection();
-        
-    } catch (error) {
-        console.error("Error fetching fields:", error);
-        fieldList.innerHTML = '<div class="waiting-card"><div class="waiting-icon">⚠️</div><h3>Error loading fields</h3><p>Please refresh the page to try again</p></div>';
+async function registerCropToDatabase(fieldId, cropType, plantingDate) {
+  const variety = document.getElementById('variety-input')?.value || '';
+  const notes = document.getElementById('notes-input')?.value || '';
+  
+  const payload = {
+    field_id: fieldId,
+    crop_name: cropType.name,
+    planting_date: plantingDate.toISOString(),
+    variety: variety,
+    irrigation_type: selectedIrrigation,
+    notes: notes
+  };
+  
+  try {
+    const response = await fetch('/api/register-crop/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    const result = await response.json();
+    
+    if (result.status === 'success') {
+      console.log('Crop registered in database:', result);
+      return result;
+    } else {
+      console.error('❌ Registration failed:', result.message);
+      alert('Failed to register crop: ' + result.message);
+      return null;
     }
-    }
+  } catch (error) {
+    console.error('❌ Network error:', error);
+    alert('Failed to connect to server');
+    return null;
+  }
+}
 
-    // Call initialization when page loads
-    initializeApp();
+// Helper function to get CSRF token
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+
+// FIND the existing submit button handler and REPLACE/MODIFY it to:
+document.getElementById('submit-btn').addEventListener('click', async function() {
+  if (!currentFieldForRegistration || !selectedCrop) {
+    alert('Please select a field and crop');
+    return;
+  }
+  
+  const plantingDate = new Date(document.getElementById('planting-date-input').value);
+  
+  // REGISTER TO DATABASE FIRST
+  const dbResult = await registerCropToDatabase(
+    currentFieldForRegistration.id, 
+    selectedCrop, 
+    plantingDate
+  );
+  
+  if (dbResult) {
+    // Continue with existing simulation code
+    currentFieldForRegistration.crop = {
+      type: selectedCrop,
+      plantingDate: plantingDate,
+      variety: document.getElementById('variety-input').value,
+      irrigation: selectedIrrigation,
+      status: 'active',
+      ndviData: []
+    };
+    
+    // Existing NDVI simulation code continues here...
+    const ndviReadings = simulateSatelliteImageProcessing(currentFieldForRegistration, plantingDate);
+    currentFieldForRegistration.crop.ndviData = ndviReadings;
+    
+    // Close modal and update UI
+    document.getElementById('register-modal').classList.add('hidden');
+    renderFields();
+  }
+});
+
+
+
+   
   </script>
 </body>
 </html>

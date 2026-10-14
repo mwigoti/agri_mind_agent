@@ -1271,6 +1271,79 @@ def schedule_activity_reminder(user, activity):
         # You can use Celery or Django-Q for scheduling
         # For now, we'll store it in database and check periodically
         pass
-    
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def register_crop_monitoring(request):
+    """Register a new crop for monitoring on a field"""
+    try:
+        data = json.loads(request.body)
+        
+        # Required fields validation
+        required = ['field_id', 'crop_name', 'planting_date']
+        for field in required:
+            if field not in data:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Missing required field: {field}'
+                }, status=400)
+        
+        # Get field and verify ownership
+        field = get_object_or_404(Field, id=data['field_id'], owner=request.user)
+        
+        # Get or create the Crop
+        crop, created = Crop.objects.get_or_create(
+            name=data['crop_name'].title(),
+            defaults={
+                'min_temp': 10,
+                'max_temp': 35,
+                'optimal_temp_min': 18,
+                'optimal_temp_max': 28,
+                'water_requirement': 'medium',
+                'growing_season_days': 90,
+                'planting_months': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                'harvest_months': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                'drought_tolerance': 'medium'
+            }
+        )
+        
+        # Create planting activity
+        planting_date = datetime.fromisoformat(data['planting_date'].replace('Z', '+00:00'))
+        activity = FieldActivity.objects.create(
+            field=field,
+            activity_type='planting',
+            crop=crop,
+            date=planting_date,
+            description=f"Planted {crop.name}",
+            notes=data.get('notes', ''),
+            completion_status='completed'
+        )
+        
+        # Create initial growth stage
+        CropGrowthStage.objects.create(
+            field=field,
+            crop=crop,
+            stage='seedling',
+            start_date=planting_date.date(),
+            expected_end_date=(planting_date + timedelta(days=14)).date(),
+            stage_health='good'
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Crop monitoring started successfully',
+            'activity_id': activity.id,
+            'crop_id': crop.id,
+            'crop_created': created
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+        
+          
 def seasons(request):
     return render(request, 'seasons.html')
