@@ -7,6 +7,7 @@ import urllib3
 from django.conf import settings
 from decouple import config
 
+
 logger = logging.getLogger(__name__)
 
 class AfricasTalkingSMSService:
