@@ -149,10 +149,10 @@ class IntegratedSoilAnalyzer:
             predictions (dict): Weather predictions from Open-Meteo
         """
         if not predictions:
-            print("No predictions available.")
+         
             return
         
-        print("\n===== 7-Day Weather Predictions =====")
+        
         
         # Daily predictions
         for i in range(len(predictions['daily']['time'])):
@@ -163,18 +163,21 @@ class IntegratedSoilAnalyzer:
             precip_prob = predictions['daily']['precipitation_probability_max'][i]
             uv_index = predictions['daily']['uv_index_max'][i]
             
-            print(f"\nDate: {date}")
-            print(f"Weather: {IntegratedSoilAnalyzer.interpret_weather_code(weather_code)}")
-            print(f"Max Temperature: {max_temp}°C")
-            print(f"Min Temperature: {min_temp}°C")
-            print(f"Precipitation Probability: {precip_prob}%")
-            print(f"UV Index: {uv_index}")
+            return {
+                "date": date,
+                "max_temp": max_temp,
+                "min_temp": min_temp,
+                "weather_code": weather_code,
+                "precip_prob": precip_prob,
+                "uv_index": uv_index
+            }
 
     def analyze_combined_data(self, soil_data: Union[pd.DataFrame, Dict[str, Any], int], climate_data: Union[Dict[str, Any], str]) -> Dict[str, Any]:
         # Handle field ID input
         if isinstance(soil_data, int):
             field_center = self.get_field_center(soil_data)
             soil_data = self.get_soilgrid_data(field_center['lat'], field_center['lon'])
+            
             if soil_data is None:
                 raise ValueError(f"Could not retrieve soil data for field ID {soil_data}")
         
