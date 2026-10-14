@@ -2134,12 +2134,65 @@
         
         renderFields();
         updateStats();
+
+        await fetchActiveCrops();
         
         return fields;
       } catch (error) {
         console.error(' Failed to fetch fields:', error);
         showError('Failed to load fields: ' + error.message);
         return [];
+      }
+    }
+    // ========================================
+    // FETCH ACTIVE CROPS FOR FIELDS
+    // ========================================
+    async function fetchActiveCrops() {
+      try {
+        const response = await fetch('/api/get-active-crops/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          credentials: 'same-origin'
+        });
+
+        if (!response.ok) {
+          console.warn('Failed to fetch active crops');
+          return;
+        }
+
+        const data = await response.json();
+        console.log('✅ Active crops fetched:', data);
+
+        // Match crops to fields
+        if (data.crops && Array.isArray(data.crops)) {
+          data.crops.forEach(cropData => {
+            const field = fields.find(f => f.id === cropData.field_id);
+            if (field) {
+              // Find matching crop type from CROP_TYPES
+              const cropType = CROP_TYPES.find(c => c.name.toLowerCase() === cropData.crop_name.toLowerCase());
+              
+              field.crop = {
+                type: cropType || { id: cropData.crop_name.toLowerCase(), name: cropData.crop_name, icon: '🌱' },
+                plantingDate: cropData.planting_date,
+                variety: cropData.variety || '',
+                irrigation: cropData.irrigation_type || '',
+                status: 'active',
+                ndviData: [],
+                activityId: cropData.activity_id,
+                cropId: cropData.crop_id
+              };
+            }
+          });
+
+          // Re-render fields with crop data
+          renderFields();
+          updateStats();
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch active crops:', error);
       }
     }
     // ========================================
@@ -2829,9 +2882,9 @@
     // SUBMIT BUTTON HANDLER
     // ========================================
    
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
       // Fetch fields when page loads
-      fetchFieldsFromDatabase();
+      await fetchFieldsFromDatabase();
       
       // Setup modal components
       populateCropOptions();
