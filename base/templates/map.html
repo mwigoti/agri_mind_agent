@@ -1,433 +1,359 @@
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     {% load static %}
     {% csrf_token %}
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token }}">
-
     <title>AgriVision - map</title>
     
     <!-- ArcGIS CSS and JavaScript API -->
     <link rel="stylesheet" href="https://js.arcgis.com/3.46/dijit/themes/claro/claro.css">
     <link rel="stylesheet" href="https://js.arcgis.com/3.46/esri/css/esri.css">
     <link rel="stylesheet" href="{% static 'css/map.css' %}">
-   
+
     <script>
-        var dojoConfig = { parseOnLoad: true };
+      var dojoConfig = { parseOnLoad: true };
     </script>
     <script src="https://js.arcgis.com/3.46/"></script>
-    
-    <script>
-    var dojoConfig = { parseOnLoad: true };
 
-require([
-    "esri/map", 
-    "esri/layers/ArcGISTiledMapServiceLayer",
-    "esri/graphic",
-    "esri/geometry/Polygon",
-    "esri/geometry/Point",
-    "esri/symbols/SimpleMarkerSymbol",
-    "esri/symbols/SimpleFillSymbol",
-    "esri/Color",
-    "dojo/domReady!"
-], function(Map, ArcGISTiledMapServiceLayer, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
-    
-    // Initialize the map with a hybrid basemap
-    var map = new Map("map", {
-        basemap: "hybrid",
-        center: [0, 37.8283],
-        zoom: 4
-    });
+    <script type="text/javascript">
+    require([
+        "esri/map",
+        "esri/layers/ArcGISTiledMapServiceLayer",
+        "esri/graphic",
+        "esri/geometry/Polygon",
+        "esri/geometry/Point",
+        "esri/symbols/SimpleMarkerSymbol",
+        "esri/symbols/SimpleFillSymbol",
+        "esri/Color",
+        "dojo/domReady!"
+    ], function(Map, ArcGISTiledMapServiceLayer, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
+        var map = new Map("map", {
+            basemap: "hybrid",
+            center: [0, 37.8283],
+            zoom: 4
+        });
 
-    // URL for World Boundaries and Places
-    var boundariesURL = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer";
-    var boundariesLayer = new ArcGISTiledMapServiceLayer(boundariesURL);
+        var boundariesURL = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer";
+        var boundariesLayer = new ArcGISTiledMapServiceLayer(boundariesURL);
 
-    // Layer switching functionality
-    var layerSelect = document.getElementById("layerSelect");
-    layerSelect.addEventListener("change", function(e) {
-        map.removeAllLayers();
-        if (e.target.value === "osm") {
-            map.setBasemap("streets");
-        } else if (e.target.value === "satellite") {
-            map.setBasemap("hybrid");
-        } else if (e.target.value === "satelliteBoundaries") {
-            map.setBasemap("hybrid");
-            map.addLayer(boundariesLayer);
-        }
-    });
-
-    setupInfoPanelToggle();
-    setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color);
-});
-
-function setupInfoPanelToggle() {
-    const infoPanel = document.querySelector(".info-panel");
-    const toggleButton = document.querySelector(".menu ul li:first-child");
-
-    if (!infoPanel || !toggleButton) {
-        console.error("Required elements not found.");
-        return;
-    }
-
-    infoPanel.style.display = "block";
-    toggleButton.addEventListener("click", function() {
-        const isVisible = infoPanel.style.display === "block";
-        infoPanel.style.display = isVisible ? "none" : "block";
-        toggleButton.textContent = isVisible ? "Show Info Panel" : "Hide Info Panel";
-    });
-}
-
-// Fast area calculation using Shoelace formula (optimized for performance)
-function calculatePolygonArea(coordinates) {
-    if (coordinates.length < 3) return 0;
-    
-    let area = 0;
-    const n = coordinates.length;
-    
-    
-    for (let i = 0; i < n; i++) {
-        const j = (i + 1) % n;
-        area += coordinates[i][0] * coordinates[j][1];
-        area -= coordinates[j][0] * coordinates[i][1];
-    }
-    
-    return Math.abs(area) / 2;
-}
-
-function convertToHectares(areaInMapUnits) {
-   
-    return areaInMapUnits / 10000;
-}
-
-
-function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
-    let isDrawingMode = false;
-    let markerCoordinates = [];
-    const markers = [];
-    let mapClickHandle = null;
-    let currentPolygonGraphic = null;
-
-    function handleMapClick(event) {
-        if (!isDrawingMode) return;
-
-        const point = new Point(event.mapPoint.x, event.mapPoint.y, map.spatialReference);
-        const markerSymbol = new SimpleMarkerSymbol().setColor(new Color([255, 0, 0])).setSize(10);
-        const markerGraphic = new Graphic(point, markerSymbol);
-        map.graphics.add(markerGraphic);
-        
-        markerCoordinates.push([point.x, point.y]);
-        markers.push(markerGraphic);
-
-        if (markerCoordinates.length >= 3) {
-            drawPolygonWithArea(markerCoordinates, map, Polygon, SimpleFillSymbol, Color);
-        }
-    }
-
-    function drawPolygonWithArea(coords, map, Polygon, SimpleFillSymbol, Color) {
-        // Remove previous polygon
-        if (currentPolygonGraphic) {
-            map.graphics.remove(currentPolygonGraphic);
-        }
-
-        const polygon = new Polygon(map.spatialReference);
-        polygon.addRing(coords);
-
-        const fillSymbol = new SimpleFillSymbol().setColor(new Color([0, 255, 0, 0.25]));
-        currentPolygonGraphic = new Graphic(polygon, fillSymbol);
-        map.graphics.add(currentPolygonGraphic);
-
-        // Calculate and update area in real-time
-        const areaInMapUnits = calculatePolygonArea(coords);
-        const areaInHectares = convertToHectares(areaInMapUnits);
-        updateInfoPanel({ area: areaInHectares });
-    }
-
-    function sendCoordinatesToDjango(coordinates) {
-        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        const fieldName = prompt("Enter a name for this field:");
-        
-        if (!fieldName) return; // User cancelled
-        
-        // Calculate area before sending
-        const areaInMapUnits = calculatePolygonArea(coordinates);
-        const areaInHectares = convertToHectares(areaInMapUnits);
-        
-        // Prepare data with area included
-        const fieldData = {
-            name: fieldName,
-            coordinates: coordinates,
-            area: areaInHectares,
-            area_units: 'hectares'
-        };
-        
-        // Show saving indicator
-        const addFieldButton = document.querySelector(".add-field-button");
-        const originalText = addFieldButton.textContent;
-        addFieldButton.textContent = "Saving...";
-        addFieldButton.disabled = true;
-        
-        fetch('/save-field/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken
-            },
-            body: JSON.stringify(fieldData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                console.error('Error:', data.error);
-                alert('Error saving field: ' + data.error);
-            } else {
-                alert(`Field saved successfully! Area: ${areaInHectares.toFixed(2)} hectares`);
-                console.log('Saved field:', data);
-                
-                // Reset the drawing state
-                map.graphics.clear();
-                markerCoordinates = [];
-                markers.length = 0;
-                updateInfoPanel({ area: 0 });
+        var layerSelect = document.getElementById("layerSelect");
+        layerSelect.addEventListener("change", function(e) {
+            map.removeAllLayers();
+            if (e.target.value === "osm") {
+                map.setBasemap("streets");
+            } else if (e.target.value === "satellite") {
+                map.setBasemap("hybrid");
+            } else if (e.target.value === "satelliteBoundaries") {
+                map.setBasemap("hybrid");
+                map.addLayer(boundariesLayer);
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error sending coordinates to server');
-        })
-        .finally(() => {
-            // Reset button state
-            addFieldButton.textContent = originalText;
-            addFieldButton.disabled = false;
+        });
+
+        setupInfoPanelToggle();
+        setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color);
+    });
+
+    function setupInfoPanelToggle() {
+        const infoPanel = document.querySelector(".info-panel");
+        const toggleButton = document.querySelector(".menu ul li:first-child");
+        if (!infoPanel || !toggleButton) return;
+        infoPanel.style.display = "block";
+        toggleButton.addEventListener("click", function() {
+            const isVisible = infoPanel.style.display === "block";
+            infoPanel.style.display = isVisible ? "none" : "block";
+            toggleButton.textContent = isVisible ? "Show Info Panel" : "Hide Info Panel";
         });
     }
 
-    function updateInfoPanel(data) {
-        const infoPanel = document.querySelector('.info-panel');
-        if (infoPanel && data.area !== undefined) {
-            // Update area display
-            const areaElement = infoPanel.querySelector('h3 + p');
-            if (areaElement) {
-                areaElement.textContent = `${data.area.toFixed(2)} ha`;
-            }
+    function calculatePolygonArea(coordinates) {
+        if (coordinates.length < 3) return 0;
+        let area = 0;
+        const n = coordinates.length;
+        for (let i = 0; i < n; i++) {
+            const j = (i + 1) % n;
+            area += coordinates[i][0] * coordinates[j][1];
+            area -= coordinates[j][0] * coordinates[i][1];
         }
+        return Math.abs(area) / 2;
     }
 
-    const addFieldButton = document.querySelector(".add-field-button");
-    addFieldButton.addEventListener("click", function() {
-        isDrawingMode = !isDrawingMode;
-
-        if (isDrawingMode) {
-            addFieldButton.textContent = "Finish Field";
-            addFieldButton.style.backgroundColor = "#ff4444";
-            mapClickHandle = map.on("click", handleMapClick);
-            
-            // Reset area display
-            updateInfoPanel({ area: 0 });
-        } else {
-            addFieldButton.textContent = "Add Field";
-            addFieldButton.style.backgroundColor = "";
-            
-            if (mapClickHandle) {
-                mapClickHandle.remove();
-                mapClickHandle = null;
-            }
-
-            if (markerCoordinates.length < 3) {
-                alert("At least three points are required to create a polygon.");
-                resetDrawing(map, markers);
-            } else {
-                sendCoordinatesToDjango(markerCoordinates);
-            }
-        }
-    });
-
-    function resetDrawing(map, markers) {
-        markers.forEach(marker => map.graphics.remove(marker));
-        markers.length = 0;
-        if (currentPolygonGraphic) {
-            map.graphics.remove(currentPolygonGraphic);
-            currentPolygonGraphic = null;
-        }
-        markerCoordinates = [];
-        updateInfoPanel({ area: 0 });
+    function convertToHectares(areaInMapUnits) {
+        return areaInMapUnits / 10000;
     }
-}
 
+    function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
+        let isDrawingMode = false;
+        let markerCoordinates = [];
+        const markers = [];
+        let mapClickHandle = null;
+        let currentPolygonGraphic = null;
 
-document.addEventListener("DOMContentLoaded", function() {
-    var myFieldsButton = document.getElementById("myFieldsButton");
-    var myFieldsModal = document.getElementById("myFieldsModal");
-    var closeModal = document.getElementById("closeModal");
-    var fieldsTableBody = document.querySelector("#fieldsTable tbody");
+        function handleMapClick(event) {
+            if (!isDrawingMode) return;
+            const point = new Point(event.mapPoint.x, event.mapPoint.y, map.spatialReference);
+            const markerSymbol = new SimpleMarkerSymbol().setColor(new Color([255, 0, 0])).setSize(10);
+            const markerGraphic = new Graphic(point, markerSymbol);
+            map.graphics.add(markerGraphic);
+            markerCoordinates.push([point.x, point.y]);
+            markers.push(markerGraphic);
+            if (markerCoordinates.length >= 3) {
+                drawPolygonWithArea(markerCoordinates, map, Polygon, SimpleFillSymbol, Color);
+            }
+        }
 
-    //show modal
+        function drawPolygonWithArea(coords, map, Polygon, SimpleFillSymbol, Color) {
+            if (currentPolygonGraphic) map.graphics.remove(currentPolygonGraphic);
+            const polygon = new Polygon(map.spatialReference);
+            polygon.addRing(coords);
+            const fillSymbol = new SimpleFillSymbol().setColor(new Color([0, 255, 0, 0.25]));
+            currentPolygonGraphic = new Graphic(polygon, fillSymbol);
+            map.graphics.add(currentPolygonGraphic);
+            const areaInMapUnits = calculatePolygonArea(coords);
+            updateInfoPanel({ area: convertToHectares(areaInMapUnits) });
+        }
 
-    myFieldsButton.addEventListener("click", function() {
-        // fetch fields data
-
-        fetch('/api/myfields/')
-        .then(response => response.json())
-        .then(data => {
-            console.log(data);
-            
-            //clear existing rows
-            fieldsTableBody.innerHTML="";
-
-            //populate table
-            data.features.forEach((field, index) => {
-                var row = document.createElement("tr");
-                var idCell = document.createElement("td");
-                idCell.textContent= field.id;
-
-                var nameCell = document.createElement("td");
-
-                nameCell.textContent = field.properties.name;
-                var createdAtCell = document.createElement("td");
-                createdAtCell.textContent = field.properties.created_at;
-                var actionsCell = document.createElement("td");
-                var areaCell = document.createElement("td");
-                // Display area with 2 decimal places
-                areaCell.textContent = field.properties.area ? field.properties.area.toFixed(2) : 'N/A';
-                // analysis button
-
-                var analyzeButton = document.createElement("button");
-                analyzeButton.textContent = "Analyze";
-
-                // Pass the field ID directly using a closure in the event listener
-                analyzeButton.addEventListener("click", function() {
-                    const fieldId = field.id; 
-
-                    window.location.href = `/api/analyze-field/${fieldId}/`;
-
-                    
-
-                    fetch(`/api/analyze-field/${fieldId}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.properties) {
-                            console.log(data.analysis);
-                        } else {
-                            console.error("Error analyzing field:", data.error);
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Network or parsing error:", error);
-                    });
-                })
-
-                // delete button
-
-                var deleteButton = document.createElement("button");
-                deleteButton.textContent = "Delete";
-            
-                deleteButton.addEventListener("click", function() {
-                    if (confirm(`Are you sure you want to delete ${field.properties.name}?`)) {
-                        deleteField(field.id)
-                    }
-                });
-
-                actionsCell.appendChild(analyzeButton);
-                actionsCell.appendChild(deleteButton);
-
-                row.appendChild(idCell);
-                row.appendChild(nameCell);
-                row.appendChild(areaCell);
-                row.appendChild(createdAtCell);
-                row.appendChild(actionsCell);
-
-                fieldsTableBody.appendChild(row)
+        function sendCoordinatesToDjango(coordinates) {
+            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const fieldName = prompt("Enter a name for this field:");
+            if (!fieldName) return;
+            const areaInMapUnits = calculatePolygonArea(coordinates);
+            const areaInHectares = convertToHectares(areaInMapUnits);
+            const fieldData = { name: fieldName, coordinates: coordinates, area: areaInHectares, area_units: 'hectares' };
+            const addFieldButton = document.querySelector(".add-field-button");
+            const originalText = addFieldButton.textContent;
+            addFieldButton.textContent = "Saving...";
+            addFieldButton.disabled = true;
+            fetch('/save-field/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                body: JSON.stringify(fieldData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) alert('Error saving field: ' + data.error);
+                else {
+                    alert(`Field saved successfully! Area: ${areaInHectares.toFixed(2)} hectares`);
+                    map.graphics.clear();
+                    markerCoordinates = [];
+                    markers.length = 0;
+                    updateInfoPanel({ area: 0 });
+                }
+            })
+            .catch(() => alert('Error sending coordinates to server'))
+            .finally(() => {
+                addFieldButton.textContent = originalText;
+                addFieldButton.disabled = false;
             });
-            // show modal
-            myFieldsModal.style.display = "block";
-
-        })
-        .catch(error => console.error('Error Fetching fields:', error));
-
-    });
-
-    // close modal
-
-    closeModal.addEventListener("click", function() {
-        myFieldsModal.style.display = "none";
-
-    });
-
-    // delete field
-
-    function getCSRFToken() {
-        // retrieve from meta tag
-        const csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
-        if (csrfMetaTag) {
-            return csrfMetaTag.getAttribute('content');
-
-        }
-        console.error("CSRF token missing");
-        return null;
-    }
-    function deleteField(id) {
-        const csrfToken = getCSRFToken();
-        if (!csrfToken) {
-            alert ("csrf token missing cannot proceed with request");
-            return;
         }
 
-        console.log(`attempting to delete field with id: ${id}`);
-        fetch(`/api/delete-field/${id}/`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
+        function updateInfoPanel(data) {
+            const infoPanel = document.querySelector('.info-panel');
+            if (infoPanel && data.area !== undefined) {
+                const areaElement = infoPanel.querySelector('h3 + p');
+                if (areaElement) areaElement.textContent = `${data.area.toFixed(2)} ha`;
             }
-        })
-        .then(response => {
-            console.log(`Response status: ${response.status}`);
-            if (response.ok) {
-                alert("Field deleted successfully!");
-                location.reload();
+        }
+
+        const addFieldButton = document.querySelector(".add-field-button");
+        addFieldButton.addEventListener("click", function() {
+            isDrawingMode = !isDrawingMode;
+            if (isDrawingMode) {
+                addFieldButton.textContent = "Finish Field";
+                addFieldButton.style.backgroundColor = "#ff4444";
+                mapClickHandle = map.on("click", handleMapClick);
+                updateInfoPanel({ area: 0 });
             } else {
-                return response.json().then(data => {
-                    console.error("Error from server:", data);
-                    throw new Error(data.detail || "Failed to delete field!");
-
-                });
+                addFieldButton.textContent = "Add Field";
+                addFieldButton.style.backgroundColor = "";
+                if (mapClickHandle) mapClickHandle.remove();
+                if (markerCoordinates.length < 3) {
+                    alert("At least three points are required to create a polygon.");
+                    resetDrawing(map, markers);
+                } else {
+                    sendCoordinatesToDjango(markerCoordinates);
+                }
             }
-        })
-        .catch(error => {
-            console.error("error deleting field", error);
-            alert(error.message || "An unexpected error occured. ");
         });
+
+        function resetDrawing(map, markers) {
+            markers.forEach(marker => map.graphics.remove(marker));
+            markers.length = 0;
+            if (currentPolygonGraphic) {
+                map.graphics.remove(currentPolygonGraphic);
+                currentPolygonGraphic = null;
+            }
+            markerCoordinates = [];
+            updateInfoPanel({ area: 0 });
+        }
     }
-});
 
+    document.addEventListener("DOMContentLoaded", function() {
+        const myFieldsButton = document.getElementById("FieldsButton");
+        const vraMapsMenuItem = document.getElementById("VRA-maps");
+        const myFieldsModal = document.getElementById("myFieldsModal");
+        const closeModal = document.getElementById("closeModal");
+        const fieldsTableBody = document.querySelector("#fieldsTable tbody");
 
+        function loadFields() {
+            fetch('/api/myfields/')
+            .then(response => response.json())
+            .then(data => {
+                fieldsTableBody.innerHTML = "";
+                data.features.forEach(field => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${field.id}</td>
+                        <td>${field.properties.name}</td>
+                        <td>${field.properties.area ? field.properties.area.toFixed(2) : 'N/A'}</td>
+                        <td>${field.properties.created_at}</td>
+                        <td>
+                            <button class="analyze-btn" data-id="${field.id}">Analyze</button>
+                            <button class="delete-btn" data-id="${field.id}" data-name="${field.properties.name}">Delete</button>
+                        </td>`;
+                    fieldsTableBody.appendChild(row);
+                });
+                myFieldsModal.style.display = "block";
+            });
+        }
 
+        myFieldsButton.addEventListener("click", loadFields);
+        closeModal.addEventListener("click", () => myFieldsModal.style.display = "none");
 
-</script>
+        // VRA modal
+        const vraModal = document.getElementById("vraMapsModal");
+        const closeVraModal = document.getElementById("closeVraModal");
+        const vraTableBody = document.querySelector("#vraTable tbody");
+
+        function loadVraMaps() {
+            fetch('/api/myfields/')
+            .then(response => response.json())
+            .then(data => {
+                vraTableBody.innerHTML = "";
+                data.features.forEach(field => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${field.id}</td>
+                        <td>${field.properties.name}</td>
+                        <td>${field.properties.area ? field.properties.area.toFixed(2) : 'N/A'}</td>
+                        <td>${field.properties.created_at}</td>
+                        <td><button class="analyze-vra-btn" data-id="${field.id}">Analyze VRA</button></td>`;
+                    vraTableBody.appendChild(row);
+                });
+                vraModal.style.display = "block";
+            });
+        }
+
+        vraMapsMenuItem.addEventListener("click", loadVraMaps);
+        closeVraModal.addEventListener("click", () => vraModal.style.display = "none");
+
+        function getCSRFToken() {
+            const csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
+            return csrfMetaTag ? csrfMetaTag.getAttribute('content') : null;
+        }
+
+        fieldsTableBody.addEventListener('click', e => {
+            if (e.target.classList.contains('delete-btn')) {
+                const id = e.target.dataset.id;
+                const name = e.target.dataset.name;
+                if (confirm(`Are you sure you want to delete ${name}?`)) deleteField(id);
+            } else if (e.target.classList.contains('analyze-btn')) {
+                window.location.href = `/api/analyze-field/${e.target.dataset.id}/`;
+            }
+        });
+
+        vraTableBody.addEventListener('click', e => {
+            if (e.target.classList.contains('analyze-vra-btn')) {
+                window.location.href = `/api/vra-analyze/${e.target.dataset.id}/`;
+            }
+        });
+
+        function deleteField(id) {
+            const csrfToken = getCSRFToken();
+            if (!csrfToken) {
+                alert("CSRF token missing, cannot proceed with request");
+                return;
+            }
+            fetch(`/api/delete-field/${id}/`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert("Field deleted successfully!");
+                    location.reload();
+                } else {
+                    return response.json().then(data => { throw new Error(data.detail || "Failed to delete field!"); });
+                }
+            })
+            .catch(error => alert(error.message || "An unexpected error occurred."));
+        }
+    });
+    </script>
+     <style>
+        /* Apply the same styling to the VRA table as fieldsTable */
+        #vraTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 8px rgba(0,0,0,0.1);
+        }
+        #vraTable th {
+            background-color: #2c3e50;
+            color: white;
+            padding: 14px;
+            text-align: left;
+            font-weight: 600;
+        }
+        #vraTable td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            background-color: white;
+        }
+        #vraTable tr:nth-child(even) td {
+            background-color: #f8f9fa;
+        }
+        #vraTable tr:hover td {
+            background-color: #f1f4f7;
+        }
+        #vraTable button {
+            padding: 8px 16px;
+            margin: 0 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 4px;
+            transition: transform 0.2s;
+            background-color: green;
+            color: white;
+        }
+        #vraTable button:hover {
+            filter: brightness(1.1);
+        }
+        #vraTable button:active {
+            transform: scale(0.96);
+        }
+    </style>
 </head>
 <body class="claro">
     <div class="container">
         <div class="menu">
-            <div class="logo">
-                <h3>AgriVision</h3>
-            </div>
-            <button id="myFieldsButton">my fields</button>
+            <div class="logo"><h3>AgriVision</h3></div>
             <nav>
                 <ul>
-                    <li>Hide Info Panel</li>
+                    <li>Hide Field Panel</li>
                     <li>Season 2024</li>
                     <li>Get Started</li>
                     <li>Monitoring</li>
                     <li>Weather</li>
                     <li>Overview</li>
-                    <li>VRA Maps</li>
+                    <li id="VRA-maps">VRA Maps</li>
                     <li>Field Activity Log</li>
                     <li>Data Manager</li>
-                    <li>Field Manager</li>
+                    <li id="FieldsButton">Field Manager</li>
                     <li>Notifications</li>
                     <li>Request A Demo</li>
                     <li>Upgrade</li>
@@ -438,24 +364,26 @@ document.addEventListener("DOMContentLoaded", function() {
             <div class="modal-content">
                 <span class="close" id="closeModal">&times;</span>
                 <h2>My Fields</h2>
-                <table id="fieldsTable" ,border ="1">
+                <table id="fieldsTable" border="1">
                     <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Area (ha)</th>
-                            <th>Created At</th>
-                            <th>Actions</th>
-                        </tr>
+                        <tr><th>ID</th><th>Name</th><th>Area (ha)</th><th>Created At</th><th>Actions</th></tr>
                     </thead>
-                    <tbody>
-                        <!-- Field rows will be dynamically added here -->
-                    </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
         </div>
-        
-        
+        <div id="vraMapsModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close" id="closeVraModal">&times;</span>
+                <h2>VRA Maps</h2>
+                <table id="vraTable" border="1">
+                    <thead>
+                        <tr><th>ID</th><th>Name</th><th>Area (ha)</th><th>Created At</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
         <div class="map-container">
             <div id="map"></div>
             <div class="map-controls">
@@ -478,7 +406,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 </div>
                 <div class="add-fields" id="addFields">
                     <h4>Add Your Fields</h4>
-                    
                     <button class="add-field-button" id="addField">ADD FIELD</button>
                 </div>
             </div>

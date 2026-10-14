@@ -4,7 +4,10 @@ venv
 cert.pem
 /cert.pem
 key.pem/
+/target
 
 /key.pem
 .env/
 .env
+**/*.rlib
+**/*.o
