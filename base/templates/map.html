@@ -1728,76 +1728,76 @@
             },
 
             startDrawingMode() {
-    APP_STATE.isDrawingMode = true;
-    const addButton = document.getElementById("addField");
-    addButton.classList.add("drawing-mode");
-    addButton.textContent = "Drawing Mode Active";
-    document.getElementById("drawingControls").classList.add("active");
-    Utils.showAlert("Click on the map to draw field boundaries", "info");
-},
+                APP_STATE.isDrawingMode = true;
+                const addButton = document.getElementById("addField");
+                addButton.classList.add("drawing-mode");
+                addButton.textContent = "Drawing Mode Active";
+                document.getElementById("drawingControls").classList.add("active");
+                Utils.showAlert("Click on the map to draw field boundaries", "info");
+            },
 
-handleFieldDrawing(e) {
-    const coords = [e.latlng.lat, e.latlng.lng]; // ✅ [lat, lng]
-    APP_STATE.fieldData.coordinates.push(coords);
+            handleFieldDrawing(e) {
+                const coords = [e.latlng.lat, e.latlng.lng]; // ✅ [lat, lng]
+                APP_STATE.fieldData.coordinates.push(coords);
 
-    const marker = L.circleMarker(coords, {
-        color: '#4ade80',
-        fillColor: '#4ade80',
-        fillOpacity: 0.8,
-        radius: 5
-    }).addTo(APP_STATE.map);
-    
-    APP_STATE.fieldData.markers.push(marker);
+                const marker = L.circleMarker(coords, {
+                    color: '#4ade80',
+                    fillColor: '#4ade80',
+                    fillOpacity: 0.8,
+                    radius: 5
+                }).addTo(APP_STATE.map);
+                
+                APP_STATE.fieldData.markers.push(marker);
 
-    if (APP_STATE.fieldData.coordinates.length >= 3) {
-        this.updateFieldPolygon();
-        this.updateFieldArea();
-    }
-},
+                if (APP_STATE.fieldData.coordinates.length >= 3) {
+                    this.updateFieldPolygon();
+                    this.updateFieldArea();
+                }
+            },
 
-saveCurrentField() {
-    if (APP_STATE.fieldData.coordinates.length < 3) {
-        Utils.showAlert("Please draw at least 3 points to create a field", "error");
-        return;
-    }
+            saveCurrentField() {
+                if (APP_STATE.fieldData.coordinates.length < 3) {
+                    Utils.showAlert("Please draw at least 3 points to create a field", "error");
+                    return;
+                }
 
-    const fieldName = prompt("Enter field name:", `Field ${APP_STATE.savedFields.length + 1}`);
-    if (!fieldName) return;
+                const fieldName = prompt("Enter field name:", `Field ${APP_STATE.savedFields.length + 1}`);
+                if (!fieldName) return;
 
-    const area = Utils.calculatePolygonArea(APP_STATE.fieldData.coordinates);
-    const hectares = Utils.convertToHectares(area);
+                const area = Utils.calculatePolygonArea(APP_STATE.fieldData.coordinates);
+                const hectares = Utils.convertToHectares(area);
 
-    const coords = [...APP_STATE.fieldData.coordinates];
-    if (coords[0][0] !== coords[coords.length - 1][0] || coords[0][1] !== coords[coords.length - 1][1]) {
-        coords.push(coords[0]); // ✅ Close polygon
-    }
+                const coords = [...APP_STATE.fieldData.coordinates];
+                if (coords[0][0] !== coords[coords.length - 1][0] || coords[0][1] !== coords[coords.length - 1][1]) {
+                    coords.push(coords[0]); // ✅ Close polygon
+                }
 
-    fetch("/save-field/", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": Utils.getCSRFToken()
-        },
-        body: JSON.stringify({
-            name: fieldName,
-            coordinates: coords, // Still [lat, lng] here
-            area: hectares
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.error) {
-            Utils.showAlert(data.error, "error");
-        } else {
-            Utils.showAlert(`Field "${fieldName}" saved successfully.`);
-            this.cancelDrawingMode();
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        Utils.showAlert("Failed to save field. Please try again.", "error");
-    });
-},
+                fetch("/save-field/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": Utils.getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        name: fieldName,
+                        coordinates: coords, // Still [lat, lng] here
+                        area: hectares
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        Utils.showAlert(data.error, "error");
+                    } else {
+                        Utils.showAlert(`Field "${fieldName}" saved successfully.`);
+                        this.cancelDrawingMode();
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    Utils.showAlert("Failed to save field. Please try again.", "error");
+                });
+            },
 
 
 
