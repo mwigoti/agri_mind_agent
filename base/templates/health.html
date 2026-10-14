@@ -1915,6 +1915,78 @@
     // FETCH FIELDS FROM DATABASE
     // ========================================
     async function fetchFieldsFromDatabase() {
+  try {
+    const response = await fetch('/api/get-fields-geojson/', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      credentials: 'same-origin'
+    });
+
+    if (response.status === 401) {
+      showError('Please log in to view your fields');
+      return [];
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ Raw API response:', data);
+    
+    // Handle different response formats
+    let fieldsArray = [];
+    
+    // Check if data is already an array
+    if (Array.isArray(data)) {
+      fieldsArray = data;
+    } 
+    // Check if data has a 'features' property (GeoJSON FeatureCollection)
+    else if (data.features && Array.isArray(data.features)) {
+      fieldsArray = data.features;
+    }
+    // Check if data has a 'results' property (DRF pagination)
+    else if (data.results && Array.isArray(data.results)) {
+      fieldsArray = data.results;
+    }
+    // If it's a single object, wrap it in an array
+    else if (typeof data === 'object' && data !== null) {
+      fieldsArray = [data];
+    }
+    
+    console.log('✅ Fields array:', fieldsArray);
+    
+    // Transform GeoJSON data to our fields format
+    fields = fieldsArray.map(feature => {
+      // Handle both GeoJSON feature format and direct object format
+      const props = feature.properties || feature;
+      const geom = feature.geometry || { coordinates: [[]] };
+      
+      return {
+        id: props.id,
+        name: props.name || 'Unnamed Field',
+        area: props.area || 0,
+        coordinates: geom.coordinates[0] || [],
+        crop: null,
+        createdAt: props.created_at || new Date().toISOString()
+      };
+    });
+
+    console.log('✅ Transformed fields:', fields);
+    
+    renderFields();
+    updateStats();
+    
+    return fields;
+  } catch (error) {
+    console.error('❌ Failed to fetch fields:', error);
+    showError('Failed to load fields: ' + error.message);
+    return [];
+  }
+}
       try {
         const response = await fetch('/api/myfields/', {
           method: 'GET',
@@ -1945,7 +2017,7 @@
         
         return fields;
       } catch (error) {
-        console.error('❌ Failed to fetch fields:', error);
+        console.error('Failed to fetch fields:', error);
         showError('Failed to load fields from database');
         return [];
       }
@@ -2128,7 +2200,7 @@
         const result = await response.json();
         
         if (result.status === 'success') {
-          console.log('✅ Crop registered in database:', result);
+          console.log('Crop registered in database:', result);
           
           // Update local field data
           const field = fields.find(f => f.id === fieldId);
@@ -2148,12 +2220,12 @@
           
           return result;
         } else {
-          console.error('❌ Registration failed:', result.message);
+          console.error('Registration failed:', result.message);
           showError('Failed to register crop: ' + result.message);
           return null;
         }
       } catch (error) {
-        console.error('❌ Network error:', error);
+        console.error('Network error:', error);
         showError('Failed to connect to server');
         return null;
       }
