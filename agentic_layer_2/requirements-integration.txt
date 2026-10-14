@@ -1,0 +1,3 @@
+# Optional upstream integration dependencies; the synthetic demo does not need these.
+mcp-server-sqlite>=2025.4.25
+psycopg2-binary>=2.9.9
