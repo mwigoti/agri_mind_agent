@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agrivision - Smart Field Activity Management</title>
+    <meta name="description" content="Comprehensive farm management and activity tracking system with AI-powered recommendations">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* HSL Color System */
+            --background: 222 84% 5%;
+            --foreground: 213 31% 91%;
+            --card: 222 84% 5%;
+            --card-foreground: 213 31% 91%;
+            --popover: 222 84% 5%;
+            --popover-foreground: 213 31% 91%;
+            --primary: 142 76% 36%;
+            --primary-foreground: 355 100% 97%;
+            --primary-glow: 142 69% 58%;
+            --secondary: 217 33% 17%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 215 28% 17%;
+            --muted-foreground: 218 11% 65%;
+            --accent: 215 28% 17%;
+            --accent-foreground: 210 40% 98%;
+            --destructive: 0 63% 31%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 215 28% 17%;
+            --input: 215 28% 17%;
+            --ring: 142 76% 36%;
+            --surface: 217 33% 17%;
+            --surface-accent: 215 28% 17%;
+            --success: 120 61% 50%;
+            --warning: 38 92% 50%;
+            --error: 0 84% 60%;
+            
+            /* Weather specific colors */
+            --weather-temp: 14 100% 57%;
+            --weather-humidity: 200 100% 50%;
+            --weather-rain: 220 100% 50%;
+            --weather-wind: 160 100% 50%;
+            
+            /* Gradients */
+            --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+            --gradient-surface: linear-gradient(145deg, hsl(var(--surface)), hsl(var(--background)));
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 hsl(var(--primary) / 0.05);
+            --shadow-md: 0 4px 6px -1px hsl(var(--primary) / 0.1), 0 2px 4px -2px hsl(var(--primary) / 0.1);
+            --shadow-lg: 0 10px 15px -3px hsl(var(--primary) / 0.1), 0 4px 6px -4px hsl(var(--primary) / 0.1);
+            --shadow-glow: 0 0 20px hsl(var(--primary-glow) / 0.3);
+            
+            /* Transitions */
+            --transition-all: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header Styles */
+        .header {
+            background: hsl(var(--card) / 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            border-bottom: 1px solid hsl(var(--border));
+            box-shadow: var(--shadow-md);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--gradient-primary);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .sprout-icon {
+            width: 32px;
+            height: 32px;
+            color: white;
+        }
+
+        .header-text h1 {
+            color: hsl(var(--primary-glow));
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.25rem;
+            text-shadow: 0 2px 4px hsl(var(--background) / 0.5);
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-text p {
+            color: hsl(var(--primary-glow) / 0.8);
+            font-size: 1.125rem;
+            font-weight: 500;
+        }
+
+        /* Main Layout */
+        .main {
+            padding: 2rem 0;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-calendar-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Card Styles */
+        .card {
+            background: var(--gradient-surface);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid hsl(var(--border));
+            transition: var(--transition-all);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--gradient-primary);
+            opacity: 0;
+            transition: var(--transition-all);
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg), var(--shadow-glow);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        /* Section Headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            color: hsl(var(--primary-glow));
+            font-weight: 700;
+            font-size: 1.25rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid hsl(var(--border));
+        }
+
+        .section-icon {
+            width: 24px;
+            height: 24px;
+            color: hsl(var(--primary-glow));
+        }
+
+        /* Weather Section */
+        .weather-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .weather-metric {
+            text-align: center;
+            padding: 1.5rem;
+            background: hsl(var(--surface));
+            border-radius: 12px;
+            border: 1px solid hsl(var(--border));
+            transition: var(--transition-all);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .weather-metric::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--gradient-primary);
+            opacity: 0;
+            transition: var(--transition-all);
+        }
+
+        .weather-metric:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .weather-metric:hover::before {
+            opacity: 0.05;
+        }
+
+        .weather-metric > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .metric-icon {
+            width: 20px;
+            height: 20px;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: hsl(var(--muted-foreground));
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .forecast-container {
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+
+        .forecast-grid {
+            display: flex;
+            gap: 1rem;
+            min-width: max-content;
+        }
+
+        .forecast-day {
+            min-width: 100px;
+            text-align: center;
+            padding: 1rem;
+            background: hsl(var(--surface));
+            border-radius: 12px;
+            border: 1px solid hsl(var(--border));
+            transition: var(--transition-all);
+        }
+
+        .forecast-day:hover {
+            transform: translateY(-2px);
+            background: hsl(var(--surface-accent));
+        }
+
+        /* Recommendations */
+        .recommendation {
+            background: hsl(var(--surface));
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid hsl(var(--primary));
+            transition: var(--transition-all);
+            cursor: pointer;
+        }
+
+        .recommendation:hover {
+            transform: translateX(4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .recommendation.urgent {
+            border-left-color: hsl(var(--error));
+        }
+
+        .recommendation.high {
+            border-left-color: hsl(var(--warning));
+        }
+
+        .recommendation.medium {
+            border-left-color: hsl(var(--primary));
+        }
+
+        .recommendation.low {
+            border-left-color: hsl(var(--success));
+        }
+
+        .rec-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .rec-title {
+            font-weight: 600;
+            color: hsl(var(--foreground));
+        }
+
+        .urgency-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .urgency-urgent { background: hsl(var(--error)); color: white; }
+        .urgency-high { background: hsl(var(--warning)); color: white; }
+        .urgency-medium { background: hsl(var(--primary)); color: white; }
+        .urgency-low { background: hsl(var(--success)); color: white; }
+
+        .rec-message {
+            color: hsl(var(--muted-foreground));
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+
+        .rec-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+            color: hsl(var(--muted-foreground));
+        }
+
+        .confidence-display {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .confidence-bar {
+            width: 60px;
+            height: 4px;
+            background: hsl(var(--border));
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: var(--gradient-primary);
+            transition: var(--transition-all);
+        }
+
+        /* Activity Timeline - Scrollable */
+        .timeline-section {
+            position: relative;
+        }
+
+        .timeline-container {
+            height: 300px;
+            background: hsl(var(--surface));
+            border-radius: 12px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid hsl(var(--border));
+        }
+
+        .timeline-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(hsl(var(--primary) / 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, hsl(var(--primary) / 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.5;
+        }
+
+        .timeline-scroll {
+            position: relative;
+            height: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 1rem 0;
+        }
+
+        .timeline-content {
+            display: flex;
+            align-items: end;
+            gap: 1rem;
+            min-width: max-content;
+            height: 200px;
+            padding: 0 1rem;
+        }
+
+        .timeline-bar {
+            min-width: 80px;
+            background: hsl(var(--surface-accent));
+            border-radius: 8px;
+            border: 2px solid;
+            transition: var(--transition-all);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0.5rem;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .timeline-bar:hover {
+            transform: scale(1.05) translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .timeline-bar.optimal {
+            border-color: hsl(var(--success));
+            background: linear-gradient(135deg, hsl(var(--surface-accent)), hsl(var(--success) / 0.1));
+        }
+
+        .timeline-bar.good {
+            border-color: hsl(var(--primary));
+            background: linear-gradient(135deg, hsl(var(--surface-accent)), hsl(var(--primary) / 0.1));
+        }
+
+        .timeline-bar.poor {
+            border-color: hsl(var(--warning));
+            background: linear-gradient(135deg, hsl(var(--surface-accent)), hsl(var(--warning) / 0.1));
+        }
+
+        .timeline-score {
+            font-weight: 700;
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-activity {
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground));
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+        }
+
+        .timeline-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+            color: hsl(var(--muted-foreground));
+            overflow-x: auto;
+        }
+
+        .timeline-labels-content {
+            display: flex;
+            gap: 1rem;
+            min-width: max-content;
+            padding: 0 1rem;
+        }
+
+        .timeline-label {
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .timeline-legend {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        /* Calendar */
+        .calendar-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .nav-btn {
+            background: var(--gradient-primary);
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem;
+            cursor: pointer;
+            transition: var(--transition-all);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .nav-btn svg {
+            width: 20px;
+            height: 20px;
+            color: white;
+        }
+
+        .month-year {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: hsl(var(--primary-glow));
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: hsl(var(--border));
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .day-header {
+            background: hsl(var(--primary));
+            color: white;
+            padding: 1rem 0.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .day-cell {
+            background: hsl(var(--surface));
+            padding: 0.75rem 0.5rem;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: var(--transition-all);
+        }
+
+        .day-cell:hover {
+            background: hsl(var(--surface-accent));
+        }
+
+        .day-cell.other-month {
+            color: hsl(var(--muted-foreground));
+            background: hsl(var(--muted));
+        }
+
+        .day-cell.today {
+            background: hsl(var(--primary));
+            color: white;
+        }
+
+        .day-number {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .activity-indicators {
+            display: flex;
+            gap: 2px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .activity-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .activity-dot.planting { background: hsl(var(--success)); }
+        .activity-dot.harvest { background: hsl(var(--warning)); }
+        .activity-dot.irrigation { background: hsl(var(--primary)); }
+        .activity-dot.maintenance { background: hsl(var(--error)); }
+
+        /* Form Styles */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: hsl(var(--primary-glow));
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            padding: 1rem;
+            border: 2px solid hsl(var(--border));
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: var(--transition-all);
+            background: hsl(var(--surface));
+            color: hsl(var(--foreground));
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: hsl(var(--primary));
+            box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn-primary {
+            grid-column: span 2;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-all);
+            margin-top: 1rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Activity Log */
+        .log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .filter-tab {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid hsl(var(--border));
+            border-radius: 8px;
+            background: hsl(var(--surface));
+            color: hsl(var(--muted-foreground));
+            cursor: pointer;
+            transition: var(--transition-all);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .filter-tab.active {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: transparent;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .filter-tab:hover:not(.active) {
+            background: hsl(var(--surface-accent));
+        }
+
+        .activity-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .activity-item {
+            background: hsl(var(--surface));
+            border: 1px solid hsl(var(--border));
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: var(--transition-all);
+        }
+
+        .activity-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .activity-title {
+            font-weight: 600;
+            color: hsl(var(--foreground));
+            font-size: 1.1rem;
+        }
+
+        .activity-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-completed { background: hsl(var(--success)); color: white; }
+        .status-in_progress { background: hsl(var(--primary)); color: white; }
+        .status-planned { background: hsl(var(--warning)); color: white; }
+
+        .activity-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            color: hsl(var(--muted-foreground));
+            font-size: 0.9rem;
+        }
+
+        .activity-detail {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .detail-icon {
+            width: 16px;
+            height: 16px;
+            opacity: 0.7;
+            color: hsl(var(--primary));
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .form-calendar-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn-primary {
+                grid-column: span 1;
+            }
+            
+            .header-text h1 {
+                font-size: 2rem;
+            }
+            
+            .log-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            
+            .filter-tabs {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: hsl(var(--surface));
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: hsl(var(--primary));
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: hsl(var(--primary-glow));
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            opacity: 0;
+            transition: var(--transition-all);
+            font-weight: 500;
+        }
+
+        .notification.success {
+            background: hsl(var(--success));
+            color: white;
+        }
+
+        .notification.error {
+            background: hsl(var(--error));
+            color: white;
+        }
+
+        .notification.info {
+            background: hsl(var(--primary));
+            color: white;
+        }
+
+        .notification.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="header-icon">
+                    <svg class="sprout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M7 20h10"/>
+                        <path d="M10 20c5.5-2.5.8-6.4 3-10"/>
+                        <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/>
+                        <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.7 4.3-1.4 1-1.7 1-3.8 0-4.8-1.1-.4-2.6-.3-3.2 2.2z"/>
+                    </svg>
+                </div>
+                <div class="header-text">
+                    <h1>Agrivision</h1>
+                    <p>Smart Field Activity Management</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Dashboard Grid -->
+            <div class="dashboard-grid">
+                <!-- Weather Section -->
+                <div class="card">
+                    <div class="section-header">
+                        <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+                        </svg>
+                        Weather Conditions
+                    </div>
+                    
+                    <div class="weather-metrics">
+                        <div class="weather-metric">
+                            <svg class="metric-icon" style="color: hsl(var(--weather-temp))" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>
+                            </svg>
+                            <div class="metric-value" style="color: hsl(var(--weather-temp))" id="currentTemp">22°C</div>
+                            <div class="metric-label">Temperature</div>
+                        </div>
+                        <div class="weather-metric">
+                            <svg class="metric-icon" style="color: hsl(var(--weather-humidity))" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                            </svg>
+                            <div class="metric-value" style="color: hsl(var(--weather-humidity))" id="currentHumidity">65%</div>
+                            <div class="metric-label">Humidity</div>
+                        </div>
+                        <div class="weather-metric">
+                            <svg class="metric-icon" style="color: hsl(var(--weather-rain))" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+                            </svg>
+                            <div class="metric-value" style="color: hsl(var(--weather-rain))" id="currentPrecipitation">2mm</div>
+                            <div class="metric-label">Precipitation</div>
+                        </div>
+                        <div class="weather-metric">
+                            <svg class="metric-icon" style="color: hsl(var(--weather-wind))" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/>
+                                <path d="M9.6 4.6A2 2 0 1 1 11 8H2"/>
+                                <path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>
+                            </svg>
+                            <div class="metric-value" style="color: hsl(var(--weather-wind))" id="currentWindSpeed">12km/h</div>
+                            <div class="metric-label">Wind Speed</div>
+                        </div>
+                    </div>
+
+                    <div class="forecast-container">
+                        <h4 style="color: hsl(var(--foreground)); margin-bottom: 1rem; font-size: 1rem;">7-Day Forecast</h4>
+                        <div class="forecast-grid" id="weatherForecast">
+                            <!-- Forecast items will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recommendations Section -->
+                <div class="card">
+                    <div class="section-header">
+                        <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="m2 17 10 5 10-5"/>
+                            <path d="m2 12 10 5 10-5"/>
+                        </svg>
+                        AI Recommendations
+                    </div>
+                    
+                    <div id="recommendationsList">
+                        <!-- Recommendations will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Activity Timeline Section -->
+                <div class="card timeline-section">
+                    <div class="section-header">
+                        <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3v18h18"/>
+                            <path d="m19 9-5 5-4-4-3 3"/>
+                        </svg>
+                        Optimal Activity Timing
+                    </div>
+                    
+                    <div class="timeline-container">
+                        <div class="timeline-grid"></div>
+                        <div class="timeline-scroll">
+                            <div class="timeline-content" id="activityTimeline">
+                                <!-- Timeline items will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="timeline-labels">
+                        <div class="timeline-labels-content" id="timelineLabels">
+                            <!-- Labels will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="timeline-legend">
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: hsl(var(--success))"></div>
+                            <span>Optimal</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: hsl(var(--primary))"></div>
+                            <span>Good</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: hsl(var(--warning))"></div>
+                            <span>Fair</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form and Calendar Section -->
+            <div class="form-calendar-grid">
+                <!-- Activity Form Section -->
+                <div class="card">
+                    <div class="section-header">
+                        <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v20M2 12h20"/>
+                        </svg>
+                        Add Field Activity
+                    </div>
+                    <form class="form-grid" id="activityForm">
+                        <div class="form-group">
+                            <label class="form-label" for="fieldSelect">Field</label>
+                            <select id="fieldSelect" class="form-select" required>
+                                <option value="">Select Field</option>
+                                <option value="North Field A">North Field A</option>
+                                <option value="South Field B">South Field B</option>
+                                <option value="East Field C">East Field C</option>
+                                <option value="West Field D">West Field D</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="activityDate">Date</label>
+                            <input type="datetime-local" id="activityDate" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="activityType">Activity Type</label>
+                            <select id="activityType" class="form-select" required>
+                                <option value="">Select Activity</option>
+                                <option value="planting">🌱 Planting</option>
+                                <option value="harvest">🌾 Harvest</option>
+                                <option value="irrigation">💧 Irrigation</option>
+                                <option value="maintenance">🔧 Maintenance</option>
+                                <option value="fertilizing">🌿 Fertilizing</option>
+                                <option value="pest_control">🦗 Pest Control</option>
+                                <option value="soil_preparation">🚜 Soil Preparation</option>
+                                <option value="weeding">🌱 Weeding</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="cropType">Crop/Equipment</label>
+                            <input type="text" id="cropType" class="form-input" placeholder="e.g., Corn, Tractor" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="duration">Duration (hours)</label>
+                            <input type="number" id="duration" class="form-input" step="0.5" min="0" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="cost">Cost ($)</label>
+                            <input type="number" id="cost" class="form-input" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="priority">Priority</label>
+                            <select id="priority" class="form-select">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="form-group full-width">
+                            <label class="form-label" for="description">Description</label>
+                            <textarea id="description" class="form-textarea" placeholder="Detailed activity description..."></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary">Add Activity</button>
+                    </form>
+                </div>
+
+                <!-- Calendar Section -->
+                <div class="card">
+                    <div class="section-header">
+                        <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect width="18" height="18" x="3" y="4" rx="2"/>
+                            <path d="M16 2v4M8 2v4m-5 4h18"/>
+                        </svg>
+                        Activity Calendar
+                    </div>
+                    <div class="calendar-nav">
+                        <button class="nav-btn" id="prevMonth">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="m15 18-6-6 6-6"/>
+                            </svg>
+                        </button>
+                        <div class="month-year" id="monthYear"></div>
+                        <button class="nav-btn" id="nextMonth">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="m9 18 6-6-6-6"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid">
+                        <div class="day-header">Sun</div>
+                        <div class="day-header">Mon</div>
+                        <div class="day-header">Tue</div>
+                        <div class="day-header">Wed</div>
+                        <div class="day-header">Thu</div>
+                        <div class="day-header">Fri</div>
+                        <div class="day-header">Sat</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Log Section -->
+            <div class="card">
+                <div class="log-header">
+                    <div class="section-header" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none;">
+                        <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 2v4"/>
+                            <path d="M16 2v4"/>
+                            <rect width="18" height="18" x="3" y="4" rx="2"/>
+                            <path d="M3 10h18"/>
+                        </svg>
+                        Recent Activities
+                    </div>
+                    <div class="filter-tabs">
+                        <div class="filter-tab active" data-filter="all">All</div>
+                        <div class="filter-tab" data-filter="planned">Planned</div>
+                        <div class="filter-tab" data-filter="in_progress">Active</div>
+                        <div class="filter-tab" data-filter="completed">Completed</div>
+                    </div>
+                </div>
+                <div class="activity-list" id="activitiesList">
+                    <!-- Activities will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Application State
+        let currentDate = new Date();
+        let activities = [];
+        let weatherData = {
+            current: {
+                temperature: 22,
+                humidity: 65,
+                precipitation: 2,
+                windSpeed: 12
+            },
+            forecast: [
+                { date: '2025-08-22', tempMin: 18, tempMax: 25, condition: 'Partly Cloudy' },
+                { date: '2025-08-23', tempMin: 20, tempMax: 27, condition: 'Sunny' },
+                { date: '2025-08-24', tempMin: 19, tempMax: 24, condition: 'Light Rain' },
+                { date: '2025-08-25', tempMin: 17, tempMax: 22, condition: 'Cloudy' },
+                { date: '2025-08-26', tempMin: 21, tempMax: 28, condition: 'Sunny' },
+                { date: '2025-08-27', tempMin: 23, tempMax: 30, condition: 'Hot' },
+                { date: '2025-08-28', tempMin: 22, tempMax: 29, condition: 'Partly Cloudy' }
+            ]
+        };
+
+        let recommendations = [
+            {
+                id: 1,
+                type: 'irrigation',
+                title: 'Irrigation Recommended',
+                message: 'Low humidity (45%) detected in North Field A. Consider irrigating corn crops within the next 24 hours.',
+                urgency: 'medium',
+                confidence: 0.85,
+                validUntil: '2025-08-23',
+                recommendedDate: '2025-08-22'
+            },
+            {
+                id: 2,
+                type: 'weather_alert',
+                title: 'Perfect Planting Conditions',
+                message: 'Ideal temperature (22°C) and upcoming rain (15mm) forecast. Excellent time for planting new crops.',
+                urgency: 'high',
+                confidence: 0.92,
+                validUntil: '2025-08-24',
+                recommendedDate: '2025-08-23'
+            },
+            {
+                id: 3,
+                type: 'pest_warning',
+                title: 'Pest Control Opportunity',
+                message: 'Current weather conditions favor pest activity. Consider preventive pest control measures.',
+                urgency: 'low',
+                confidence: 0.68,
+                validUntil: '2025-08-25',
+                recommendedDate: '2025-08-24'
+            }
+        ];
+
+        // Initialize Application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCalendar();
+            loadWeatherData();
+            loadRecommendations();
+            loadActivities();
+            generateOptimalTiming();
+            setupEventListeners();
+            setDefaultDateTime();
+        });
+
+        // Weather Functions
+        function loadWeatherData() {
+            document.getElementById('currentTemp').textContent = `${weatherData.current.temperature}°C`;
+            document.getElementById('currentHumidity').textContent = `${weatherData.current.humidity}%`;
+            document.getElementById('currentPrecipitation').textContent = `${weatherData.current.precipitation}mm`;
+            document.getElementById('currentWindSpeed').textContent = `${weatherData.current.windSpeed}km/h`;
+            
+            const forecastContainer = document.getElementById('weatherForecast');
+            forecastContainer.innerHTML = '';
+            
+            weatherData.forecast.forEach(forecast => {
+                const forecastDay = document.createElement('div');
+                forecastDay.className = 'forecast-day';
+                
+                const date = new Date(forecast.date);
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                
+                forecastDay.innerHTML = `
+                    <div style="font-size: 0.75rem; color: hsl(var(--muted-foreground)); margin-bottom: 0.5rem;">${dayName}</div>
+                    <div style="font-weight: 600; color: hsl(var(--primary-glow)); margin-bottom: 0.25rem;">${forecast.tempMin}°-${forecast.tempMax}°</div>
+                    <div style="font-size: 0.75rem; color: hsl(var(--muted-foreground));">${forecast.condition}</div>
+                `;
+                
+                forecastContainer.appendChild(forecastDay);
+            });
+        }
+
+        // Recommendations Functions
+        function loadRecommendations() {
+            const container = document.getElementById('recommendationsList');
+            container.innerHTML = '';
+            
+            if (recommendations.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: hsl(var(--muted-foreground)); padding: 2rem;">
+                        <p>No active recommendations</p>
+                        <p style="font-size: 0.9rem; margin-top: 0.5rem;">AI recommendations will appear here based on weather conditions and field data.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            recommendations.forEach(rec => {
+                const card = document.createElement('div');
+                card.className = `recommendation ${rec.urgency}`;
+                
+                card.innerHTML = `
+                    <div class="rec-header">
+                        <div class="rec-title">${rec.title}</div>
+                        <span class="urgency-badge urgency-${rec.urgency}">${rec.urgency}</span>
+                    </div>
+                    <div class="rec-message">${rec.message}</div>
+                    <div class="rec-meta">
+                        <div class="confidence-display">
+                            Confidence: ${Math.round(rec.confidence * 100)}%
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${rec.confidence * 100}%"></div>
+                            </div>
+                        </div>
+                        <div>Valid until ${new Date(rec.validUntil).toLocaleDateString()}</div>
+                    </div>
+                `;
+                
+                card.addEventListener('click', () => {
+                    markRecommendationRead(rec.id);
+                });
+                
+                container.appendChild(card);
+            });
+        }
+
+        function markRecommendationRead(id) {
+            const index = recommendations.findIndex(r => r.id === id);
+            if (index !== -1) {
+                recommendations.splice(index, 1);
+                loadRecommendations();
+                showNotification('Recommendation marked as read', 'info');
+            }
+        }
+
+        // Activity Timeline Functions
+        function generateOptimalTiming() {
+            const container = document.getElementById('activityTimeline');
+            const labelsContainer = document.getElementById('timelineLabels');
+            container.innerHTML = '';
+            labelsContainer.innerHTML = '';
+            
+            const today = new Date();
+            const activities = ['irrigation', 'planting', 'harvest', 'maintenance', 'fertilizing'];
+            const scores = [0.92, 0.78, 0.45, 0.88, 0.65, 0.73, 0.89, 0.94, 0.67, 0.81, 0.58, 0.72, 0.85, 0.91]; // Extended for more items
+            
+            for (let i = 0; i < 14; i++) { // Generate 14 days for scrolling
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                
+                const score = scores[i];
+                const item = document.createElement('div');
+                item.className = 'timeline-bar';
+                
+                if (score >= 0.8) item.classList.add('optimal');
+                else if (score >= 0.6) item.classList.add('good');
+                else item.classList.add('poor');
+                
+                const activity = activities[Math.floor(Math.random() * activities.length)];
+                const height = Math.max(40, score * 180);
+                
+                item.style.height = `${height}px`;
+                
+                const scoreColor = score >= 0.8 ? 'hsl(var(--success))' : score >= 0.6 ? 'hsl(var(--primary))' : 'hsl(var(--warning))';
+                
+                item.innerHTML = `
+                    <div class="timeline-score" style="color: ${scoreColor}">${Math.round(score * 100)}%</div>
+                    <div class="timeline-activity">${activity.slice(0, 4)}</div>
+                `;
+                
+                container.appendChild(item);
+                
+                // Add label
+                const label = document.createElement('div');
+                label.className = 'timeline-label';
+                label.innerHTML = `
+                    <div style="font-weight: 600;">${date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                    <div style="font-size: 0.75rem;">${date.getDate()}</div>
+                `;
+                labelsContainer.appendChild(label);
+            }
+        }
+
+        // Calendar Functions
+        function initializeCalendar() {
+            updateCalendarDisplay();
+        }
+
+        function updateCalendarDisplay() {
+            const monthYear = document.getElementById('monthYear');
+            const calendarGrid = document.getElementById('calendarGrid');
+            
+            const monthNames = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+            
+            monthYear.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+            
+            // Clear existing calendar days
+            const existingDays = calendarGrid.querySelectorAll('.day-cell');
+            existingDays.forEach(day => day.remove());
+            
+            // Get first day of month and number of days
+            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            // Generate calendar days
+            for (let i = 0; i < 42; i++) {
+                const day = new Date(startDate);
+                day.setDate(startDate.getDate() + i);
+                
+                const dayCell = document.createElement('div');
+                dayCell.className = 'day-cell';
+                
+                if (day.getMonth() !== currentDate.getMonth()) {
+                    dayCell.classList.add('other-month');
+                }
+                
+                if (day.toDateString() === new Date().toDateString()) {
+                    dayCell.classList.add('today');
+                }
+                
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'day-number';
+                dayNumber.textContent = day.getDate();
+                dayCell.appendChild(dayNumber);
+                
+                const indicators = document.createElement('div');
+                indicators.className = 'activity-indicators';
+                
+                // Add activity indicators
+                const dayActivities = activities.filter(activity => {
+                    const activityDate = new Date(activity.date);
+                    return activityDate.toDateString() === day.toDateString();
+                });
+                
+                dayActivities.forEach(activity => {
+                    const dot = document.createElement('span');
+                    dot.className = `activity-dot ${activity.type}`;
+                    indicators.appendChild(dot);
+                });
+                
+                dayCell.appendChild(indicators);
+                calendarGrid.appendChild(dayCell);
+                
+                dayCell.addEventListener('click', () => {
+                    const dateInput = document.getElementById('activityDate');
+                    const dateString = day.toISOString().slice(0, 16);
+                    dateInput.value = dateString;
+                });
+            }
+        }
+
+        // Activity Functions
+        function loadActivities() {
+            const container = document.getElementById('activitiesList');
+            
+            if (activities.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: hsl(var(--muted-foreground)); padding: 3rem;">
+                        <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No activities recorded yet</p>
+                        <p>Start by adding your first field activity above.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            activities.forEach(activity => {
+                const item = document.createElement('div');
+                item.className = 'activity-item';
+                
+                const date = new Date(activity.date);
+                item.innerHTML = `
+                    <div class="activity-header">
+                        <div class="activity-title">${activity.title}</div>
+                        <div class="activity-status status-${activity.status}">${activity.status.replace('_', ' ')}</div>
+                    </div>
+                    <div class="activity-details">
+                        <div class="activity-detail">
+                            <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect width="18" height="18" x="3" y="4" rx="2"/>
+                                <path d="M16 2v4M8 2v4m-5 4h18"/>
+                            </svg>
+                            ${date.toLocaleDateString()}
+                        </div>
+                        <div class="activity-detail">
+                            <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                <circle cx="12" cy="10" r="3"/>
+                            </svg>
+                            ${activity.field}
+                        </div>
+                        <div class="activity-detail">
+                            <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12,6 12,12 16,14"/>
+                            </svg>
+                            ${activity.duration}h
+                        </div>
+                        ${activity.cost ? `
+                        <div class="activity-detail">
+                            <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="1" x2="12" y2="23"/>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                            $${activity.cost}
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                container.appendChild(item);
+            });
+        }
+
+        function filterActivities(filter) {
+            const items = document.querySelectorAll('.activity-item');
+            items.forEach(item => {
+                if (filter === 'all') {
+                    item.style.display = 'block';
+                } else {
+                    const status = item.querySelector('.activity-status').textContent.toLowerCase().replace(' ', '_');
+                    item.style.display = status === filter ? 'block' : 'none';
+                }
+            });
+        }
+
+        // Event Handlers
+        function setupEventListeners() {
+            // Calendar navigation
+            document.getElementById('prevMonth').addEventListener('click', () => {
+                currentDate.setMonth(currentDate.getMonth() - 1);
+                updateCalendarDisplay();
+            });
+            
+            document.getElementById('nextMonth').addEventListener('click', () => {
+                currentDate.setMonth(currentDate.getMonth() + 1);
+                updateCalendarDisplay();
+            });
+            
+            // Activity form submission
+            document.getElementById('activityForm').addEventListener('submit', handleActivitySubmit);
+            
+            // Filter tabs
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    filterActivities(tab.dataset.filter);
+                });
+            });
+        }
+
+        function setDefaultDateTime() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('activityDate').value = now.toISOString().slice(0, 16);
+        }
+
+        function handleActivitySubmit(e) {
+            e.preventDefault();
+            
+            const formData = {
+                field: document.getElementById('fieldSelect').value,
+                date: document.getElementById('activityDate').value,
+                type: document.getElementById('activityType').value,
+                crop: document.getElementById('cropType').value,
+                duration: parseFloat(document.getElementById('duration').value) || 0,
+                cost: parseFloat(document.getElementById('cost').value) || 0,
+                priority: document.getElementById('priority').value,
+                description: document.getElementById('description').value
+            };
+            
+            if (!formData.field || !formData.type || !formData.crop) {
+                showNotification('Please fill in all required fields', 'error');
+                return;
+            }
+            
+            const activity = {
+                id: activities.length + 1,
+                title: `${formData.type.charAt(0).toUpperCase() + formData.type.slice(1)} - ${formData.crop}`,
+                date: formData.date,
+                type: formData.type,
+                field: formData.field,
+                crop: formData.crop,
+                duration: formData.duration,
+                cost: formData.cost,
+                priority: formData.priority,
+                description: formData.description,
+                status: 'planned'
+            };
+            
+            activities.unshift(activity);
+            
+            // Reset form
+            document.getElementById('activityForm').reset();
+            setDefaultDateTime();
+            
+            // Refresh displays
+            updateCalendarDisplay();
+            loadActivities();
+            
+            // Show success message
+            showNotification('Activity added successfully!', 'success');
+        }
+
+        // Utility Functions
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.add('show'), 100);
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 3000);
+        }
+
+        // Real-time updates simulation
+        setInterval(() => {
+            if (Math.random() < 0.1) { // 10% chance every interval
+                weatherData.current.humidity = Math.max(30, Math.min(90, weatherData.current.humidity + (Math.random() - 0.5) * 5));
+                weatherData.current.windSpeed = Math.max(5, Math.min(30, weatherData.current.windSpeed + (Math.random() - 0.5) * 3));
+                loadWeatherData();
+            }
+        }, 15000); // Update every 15 seconds
+    </script>
+</body>
+</html>

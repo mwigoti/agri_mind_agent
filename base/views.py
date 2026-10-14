@@ -5,9 +5,25 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login
 import json
+
+from django.shortcuts import render, get_object_or_404, redirect
+
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.utils.dateparse import parse_datetime
+from django.utils import timezone
+from django.db.models import Q, Avg, Count, Max, Min
+from django.core.paginator import Paginator
+
+from datetime import datetime, timedelta
+
+import requests
+from decimal import Decimal
+import logging
 from django.utils.decorators import method_decorator
 from django.contrib.gis.geos import GEOSGeometry
-import logging
+
 import stripe.error
 from .models import *
 from django.core.mail import send_mail, BadHeaderError
@@ -15,9 +31,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.gis.geos import Polygon
-from django.contrib.auth.decorators import login_required
+
 from django.shortcuts import get_object_or_404
-from django.views.decorators.csrf import csrf_exempt
+
 from django.utils.decorators import method_decorator  # Add this import
 from django.contrib.auth import get_user_model
 from django.contrib.auth import logout
@@ -354,11 +370,15 @@ def load(request):
     return render(request, 'load.html')
 
 
+def activity(request):
+    return render(request, "activity.html")
+
+
 def res(request):
     return render(request, 'result.html')
 
 # views.py
-import requests
+
 
 
 
@@ -950,3 +970,436 @@ class USSDView(View):
                    f"👤 Name: {session.data['first_name']} {session.data['last_name']}\n\n"
                    f"1. ✅ CONFIRM\n"
                    f"0. ❌ Cancel")
+WEATHER_API_KEY = settings.WEATHER_API_KEY 
+WEATHER_API_BASE_URL = "http://api.openweathermap.org/data/2.5"
+
+def activity_dashboard(request):
+    """Main dashboard view with calendar and activities"""
+    user_fields = Field.objects.filter(owner=request.user)
+    
+    context = {
+        'fields': user_fields,
+        'crops': Crop.objects.all(),
+        'activity_types': FieldActivity.ACTIVITY_TYPES,
+    }
+    return render(request, 'activity.html', context)
+
+@login_required
+@require_http_methods(["GET"])
+def get_activities_json(request):
+    """Get activities for calendar display"""
+    field_id = request.GET.get('field_id')
+    start_date = request.GET.get('start')
+    end_date = request.GET.get('end')
+    
+    activities = FieldActivity.objects.filter(
+        field__owner=request.user
+    )
+    
+    if field_id:
+        activities = activities.filter(field_id=field_id)
+    
+    if start_date and end_date:
+        activities = activities.filter(
+            date__range=[start_date, end_date]
+        )
+    
+    activities_data = []
+    for activity in activities:
+        activities_data.append({
+            'id': activity.id,
+            'title': f"{activity.get_activity_type_display()}",
+            'date': activity.date.strftime('%Y-%m-%d'),
+            'type': activity.activity_type,
+            'field': activity.field.name,
+            'crop': activity.crop.name if activity.crop else '',
+            'duration': float(activity.duration_hours),
+            'status': activity.completion_status,
+            'priority': activity.priority,
+            'description': activity.description,
+        })
+    
+    return JsonResponse({'activities': activities_data})
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def add_activity(request):
+    """Add new field activity"""
+    try:
+        data = json.loads(request.body)
+        
+        field = get_object_or_404(Field, id=data['field_id'], owner=request.user)
+        crop = None
+        if data.get('crop_id'):
+            crop = get_object_or_404(Crop, id=data['crop_id'])
+        
+        activity = FieldActivity.objects.create(
+            field=field,
+            activity_type=data['activity_type'],
+            crop=crop,
+            date=parse_datetime(data['date']),
+            duration_hours=Decimal(data.get('duration_hours', 0)),
+            description=data.get('description', ''),
+            cost=Decimal(data.get('cost', 0)),
+            priority=data.get('priority', 'medium'),
+            notes=data.get('notes', '')
+        )
+        
+        # Fetch and store weather data for the activity
+        weather_data = fetch_weather_data(field, activity.date)
+        if weather_data:
+            activity.weather_conditions = weather_data
+            activity.save()
+        
+        # Generate smart recommendations based on this activity
+        generate_smart_recommendations(field, activity)
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Activity added successfully',
+            'activity_id': activity.id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error adding activity: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'message': f'Error adding activity: {str(e)}'
+        }, status=400)
+
+@login_required
+def get_weather_forecast(request, field_id):
+    """Get weather forecast for a specific field"""
+    field = get_object_or_404(Field, id=field_id, owner=request.user)
+    
+    # Get existing forecast data (last 7 days)
+    forecast_data = WeatherData.objects.filter(
+        field=field,
+        is_forecast=True,
+        date__gte=timezone.now(),
+        date__lte=timezone.now() + timedelta(days=7)
+    ).order_by('date')
+    
+    # If no recent forecast data, fetch from API
+    if not forecast_data.exists():
+        fetch_and_store_forecast(field)
+        forecast_data = WeatherData.objects.filter(
+            field=field,
+            is_forecast=True,
+            date__gte=timezone.now(),
+            date__lte=timezone.now() + timedelta(days=7)
+        ).order_by('date')
+    
+    forecast_list = []
+    for weather in forecast_data:
+        forecast_list.append({
+            'date': weather.date.strftime('%Y-%m-%d'),
+            'temp_min': float(weather.temperature_min),
+            'temp_max': float(weather.temperature_max),
+            'humidity': float(weather.humidity),
+            'precipitation': float(weather.precipitation),
+            'wind_speed': float(weather.wind_speed),
+            'condition': weather.weather_condition,
+            'uv_index': float(weather.uv_index)
+        })
+    
+    return JsonResponse({'forecast': forecast_list})
+
+@login_required
+def get_smart_recommendations(request, field_id):
+    """Get smart recommendations for a specific field"""
+    field = get_object_or_404(Field, id=field_id, owner=request.user)
+    
+    # Get active recommendations
+    recommendations = SmartRecommendation.objects.filter(
+        field=field,
+        valid_until__gte=timezone.now(),
+        is_read=False
+    ).order_by('-urgency', '-created_at')[:10]
+    
+    recommendations_data = []
+    for rec in recommendations:
+        recommendations_data.append({
+            'id': rec.id,
+            'type': rec.recommendation_type,
+            'title': rec.title,
+            'message': rec.message,
+            'urgency': rec.urgency,
+            'confidence': float(rec.confidence_score),
+            'valid_until': rec.valid_until.strftime('%Y-%m-%d %H:%M'),
+            'recommended_date': rec.recommended_action_date.strftime('%Y-%m-%d') if rec.recommended_action_date else None,
+            'metadata': rec.metadata
+        })
+    
+    return JsonResponse({'recommendations': recommendations_data})
+
+@login_required
+def get_activity_optimization(request, field_id):
+    """Get optimal timing for activities based on weather and crop conditions"""
+    field = get_object_or_404(Field, id=field_id, owner=request.user)
+    activity_type = request.GET.get('activity_type', 'irrigation')
+    
+    # Get optimization data for the next 14 days
+    optimizations = ActivityOptimization.objects.filter(
+        field=field,
+        activity_type=activity_type,
+        optimal_date_range_start__gte=timezone.now(),
+        optimal_date_range_end__lte=timezone.now() + timedelta(days=14)
+    ).order_by('-overall_score')[:7]
+    
+    optimization_data = []
+    for opt in optimizations:
+        optimization_data.append({
+            'start_date': opt.optimal_date_range_start.strftime('%Y-%m-%d'),
+            'end_date': opt.optimal_date_range_end.strftime('%Y-%m-%d'),
+            'weather_score': float(opt.weather_score),
+            'crop_score': float(opt.crop_stage_score),
+            'overall_score': float(opt.overall_score),
+            'factors': opt.factors_considered
+        })
+    
+    return JsonResponse({'optimizations': optimization_data})
+
+def fetch_weather_data(field, date):
+    """Fetch weather data from external API"""
+    try:
+        # Calculate field center point for weather data
+        center = field.geometry.centroid
+        lat, lon = center.y, center.x
+        
+        # Convert date to timestamp for historical data
+        timestamp = int(date.timestamp()) if isinstance(date, datetime) else int(datetime.now().timestamp())
+        
+        url = f"{WEATHER_API_BASE_URL}/onecall/timemachine"
+        params = {
+            'lat': lat,
+            'lon': lon,
+            'dt': timestamp,
+            'appid': WEATHER_API_KEY,
+            'units': 'metric'
+        }
+        
+        response = requests.get(url, params=params, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            weather_info = data.get('current', {})
+            
+            return {
+                'temperature': weather_info.get('temp', 0),
+                'humidity': weather_info.get('humidity', 0),
+                'precipitation': weather_info.get('rain', {}).get('1h', 0),
+                'wind_speed': weather_info.get('wind_speed', 0),
+                'condition': weather_info.get('weather', [{}])[0].get('description', ''),
+                'pressure': weather_info.get('pressure', 0),
+                'uv_index': weather_info.get('uvi', 0)
+            }
+    except Exception as e:
+        logger.error(f"Error fetching weather data: {str(e)}")
+        return None
+
+def fetch_and_store_forecast(field):
+    """Fetch and store weather forecast data"""
+    try:
+        center = field.geometry.centroid
+        lat, lon = center.y, center.x
+        
+        url = f"{WEATHER_API_BASE_URL}/onecall"
+        params = {
+            'lat': lat,
+            'lon': lon,
+            'appid': WEATHER_API_KEY,
+            'units': 'metric',
+            'exclude': 'minutely,alerts'
+        }
+        
+        response = requests.get(url, params=params, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Store daily forecast data
+            for day_data in data.get('daily', [])[:7]:
+                date = timezone.datetime.fromtimestamp(day_data['dt'], tz=timezone.utc)
+                
+                WeatherData.objects.update_or_create(
+                    field=field,
+                    date=date.replace(hour=12, minute=0, second=0, microsecond=0),
+                    is_forecast=True,
+                    defaults={
+                        'temperature_min': day_data['temp']['min'],
+                        'temperature_max': day_data['temp']['max'],
+                        'temperature_avg': day_data['temp']['day'],
+                        'humidity': day_data['humidity'],
+                        'precipitation': day_data.get('rain', {}).get('1h', 0),
+                        'wind_speed': day_data['wind_speed'],
+                        'wind_direction': day_data['wind_deg'],
+                        'pressure': day_data['pressure'],
+                        'uv_index': day_data['uvi'],
+                        'weather_condition': day_data['weather'][0]['description']
+                    }
+                )
+    except Exception as e:
+        logger.error(f"Error fetching forecast data: {str(e)}")
+
+def generate_smart_recommendations(field, activity=None):
+    """Generate smart recommendations based on weather and field conditions"""
+    try:
+        # Get recent weather data
+        recent_weather = WeatherData.objects.filter(
+            field=field,
+            date__gte=timezone.now() - timedelta(days=3)
+        ).order_by('-date').first()
+        
+        # Get forecast data
+        forecast = WeatherData.objects.filter(
+            field=field,
+            is_forecast=True,
+            date__gte=timezone.now(),
+            date__lte=timezone.now() + timedelta(days=7)
+        )
+        
+        recommendations = []
+        
+        # Weather-based recommendations
+        if recent_weather:
+            # Drought warning
+            if recent_weather.precipitation < 5 and recent_weather.humidity < 50:
+                rec = SmartRecommendation(
+                    field=field,
+                    recommendation_type='irrigation',
+                    title='Irrigation Recommended',
+                    message='Low precipitation and humidity detected. Consider irrigating your crops.',
+                    urgency='medium',
+                    confidence_score=0.8,
+                    valid_until=timezone.now() + timedelta(days=3),
+                    recommended_action_date=timezone.now() + timedelta(days=1),
+                    related_weather=recent_weather,
+                    metadata={
+                        'precipitation': float(recent_weather.precipitation),
+                        'humidity': float(recent_weather.humidity)
+                    }
+                )
+                recommendations.append(rec)
+            
+            # High wind warning
+            if recent_weather.wind_speed > 25:
+                rec = SmartRecommendation(
+                    field=field,
+                    recommendation_type='weather_alert',
+                    title='High Wind Alert',
+                    message='Strong winds detected. Avoid spraying pesticides or applying fertilizers.',
+                    urgency='high',
+                    confidence_score=0.9,
+                    valid_until=timezone.now() + timedelta(days=1),
+                    related_weather=recent_weather,
+                    metadata={'wind_speed': float(recent_weather.wind_speed)}
+                )
+                recommendations.append(rec)
+        
+        # Forecast-based recommendations
+        for weather in forecast:
+            # Rain prediction - perfect for planting
+            if weather.precipitation > 10 and weather.temperature_avg > 15:
+                rec = SmartRecommendation(
+                    field=field,
+                    recommendation_type='planting_optimal',
+                    title='Optimal Planting Conditions',
+                    message=f'Good rainfall ({weather.precipitation}mm) and temperature expected. Great time for planting.',
+                    urgency='medium',
+                    confidence_score=0.85,
+                    valid_until=weather.date + timedelta(days=1),
+                    recommended_action_date=weather.date,
+                    related_weather=weather,
+                    metadata={
+                        'precipitation': float(weather.precipitation),
+                        'temperature': float(weather.temperature_avg)
+                    }
+                )
+                recommendations.append(rec)
+            
+            # Frost warning
+            if weather.temperature_min < 2:
+                rec = SmartRecommendation(
+                    field=field,
+                    recommendation_type='weather_alert',
+                    title='Frost Warning',
+                    message=f'Frost expected on {weather.date.strftime("%Y-%m-%d")}. Protect sensitive crops.',
+                    urgency='high',
+                    confidence_score=0.95,
+                    valid_until=weather.date + timedelta(days=1),
+                    related_weather=weather,
+                    metadata={'min_temp': float(weather.temperature_min)}
+                )
+                recommendations.append(rec)
+        
+        # Save recommendations
+        for rec in recommendations:
+            # Check if similar recommendation already exists
+            existing = SmartRecommendation.objects.filter(
+                field=field,
+                recommendation_type=rec.recommendation_type,
+                valid_until__gte=timezone.now(),
+                is_read=False
+            ).first()
+            
+            if not existing:
+                rec.save()
+                
+    except Exception as e:
+        logger.error(f"Error generating recommendations: {str(e)}")
+
+@login_required
+@csrf_exempt
+def mark_recommendation_read(request, recommendation_id):
+    """Mark a recommendation as read"""
+    if request.method == 'POST':
+        try:
+            rec = get_object_or_404(
+                SmartRecommendation, 
+                id=recommendation_id, 
+                field__owner=request.user
+            )
+            rec.is_read = True
+            rec.save()
+            
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+@login_required
+def activity_analytics(request, field_id):
+    """Get analytics data for activities"""
+    field = get_object_or_404(Field, id=field_id, owner=request.user)
+    
+    # Activity completion rates
+    total_activities = FieldActivity.objects.filter(field=field).count()
+    completed_activities = FieldActivity.objects.filter(
+        field=field, 
+        completion_status='completed'
+    ).count()
+    
+    completion_rate = (completed_activities / total_activities * 100) if total_activities > 0 else 0
+    
+    # Activity type distribution
+    activity_distribution = FieldActivity.objects.filter(field=field).values(
+        'activity_type'
+    ).annotate(count=Count('id'))
+    
+    # Recent activity trends (last 30 days)
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    recent_activities = FieldActivity.objects.filter(
+        field=field,
+        date__gte=thirty_days_ago
+    ).extra({
+        'day': 'DATE(date)'
+    }).values('day').annotate(count=Count('id')).order_by('day')
+    
+    return JsonResponse({
+        'completion_rate': round(completion_rate, 2),
+        'total_activities': total_activities,
+        'completed_activities': completed_activities,
+        'activity_distribution': list(activity_distribution),
+        'recent_trends': list(recent_activities)
+    })

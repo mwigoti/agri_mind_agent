@@ -68,21 +68,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'AgriVision.urls'
 
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'base/templates')],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-            ],
-        },
-    },
-]
+TEMPLATES = [ { 'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIRS': [os.path.join(BASE_DIR, 'base/templates')], 'APP_DIRS': True, 'OPTIONS': { 'context_processors': [ 'django.template.context_processors.debug', 'django.template.context_processors.request', 'django.contrib.auth.context_processors.auth', 'django.contrib.messages.context_processors.messages', ], }, }, ]
 
 WSGI_APPLICATION = 'AgriVision.wsgi.application'
 
@@ -205,7 +191,21 @@ AFRICAS_TALKING_SANDBOX = config('AFRICAS_TALKING_SANDBOX', default=True, cast=b
 CSRF_TRUSTED_ORIGINS = [
    ' https://068bed127975.ngrok-free.app '
 ]
+WEATHER_API_KEY = '109f222b11c58e432329752f9f07bae1'
+CELERY_BROKER_URL = 'redis://localhost:6379'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379'
 
+# Celery configuration for periodic tasks (optional)
+CELERY_BEAT_SCHEDULE = {
+    'update-weather-data': {
+        'task': 'agrivision.tasks.update_weather_data',
+        'schedule': 3600.0,  # Run every hour
+    },
+    'generate-recommendations': {
+        'task': 'agrivision.tasks.generate_recommendations',
+        'schedule': 7200.0,  # Run every 2 hours
+    },
+}
 # Add logging for USSD
 LOGGING = {
     'version': 1,
