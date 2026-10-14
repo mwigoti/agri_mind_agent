@@ -2355,42 +2355,51 @@
 
         // Handle different possible response structures
         let rawFields = [];
-        if (data.field) {
-        rawFields = data.field;
+
+        if (data.type === "FeatureCollection" && Array.isArray(data.features)) {
+          rawFields = data.features;
         } else if (Array.isArray(data)) {
-        rawFields = data;
+          rawFields = data;
         } else if (data.fields) {
-        rawFields = data.fields;
+          rawFields = data.fields;
         }
 
-        // Transform backend data to frontend format
-        fields = rawFields.map(field => {
-        // Find matching crop type from CROP_TYPES
-        const cropType = field.crop_type ? 
-            CROP_TYPES.find(c => c.id === field.crop_type || c.name.toLowerCase() === field.crop_type.toLowerCase()) 
-            : null;
-        
+       fields = rawFields.map(feature => {
+        const props = feature.properties || {};
+
+        // Match crop type if present
+        const cropType = props.crop_type
+          ? CROP_TYPES.find(
+              c =>
+                c.id === props.crop_type ||
+                c.name.toLowerCase() === String(props.crop_type).toLowerCase()
+            )
+          : null;
+
         return {
-            id: field.id.toString(),
-            name: field.name || `Field ${field.id}`,
-            area: parseFloat(field.area) || 0,
-            geometry: field.geometry || field.geom,
-            crop: field.crop_id || field.has_active_crop ? {
-            type: cropType || CROP_TYPES[0],
-            plantingDate: field.planting_date ? new Date(field.planting_date) : new Date(),
-            status: field.crop_status || 'active',
-            variety: field.variety || undefined,
-            irrigationType: field.irrigation_type || undefined,
-            notes: field.notes || undefined,
-            ndviData: field.ndvi_data ? transformNDVIData(field.ndvi_data) : null
-            } : null
-        };
-        });
+          id: feature.id?.toString(),
+          name: props.name || `Field ${feature.id}`,
+          area: parseFloat(props.area) || 0,
+          geometry: feature.geometry, // ✅ ALWAYS here in GeoJSON
 
-        if (fields.length === 0) {
-        fieldList.innerHTML = '<div class="waiting-card"><div class="waiting-icon">🌾</div><h3>No fields yet</h3><p>Add your first field to start monitoring</p></div>';
-        return;
-        }
+          crop: props.has_active_crop
+            ? {
+                type: cropType || CROP_TYPES[0],
+                plantingDate: props.planting_date
+                  ? new Date(props.planting_date)
+                  : new Date(),
+                status: props.crop_status || "active",
+                variety: props.variety,
+                irrigationType: props.irrigation_type,
+                notes: props.notes,
+                ndviData: props.ndvi_data
+                  ? transformNDVIData(props.ndvi_data)
+                  : null
+              }
+            : null
+        };
+      });
+
 
         // Initialize the UI with fetched data
         renderFields();
