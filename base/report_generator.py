@@ -18,9 +18,7 @@ from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('Agg')  # Non-GUI backend
+ # Non-GUI backend
 import io
 from datetime import datetime
 import numpy as np
@@ -513,6 +511,10 @@ class AgrivisionReportGenerator:
     
     def _create_charts_section(self, data: dict) -> list:
         """Create charts section"""
+        import matplotlib
+        matplotlib.use("Agg")
+
+        import matplotlib.pyplot as plt
         elements = []
         
         elements.append(Paragraph("Visual Analysis", self.styles['SectionHeader']))
@@ -531,6 +533,10 @@ class AgrivisionReportGenerator:
     
     def _create_health_chart(self, health_data: dict):
         """Create health scores bar chart"""
+        import matplotlib
+        matplotlib.use("Agg")
+
+        import matplotlib.pyplot as plt
         fig, ax = plt.subplots(figsize=(10, 6))
         
         categories = ['Overall\nHealth', 'Vegetation\nHealth', 'Soil\nHealth', 
