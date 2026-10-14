@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,12 +5,11 @@
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>AgriVision - Weather Enhanced Map</title>
     
-    <!-- ArcGIS CSS and JavaScript API -->
-    <link rel="stylesheet" href="https://js.arcgis.com/3.46/dijit/themes/claro/claro.css">
-    <link rel="stylesheet" href="https://js.arcgis.com/3.46/esri/css/esri.css">
-    
     <!-- Chart.js for weather charts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <!-- Leaflet for mapping instead of ArcGIS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     
     <style>
         * {
@@ -107,12 +105,19 @@
             flex: 1;
             position: relative;
             display: flex;
+            flex-direction: row;
         }
         
         #map {
             flex: 1;
             height: 100vh;
+            transition: all 0.3s ease;
         }
+
+        #weatherControls,
+        #infoPanel {
+            width: 300px;
+}
         
         .weather-panel {
             width: 420px;
@@ -549,7 +554,7 @@
         }
         
         .alert-banner {
-            background: linear-gradient(135deg, #dc2626, #ef4444, #f87171);
+            background: green;
             color: #ffffff;
             padding: 15px;
             text-align: center;
@@ -786,18 +791,60 @@
             .weather-btn {
                 width: 100%;
             }
+        
+        
         }
-    </style>
+        .weather-hidden #weatherControls,
+.weather-hidden #infoPanel {
+    display: none;
+}
 
-    <script>
-        var dojoConfig = { parseOnLoad: true };
-    </script>
-    <script src="https://js.arcgis.com/3.46/"></script>
+.weather-hidden #map {
+    width: 100%;
+}   
+
+
+.weather-hidden .weather-panel {
+    display: none !important;
+}
+
+.weather-hidden .weather-controls {
+    display: none !important;
+}
+
+.weather-hidden .info-panel {
+    display: none !important;
+}
+
+.weather-hidden #map {
+    width: 100% !important;
+    flex: 1;
+}
+
+.map-container {
+    transition: all 0.3s ease;
+}
+
+#map {
+    transition: all 0.3s ease;
+}
+
+/* Info Panel Hide/Show Styles */
+.info-hidden .info-panel {
+    display: none !important;
+}
+
+.info-hidden.weather-hidden #map {
+    width: 100% !important; /* When both panels are hidden */
+}
+
+
+    </style>
 </head>
 
-<body class="claro">
+<body>
     <!-- Menu Toggle Button -->
-    <button class="menu-toggle" id="menuToggle">☰</button>
+    
     
     <!-- Alert Banner -->
     <div class="alert-banner" id="alertBanner">
@@ -807,14 +854,14 @@
     <div class="container">
         <!-- Sidebar Menu -->
         <div class="menu" id="sidebarMenu">
-            <div class="logo"><h3>🌾 AgriVision</h3></div>
+            <div class="logo"><h3>AgriVision</h3></div>
             <nav>
                 <ul>
-                    <li id="hidePanel">Toggle Weather Panel</li>
-                    <li id="season2024">Season 2024</li>
-                    <li id="getStarted">Get Started</li>
+                    <li id="infoPanelMenuItem" onclick="InfoPanelManager.toggleInfoPanel()">Hide Info Panel</li>
+                    <li id="season2024">Season</li>
+                   
                     <li id="monitoring">Monitoring</li>
-                    <li id="weatherMenuItem" class="active">Weather Dashboard</li>
+                    <li id="weatherMenuItem" onclick="WeatherManager.hideWeatherDashboard()">Hide Weather Dashboard</li>
                     <li id="overview">Overview</li>
                     <li id="vraMapsButton">VRA Maps</li>
                     <li id="fieldActivity">Field Activity Log</li>
@@ -831,7 +878,7 @@
         <div id="myFieldsModal" class="modal">
             <div class="modal-content">
                 <span class="close" id="closeFieldsModal">&times;</span>
-                <h2>🏡 My Fields</h2>
+                <h2>My Fields</h2>
                 <div class="loading" id="fieldsLoading" style="display: none; margin: 20px auto;"></div>
                 <table id="fieldsTable" style="display: none;">
                     <thead>
@@ -855,7 +902,7 @@
         <div id="vraMapsModal" class="modal">
             <div class="modal-content">
                 <span class="close" id="closeVraModal">&times;</span>
-                <h2>📊 VRA Maps</h2>
+                <h2>VRA Maps</h2>
                 <div class="loading" id="vraLoading" style="display: none; margin: 20px auto;"></div>
                 <table id="vraTable" style="display: none;">
                     <thead>
@@ -889,7 +936,7 @@
         <!-- Map Container -->
         <div class="map-container">
             <!-- Weather Controls -->
-            <div class="weather-controls">
+            <div class="weather-controls" id="weatherControls">
                 <h4>🌦️ Weather Overlays</h4>
                 <div class="weather-overlay-controls">
                     <button class="weather-btn" id="tempOverlay">🌡️ Temperature</button>
@@ -900,8 +947,8 @@
                 </div>
                 <div>
                     <select id="layerSelect">
-                        <option value="streets">🗺️ Street Map</option>
-                        <option value="hybrid" selected>🛰️ Satellite</option>
+                        <option value="openstreetmap">🗺️ Street Map</option>
+                        <option value="satellite" selected>🛰️ Satellite</option>
                         <option value="terrain">🏔️ Terrain</option>
                     </select>
                 </div>
@@ -912,8 +959,8 @@
             </div>
 
             <!-- Field Information Panel -->
-            <div class="info-panel">
-                <h3> Field Information</h3>
+            <div class="info-panel" id="infoPanel">
+                <h3>Field Information</h3>
                 <p id="fieldArea">0 ha</p>
                 <div class="search-filter">
                     <input type="text" placeholder="🔍 Search fields..." id="fieldSearch">
@@ -931,10 +978,10 @@
             </div>
 
             <!-- Map -->
-            <div id="map"></div>
+            <div id="map" class="map-expanded"></div>
 
             <!-- Weather Panel -->
-            <div class="weather-panel" id="weatherPanel">
+            <div class="weather-panel" id="weatherMenuItem">
                 <h2>🌤️ Weather Dashboard</h2>
                 
                 <!-- Current Weather Card -->
@@ -992,10 +1039,12 @@
     </div>
 
     <script>
-
+        document.cookie = "csrftoken={{ csrf_token }}";
+        const WEATHER_API_KEY = '109f222b11c58e432329752f9f07bae1';
+        
         const APP_STATE = {
             map: null,
-            weatherOverlays: {},
+            weatherLayers: {},
             currentLocation: { lat: -1.2921, lon: 36.8219 }, // Nairobi coordinates
             charts: {
                 weather: null,
@@ -1011,827 +1060,78 @@
             },
             savedFields: []
         };
-//Map and Field Management
-        const MapManager = {
-            initialize() {
-                require([
-                    "esri/map",
-                    "esri/layers/WebTiledLayer",
-                    "esri/graphic",
-                    "esri/geometry/Point",
-                    "esri/geometry/Polygon",
-                    "esri/symbols/SimpleMarkerSymbol",
-                    "esri/symbols/SimpleFillSymbol",
-                    "esri/symbols/PictureMarkerSymbol",
-                    "esri/InfoTemplate",
-                    "esri/Color",
-                    "dojo/domReady!"
-                ], (Map, WebTiledLayer, Graphic, Point, Polygon, SimpleMarkerSymbol, SimpleFillSymbol, PictureMarkerSymbol, InfoTemplate, Color) => {
-                    
-                    APP_STATE.map = new Map("map", {
-                        basemap: "hybrid",
-                        center: [APP_STATE.currentLocation.lon, APP_STATE.currentLocation.lat],
-                        zoom: 10
-                    });
 
-                    APP_STATE.map.on("load", () => {
-                        this.setupWeatherOverlays(WebTiledLayer);
-                        WeatherAPI.updateWeatherForLocation();
-                        this.addWeatherStations(Graphic, Point, PictureMarkerSymbol, InfoTemplate);
-                    });
-
-                    APP_STATE.map.on("click", (event) => {
-                        if (APP_STATE.isDrawingMode) {
-                            this.handleFieldDrawing(event, Graphic, Point, Polygon, SimpleMarkerSymbol, SimpleFillSymbol, Color);
-                        } else {
-                            const mapPoint = event.mapPoint;
-                            APP_STATE.currentLocation = {
-                                lat: mapPoint.getLatitude(),
-                                lon: mapPoint.getLongitude()
-                            };
-                            WeatherAPI.updateWeatherForLocation();
-                            Utils.showAlert(`Weather updated for coordinates: ${APP_STATE.currentLocation.lat.toFixed(4)}, ${APP_STATE.currentLocation.lon.toFixed(4)}`);
-                        }
-                    });
-
-                    this.setupControls();
-                });
-            },
-
-            setupWeatherOverlays(WebTiledLayer) {
-                APP_STATE.weatherOverlays = {
-                    temp: new WebTiledLayer(
-                        `https://tile.openweathermap.org/map/temp_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`,
-                        { id: "temperature", copyright: "OpenWeatherMap", opacity: 0.7 }
-                    ),
-                    precipitation: new WebTiledLayer(
-                        `https://tile.openweathermap.org/map/precipitation_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`,
-                        { id: "precipitation", copyright: "OpenWeatherMap", opacity: 0.7 }
-                    ),
-                    wind: new WebTiledLayer(
-                        `https://tile.openweathermap.org/map/wind_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`,
-                        { id: "wind", copyright: "OpenWeatherMap", opacity: 0.7 }
-                    ),
-                    clouds: new WebTiledLayer(
-                        `https://tile.openweathermap.org/map/clouds_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`,
-                        { id: "clouds", copyright: "OpenWeatherMap", opacity: 0.7 }
-                    )
-                };
-            },
-
-            setupControls() {
-                // Layer control
-                document.getElementById("layerSelect").addEventListener("change", (e) => {
-                    APP_STATE.map.setBasemap(e.target.value);
-                });
-
-                // Weather overlay controls
-                document.getElementById("tempOverlay").addEventListener("click", () => {
-                    this.toggleWeatherOverlay("temp", document.getElementById("tempOverlay"));
-                    this.showLegend("temperature");
-                });
-
-                document.getElementById("precipOverlay").addEventListener("click", () => {
-                    this.toggleWeatherOverlay("precipitation", document.getElementById("precipOverlay"));
-                    this.showLegend("precipitation");
-                });
-
-                document.getElementById("windOverlay").addEventListener("click", () => {
-                    this.toggleWeatherOverlay("wind", document.getElementById("windOverlay"));
-                    this.showLegend("wind");
-                });
-
-                document.getElementById("cloudsOverlay").addEventListener("click", () => {
-                    this.toggleWeatherOverlay("clouds", document.getElementById("cloudsOverlay"));
-                    this.showLegend("clouds");
-                });
-
-                document.getElementById("clearOverlay").addEventListener("click", () => {
-                    this.clearAllOverlays();
-                });
-
-                // Field drawing controls
-                document.getElementById("addField").addEventListener("click", () => {
-                    this.startDrawingMode();
-                });
-
-                document.getElementById("saveField").addEventListener("click", () => {
-                    this.saveCurrentField();
-                });
-
-                document.getElementById("clearField").addEventListener("click", () => {
-                    this.clearCurrentField();
-                });
-
-                document.getElementById("cancelField").addEventListener("click", () => {
-                    this.cancelDrawingMode();
-                });
-            },
-
-            toggleWeatherOverlay(type, button) {
-                const layer = APP_STATE.weatherOverlays[type];
-                if (APP_STATE.map.getLayer(layer.id)) {
-                    APP_STATE.map.removeLayer(layer);
-                    button.classList.remove("active");
-                } else {
-                    APP_STATE.map.addLayer(layer);
-                    button.classList.add("active");
-                }
-            },
-
-            clearAllOverlays() {
-                Object.keys(APP_STATE.weatherOverlays).forEach(key => {
-                    const layer = APP_STATE.weatherOverlays[key];
-                    if (APP_STATE.map.getLayer(layer.id)) {
-                        APP_STATE.map.removeLayer(layer);
-                    }
-                });
-                document.querySelectorAll(".weather-btn").forEach(btn => {
-                    btn.classList.remove("active");
-                });
-                document.getElementById("weatherLegend").style.display = "none";
-            },
-
-            showLegend(type) {
-                const legend = document.getElementById("weatherLegend");
-                const content = document.getElementById("legendContent");
-                legend.style.display = "block";
-
-                const legends = {
-                    temperature: [
-                        { color: "#800080", label: "Very Cold (-40°C)" },
-                        { color: "#0000FF", label: "Cold (0°C)" },
-                        { color: "#00FFFF", label: "Cool (10°C)" },
-                        { color: "#00FF00", label: "Moderate (20°C)" },
-                        { color: "#FFFF00", label: "Warm (30°C)" },
-                        { color: "#FF8000", label: "Hot (40°C)" },
-                        { color: "#FF0000", label: "Very Hot (50°C)" }
-                    ],
-                    precipitation: [
-                        { color: "#FFFFFF", label: "No precipitation" },
-                        { color: "#C6E2FF", label: "Light rain (0.1-0.5 mm/h)" },
-                        { color: "#87CEEB", label: "Moderate rain (0.5-4 mm/h)" },
-                        { color: "#0000FF", label: "Heavy rain (4-16 mm/h)" },
-                        { color: "#000080", label: "Very heavy rain (>16 mm/h)" }
-                    ],
-                    wind: [
-                        { color: "#FFFFFF", label: "Calm (0-2 m/s)" },
-                        { color: "#87CEEB", label: "Light breeze (2-6 m/s)" },
-                        { color: "#00BFFF", label: "Moderate breeze (6-11 m/s)" },
-                        { color: "#0000FF", label: "Strong breeze (11-17 m/s)" },
-                        { color: "#000080", label: "Gale (17+ m/s)" }
-                    ],
-                    clouds: [
-                        { color: "#FFFFFF", label: "Clear sky (0-10%)" },
-                        { color: "#E0E0E0", label: "Few clouds (11-25%)" },
-                        { color: "#C0C0C0", label: "Scattered clouds (25-50%)" },
-                        { color: "#808080", label: "Broken clouds (51-84%)" },
-                        { color: "#404040", label: "Overcast (85-100%)" }
-                    ]
-                };
-
-                content.innerHTML = legends[type].map(item => 
-                    `<div class="legend-item">
-                        <div class="legend-color" style="background-color: ${item.color}"></div>
-                        <span>${item.label}</span>
-                    </div>`
-                ).join("");
-            },
-
-            startDrawingMode() {
-                APP_STATE.isDrawingMode = true;
-                const addButton = document.getElementById("addField");
-                const drawingControls = document.getElementById("drawingControls");
-                
-                addButton.classList.add("drawing-mode");
-                addButton.textContent = "DRAWING MODE";
-                drawingControls.classList.add("active");
-                
-                Utils.showAlert("Drawing mode activated. Click on the map to add field boundary points.");
-                
-                // Change map cursor
-                if (APP_STATE.map && APP_STATE.map.container) {
-                    APP_STATE.map.container.style.cursor = "crosshair";
-                }
-            },
-
-            handleFieldDrawing(event, Graphic, Point, Polygon, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
-                const point = new Point(event.mapPoint.x, event.mapPoint.y, APP_STATE.map.spatialReference);
-                const markerSymbol = new SimpleMarkerSymbol()
-                    .setColor(new Color([74, 222, 128]))
-                    .setSize(12)
-                    .setStyle(SimpleMarkerSymbol.STYLE_CIRCLE);
-                const markerGraphic = new Graphic(point, markerSymbol);
-                APP_STATE.map.graphics.add(markerGraphic);
-                
-                APP_STATE.fieldData.coordinates.push([point.x, point.y]);
-                APP_STATE.fieldData.markers.push(markerGraphic);
-
-                if (APP_STATE.fieldData.coordinates.length >= 3) {
-                    this.drawPolygonWithArea(Polygon, SimpleFillSymbol, Color, Graphic);
-                }
-
-                Utils.showAlert(`Point ${APP_STATE.fieldData.coordinates.length} added. ${APP_STATE.fieldData.coordinates.length < 3 ? 'Add at least 3 points to create a field.' : 'Continue adding points or save the field.'}`);
-            },
-
-            drawPolygonWithArea(Polygon, SimpleFillSymbol, Color, Graphic) {
-                if (APP_STATE.fieldData.currentPolygon) {
-                    APP_STATE.map.graphics.remove(APP_STATE.fieldData.currentPolygon);
-                }
-                
-                const polygon = new Polygon(APP_STATE.map.spatialReference);
-                polygon.addRing([...APP_STATE.fieldData.coordinates, APP_STATE.fieldData.coordinates[0]]); // Close the polygon
-                
-                const fillSymbol = new SimpleFillSymbol()
-                    .setColor(new Color([74, 222, 128, 0.3]))
-                    .setOutline(new Color([74, 222, 128]), 3);
-                    
-                APP_STATE.fieldData.currentPolygon = new Graphic(polygon, fillSymbol);
-                APP_STATE.map.graphics.add(APP_STATE.fieldData.currentPolygon);
-                
-                const areaInMapUnits = Utils.calculatePolygonArea(APP_STATE.fieldData.coordinates);
-                const areaInHectares = Utils.convertToHectares(areaInMapUnits);
-                document.getElementById("fieldArea").textContent = `${areaInHectares.toFixed(2)} ha`;
-            },
-
-            saveCurrentField() {
-                if (APP_STATE.fieldData.coordinates.length < 3) {
-                    Utils.showAlert("Please add at least 3 points to create a field.", "error");
-                    return;
-                }
-
-                const fieldName = prompt("Enter field name:") || `Field ${APP_STATE.savedFields.length + 1}`;
-                const areaInMapUnits = Utils.calculatePolygonArea(APP_STATE.fieldData.coordinates);
-                const areaInHectares = Utils.convertToHectares(areaInMapUnits);
-                
-                const field = {
-                    id: Utils.generateId(),
-                    name: fieldName,
-                    coordinates: [...APP_STATE.fieldData.coordinates],
-                    area: areaInHectares,
-                    createdAt: new Date().toISOString(),
-                    location: {
-                        lat: APP_STATE.currentLocation.lat,
-                        lon: APP_STATE.currentLocation.lon
-                    }
-                };
-
-                APP_STATE.savedFields.push(field);
-                
-                // Save to localStorage for persistence
-                try {
-                    localStorage.setItem('agrivision_fields', JSON.stringify(APP_STATE.savedFields));
-                } catch (e) {
-                    console.warn('Could not save to localStorage:', e);
-                }
-
-                Utils.showAlert(`Field "${fieldName}" saved successfully! Area: ${areaInHectares.toFixed(2)} ha`);
-                this.cancelDrawingMode();
-            },
-
-            clearCurrentField() {
-                // Remove all markers and polygon
-                APP_STATE.fieldData.markers.forEach(marker => {
-                    APP_STATE.map.graphics.remove(marker);
-                });
-                
-                if (APP_STATE.fieldData.currentPolygon) {
-                    APP_STATE.map.graphics.remove(APP_STATE.fieldData.currentPolygon);
-                }
-
-                // Reset field data
-                APP_STATE.fieldData = {
-                    coordinates: [],
-                    markers: [],
-                    currentPolygon: null
-                };
-
-                document.getElementById("fieldArea").textContent = "0 ha";
-                Utils.showAlert("Field cleared. Start adding points again.");
-            },
-
-            cancelDrawingMode() {
-                APP_STATE.isDrawingMode = false;
-                const addButton = document.getElementById("addField");
-                const drawingControls = document.getElementById("drawingControls");
-                
-                addButton.classList.remove("drawing-mode");
-                addButton.textContent = "ADD FIELD";
-                drawingControls.classList.remove("active");
-                
-                // Clear current field
-                this.clearCurrentField();
-                
-                // Reset map cursor
-                if (APP_STATE.map && APP_STATE.map.container) {
-                    APP_STATE.map.container.style.cursor = "default";
-                }
-
-                Utils.showAlert("Drawing mode cancelled.");
-            },
-
-            loadSavedFields() {
-                try {
-                    const saved = localStorage.getItem('agrivision_fields');
-                    if (saved) {
-                        APP_STATE.savedFields = JSON.parse(saved);
-                    }
-                } catch (e) {
-                    console.warn('Could not load from localStorage:', e);
-                    APP_STATE.savedFields = [];
-                }
-            },
-
-            addWeatherStations(Graphic, Point, PictureMarkerSymbol, InfoTemplate) {
-                const weatherStations = [
-                    { lat: -1.2921, lon: 36.8219, name: "Nairobi Weather Station", temp: 22 },
-                    { lat: -1.3733, lon: 36.8473, name: "Karen Weather Station", temp: 20 },
-                    { lat: -1.2297, lon: 36.8946, name: "Eastlands Weather Station", temp: 24 },
-                    { lat: -1.3197, lon: 36.7736, name: "Ngong Weather Station", temp: 19 }
-                ];
-
-                weatherStations.forEach(station => {
-                    const point = new Point(station.lon, station.lat, APP_STATE.map.spatialReference);
-                    const symbol = new PictureMarkerSymbol({
-                        url: "data:image/svg+xml;base64," + btoa(`
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="12" cy="12" r="10" fill="#4ade80" stroke="#ffffff" stroke-width="2"/>
-                                <text x="12" y="16" text-anchor="middle" fill="white" font-size="12" font-weight="bold">🌡</text>
-                            </svg>
-                        `),
-                        width: 24,
-                        height: 24
-                    });
-                    
-                    const infoTemplate = new InfoTemplate({
-                        title: station.name,
-                        content: `
-                            <div style="color: #333; padding: 10px;">
-                                <h4 style="margin: 0 0 10px 0; color: #4ade80;">Weather Station Info</h4>
-                                <p><strong>Temperature:</strong> ${station.temp}°C</p>
-                                <p><strong>Location:</strong> ${station.lat.toFixed(4)}, ${station.lon.toFixed(4)}</p>
-                                <p><strong>Status:</strong> Active</p>
-                                <p><strong>Last Update:</strong> ${new Date().toLocaleString()}</p>
-                            </div>
-                        `
-                    });
-                    
-                    const graphic = new Graphic(point, symbol, null, infoTemplate);
-                    APP_STATE.map.graphics.add(graphic);
-                });
-            }
-        };
-
-        // Field Management System
-        const FieldManager = {
-            showFieldsModal() {
-                const modal = document.getElementById('myFieldsModal');
-                const loading = document.getElementById('fieldsLoading');
-                const table = document.getElementById('fieldsTable');
-                const noFieldsMessage = document.getElementById('noFieldsMessage');
-                
-                modal.style.display = 'block';
-                loading.style.display = 'block';
-                table.style.display = 'none';
-                noFieldsMessage.style.display = 'none';
-                
-                setTimeout(() => {
-                    loading.style.display = 'none';
-                    this.populateFieldsTable();
-                }, 1000);
-            },
-
-            populateFieldsTable() {
-                const table = document.getElementById('fieldsTable');
-                const tbody = table.querySelector('tbody');
-                const noFieldsMessage = document.getElementById('noFieldsMessage');
-                
-                if (APP_STATE.savedFields.length === 0) {
-                    noFieldsMessage.style.display = 'block';
-                    return;
-                }
-                
-                tbody.innerHTML = APP_STATE.savedFields.map(field => `
-                    <tr>
-                        <td>${field.id.substr(-8)}</td>
-                        <td>${field.name}</td>
-                        <td>${field.area.toFixed(2)}</td>
-                        <td>${new Date(field.createdAt).toLocaleDateString()}</td>
-                        <td>
-                            <button class="analyze-btn" onclick="FieldManager.analyzeField('${field.id}')">
-                                📊 Analyze
-                            </button>
-                            <button class="delete-btn" onclick="FieldManager.deleteField('${field.id}')">
-                                🗑️ Delete
-                            </button>
-                        </td>
-                    </tr>
-                `).join('');
-                
-                table.style.display = 'table';
-            },
-
-            analyzeField(fieldId) {
-                const field = APP_STATE.savedFields.find(f => f.id === fieldId);
-                if (!field) return;
-                
-                // Center map on field
-                APP_STATE.currentLocation = field.location;
-                APP_STATE.map.centerAndZoom([field.location.lon, field.location.lat], 15);
-                
-                // Update weather for field location
-                WeatherAPI.updateWeatherForLocation();
-                
-                // Close modal
-                document.getElementById('myFieldsModal').style.display = 'none';
-                
-                Utils.showAlert(`Analyzing field "${field.name}". Weather data updated for field location.`);
-                
-                // Simulate analysis with enhanced data
-                setTimeout(() => {
-                    this.showFieldAnalysis(field);
-                }, 2000);
-            },
-
-            showFieldAnalysis(field) {
-                const analysisData = {
-                    soilMoisture: Math.random() * 100,
-                    ndvi: 0.3 + Math.random() * 0.6,
-                    soilPH: 6.0 + Math.random() * 2.0,
-                    organicMatter: 2.0 + Math.random() * 3.0,
-                    recommendedCrop: this.getRecommendedCrop(field.location.lat),
-                    irrigationNeeded: Math.random() > 0.6,
-                    pestRisk: Math.random() > 0.7 ? 'High' : 'Low',
-                    yieldPrediction: (field.area * (3 + Math.random() * 2)).toFixed(1)
-                };
-
-                const analysisHtml = `
-                    <div style="background: linear-gradient(135deg, #243447, #2d4059); padding: 20px; border-radius: 12px; margin: 20px 0;">
-                        <h3 style="color: #4ade80; margin-bottom: 15px;">🔬 Field Analysis Results</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <div style="background: rgba(74, 222, 128, 0.1); padding: 15px; border-radius: 8px;">
-                                <strong>Soil Moisture:</strong> ${analysisData.soilMoisture.toFixed(1)}%
-                            </div>
-                            <div style="background: rgba(74, 222, 128, 0.1); padding: 15px; border-radius: 8px;">
-                                <strong>NDVI:</strong> ${analysisData.ndvi.toFixed(2)}
-                            </div>
-                            <div style="background: rgba(74, 222, 128, 0.1); padding: 15px; border-radius: 8px;">
-                                <strong>Soil pH:</strong> ${analysisData.soilPH.toFixed(1)}
-                            </div>
-                            <div style="background: rgba(74, 222, 128, 0.1); padding: 15px; border-radius: 8px;">
-                                <strong>Organic Matter:</strong> ${analysisData.organicMatter.toFixed(1)}%
-                            </div>
-                        </div>
-                        <div style="margin-top: 15px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
-                            <h4 style="color: #3b82f6; margin: 0 0 10px 0;">🌱 Recommendations</h4>
-                            <p><strong>Recommended Crop:</strong> ${analysisData.recommendedCrop}</p>
-                            <p><strong>Irrigation Needed:</strong> ${analysisData.irrigationNeeded ? 'Yes' : 'No'}</p>
-                            <p><strong>Pest Risk:</strong> ${analysisData.pestRisk}</p>
-                            <p><strong>Predicted Yield:</strong> ${analysisData.yieldPrediction} tons</p>
-                        </div>
-                    </div>
-                `;
-
-                Utils.showAlert(`Field analysis completed for "${field.name}"`);
-                
-                // Add analysis to weather panel
-                const weatherPanel = document.getElementById('weatherPanel');
-                const existingAnalysis = weatherPanel.querySelector('.field-analysis');
-                if (existingAnalysis) existingAnalysis.remove();
-                
-                const analysisElement = document.createElement('div');
-                analysisElement.className = 'field-analysis';
-                analysisElement.innerHTML = analysisHtml;
-                weatherPanel.appendChild(analysisElement);
-            },
-
-            getRecommendedCrop(latitude) {
-                const crops = {
-                    tropical: ['Maize', 'Coffee', 'Tea', 'Sugarcane', 'Bananas'],
-                    temperate: ['Wheat', 'Barley', 'Potatoes', 'Carrots', 'Cabbage']
-                };
-                
-                const cropType = Math.abs(latitude) < 10 ? 'tropical' : 'temperate';
-                const availableCrops = crops[cropType];
-                return availableCrops[Math.floor(Math.random() * availableCrops.length)];
-            },
-
-            deleteField(fieldId) {
-                if (!confirm('Are you sure you want to delete this field?')) return;
-                
-                APP_STATE.savedFields = APP_STATE.savedFields.filter(f => f.id !== fieldId);
-                
-                try {
-                    localStorage.setItem('agrivision_fields', JSON.stringify(APP_STATE.savedFields));
-                } catch (e) {
-                    console.warn('Could not save to localStorage:', e);
-                }
-                
-                this.populateFieldsTable();
-                Utils.showAlert('Field deleted successfully.');
-            }
-        };
-
-        // VRA Maps Management
-        const VRAManager = {
-            showVRAModal() {
-                const modal = document.getElementById('vraMapsModal');
-                const loading = document.getElementById('vraLoading');
-                const table = document.getElementById('vraTable');
-                const noVraMessage = document.getElementById('noVraMessage');
-                
-                modal.style.display = 'block';
-                loading.style.display = 'block';
-                table.style.display = 'none';
-                noVraMessage.style.display = 'none';
-                
-                setTimeout(() => {
-                    loading.style.display = 'none';
-                    this.populateVRATable();
-                }, 1000);
-            },
-
-            populateVRATable() {
-                const table = document.getElementById('vraTable');
-                const tbody = table.querySelector('tbody');
-                const noVraMessage = document.getElementById('noVraMessage');
-                
-                // Generate VRA maps based on analyzed fields
-                const vraFields = APP_STATE.savedFields.slice(0, 3).map(field => ({
-                    ...field,
-                    vraId: 'VRA_' + field.id.substr(-6),
-                    type: 'Precision Application Map'
-                }));
-                
-                if (vraFields.length === 0) {
-                    noVraMessage.style.display = 'block';
-                    return;
-                }
-                
-                tbody.innerHTML = vraFields.map(vra => `
-                    <tr>
-                        <td>${vra.vraId}</td>
-                        <td>${vra.name} - ${vra.type}</td>
-                        <td>${vra.area.toFixed(2)}</td>
-                        <td>${new Date(vra.createdAt).toLocaleDateString()}</td>
-                        <td>
-                            <button class="analyze-btn" onclick="VRAManager.viewVRAMap('${vra.vraId}')">
-                                🗺️ View Map
-                            </button>
-                            <button class="delete-btn" onclick="VRAManager.deleteVRAMap('${vra.vraId}')">
-                                🗑️ Delete
-                            </button>
-                        </td>
-                    </tr>
-                `).join('');
-                
-                table.style.display = 'table';
-            },
-
-            viewVRAMap(vraId) {
-                Utils.showAlert(`Viewing VRA Map: ${vraId}`);
-                document.getElementById('vraMapsModal').style.display = 'none';
-                
-                // Simulate VRA overlay on map
-                this.addVRAOverlay();
-            },
-
-            addVRAOverlay() {
-                // Simulate adding VRA overlay to the map
-                const overlay = document.createElement('div');
-                overlay.style.position = 'absolute';
-                overlay.style.top = '50%';
-                overlay.style.left = '50%';
-                overlay.style.transform = 'translate(-50%, -50%)';
-                overlay.style.background = 'rgba(74, 222, 128, 0.8)';
-                overlay.style.color = 'white';
-                overlay.style.padding = '20px';
-                overlay.style.borderRadius = '12px';
-                overlay.style.zIndex = '1500';
-                overlay.innerHTML = '🗺️ VRA Map Overlay Active<br><small>Variable rate application zones displayed</small>';
-                
-                document.getElementById('map').appendChild(overlay);
-                
-                setTimeout(() => {
-                    overlay.remove();
-                }, 3000);
-            },
-
-            deleteVRAMap(vraId) {
-                if (!confirm('Are you sure you want to delete this VRA map?')) return;
-                Utils.showAlert(`VRA Map ${vraId} deleted successfully.`);
-                this.populateVRATable();
-            }
-        };
-
-        // Event Listeners and Initialization
-        const EventManager = {
-            init() {
-                // Menu toggle
-                document.getElementById('menuToggle').addEventListener('click', () => {
-                    document.getElementById('sidebarMenu').classList.toggle('collapsed');
-                });
-
-                // Menu items
-                document.getElementById('hidePanel').addEventListener('click', () => {
-                    document.getElementById('weatherPanel').classList.toggle('hidden');
-                });
-
-                document.getElementById('myFieldsButton').addEventListener('click', () => {
-                    FieldManager.showFieldsModal();
-                });
-
-                document.getElementById('vraMapsButton').addEventListener('click', () => {
-                    VRAManager.showVRAModal();
-                });
-
-                // Modal close buttons
-                document.getElementById('closeFieldsModal').addEventListener('click', () => {
-                    document.getElementById('myFieldsModal').style.display = 'none';
-                });
-
-                document.getElementById('closeVraModal').addEventListener('click', () => {
-                    document.getElementById('vraMapsModal').style.display = 'none';
-                });
-
-                document.getElementById('closeWeatherModal').addEventListener('click', () => {
-                    document.getElementById('weatherModal').style.display = 'none';
-                });
-
-                // Close modals when clicking outside
-                window.addEventListener('click', (event) => {
-                    const modals = document.querySelectorAll('.modal');
-                    modals.forEach(modal => {
-                        if (event.target === modal) {
-                            modal.style.display = 'none';
-                        }
-                    });
-                });
-
-                // Search functionality
-                document.getElementById('fieldSearch').addEventListener('input', (e) => {
-                    this.filterFields(e.target.value);
-                });
-
-                document.getElementById('filterBtn').addEventListener('click', () => {
-                    const searchTerm = document.getElementById('fieldSearch').value;
-                    this.filterFields(searchTerm);
-                });
-
-                // Other menu items with placeholder functionality
-                document.getElementById('season2024').addEventListener('click', () => {
-                    Utils.showAlert('Season 2024 dashboard coming soon!');
-                });
-
-                document.getElementById('getStarted').addEventListener('click', () => {
-                    Utils.showAlert('Welcome to AgriVision! Start by adding your fields to the map.');
-                });
-
-                document.getElementById('monitoring').addEventListener('click', () => {
-                    Utils.showAlert('Real-time field monitoring features coming soon!');
-                });
-
-                document.getElementById('overview').addEventListener('click', () => {
-                    Utils.showAlert('Farm overview dashboard coming soon!');
-                });
-
-                document.getElementById('fieldActivity').addEventListener('click', () => {
-                    Utils.showAlert('Field activity logging features coming soon!');
-                });
-
-                document.getElementById('dataManager').addEventListener('click', () => {
-                    Utils.showAlert('Data management tools coming soon!');
-                });
-
-                document.getElementById('notifications').addEventListener('click', () => {
-                    Utils.showAlert('Notification center coming soon!');
-                });
-
-                document.getElementById('requestDemo').addEventListener('click', () => {
-                    Utils.showAlert('Thank you for your interest! Demo request feature coming soon.');
-                });
-
-                document.getElementById('upgrade').addEventListener('click', () => {
-                    Utils.showAlert('Premium features and upgrade options coming soon!');
-                });
-            },
-
-            filterFields(searchTerm) {
-                if (!searchTerm) {
-                    Utils.showAlert('Enter a search term to filter fields.');
-                    return;
-                }
-                
-                const filteredFields = APP_STATE.savedFields.filter(field => 
-                    field.name.toLowerCase().includes(searchTerm.toLowerCase())
-                );
-                
-                Utils.showAlert(`Found ${filteredFields.length} field(s) matching "${searchTerm}"`);
-            }
-        };
-
-        // Application Initialization
-        function initializeApp() {
-            // Load saved fields from localStorage
-            MapManager.loadSavedFields();
-            
-            // Initialize event listeners
-            EventManager.init();
-            
-            // Initialize map
-            MapManager.initialize();
-            
-            // Show welcome message
-            setTimeout(() => {
-                Utils.showAlert('Welcome to AgriVision! Your intelligent farming companion is ready.');
-            }, 1000);
-
-            // Auto-update weather every 5 minutes
-            setInterval(() => {
-                WeatherAPI.updateWeatherForLocation();
-            }, 300000);
-        }
-
-        // Start the application
-        document.addEventListener('DOMContentLoaded', initializeApp);
-
-        // Make functions globally available for onclick handlers
-        window.FieldManager = FieldManager;
-        window.VRAManager = VRAManager;
-
-
-        // Global Variables and Configuration
-        const WEATHER_API_KEY = '109f222b11c58e432329752f9f07bae1';
-        
-
-        // Utility Functions
+      
         const Utils = {
-            formatDate: (timestamp) => {
-                return new Date(timestamp * 1000).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric'
-                });
-            },
-            
-            getWeatherIcon: (iconCode) => {
-                const iconMap = {
-                    "01d": "☀️", "01n": "🌙", "02d": "⛅", "02n": "☁️",
-                    "03d": "☁️", "03n": "☁️", "04d": "☁️", "04n": "☁️",
-                    "09d": "🌦️", "09n": "🌦️", "10d": "🌧️", "10n": "🌧️",
-                    "11d": "⛈️", "11n": "⛈️", "13d": "🌨️", "13n": "🌨️",
-                    "50d": "🌫️", "50n": "🌫️"
-                };
-                return iconMap[iconCode] || "🌤️";
-            },
+    formatDate: (timestamp) => {
+        return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+        });
+    },
 
-            showLoading: (elementId) => {
-                const element = document.getElementById(elementId);
-                if (element) element.style.display = 'block';
-            },
+    getCSRFToken: () => {
+        const match = document.cookie.match(/csrftoken=([^;]+)/);
+        return match ? match[1] : '';
+    },
 
-            hideLoading: (elementId) => {
-                const element = document.getElementById(elementId);
-                if (element) element.style.display = 'none';
-            },
-
-            showAlert: (message, type = 'info') => {
-                const alertBanner = document.getElementById('alertBanner');
-                alertBanner.innerHTML = `${type === 'error' ? '⚠️' : 'ℹ️'} ${message}`;
-                alertBanner.style.display = 'block';
-                setTimeout(() => {
-                    alertBanner.style.display = 'none';
-                }, 5000);
-            },
-
-            calculatePolygonArea: (coordinates) => {
-                if (coordinates.length < 3) return 0;
-                let area = 0;
-                const n = coordinates.length;
-                for (let i = 0; i < n; i++) {
-                    const j = (i + 1) % n;
-                    area += coordinates[i][0] * coordinates[j][1];
-                    area -= coordinates[j][0] * coordinates[i][1];
-                }
-                return Math.abs(area) / 2;
-            },
-
-            convertToHectares: (areaInMapUnits) => {
-                // Convert from square degrees to square meters, then to hectares
-                // This is an approximation - in real application, use proper coordinate system transformation
-                const avgLatRad = APP_STATE.currentLocation.lat * Math.PI / 180;
-                const meterPerDegLat = 111320;
-                const meterPerDegLon = 111320 * Math.cos(avgLatRad);
-                const areaInSqMeters = areaInMapUnits * meterPerDegLat * meterPerDegLon;
-                return areaInSqMeters / 10000; // Convert to hectares
-            },
-
-            generateId: () => {
-                return 'field_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            }
+    getWeatherIcon: (iconCode) => {
+        const iconMap = {
+            "01d": "☀️", "01n": "🌙", "02d": "⛅", "02n": "☁️",
+            "03d": "☁️", "03n": "☁️", "04d": "☁️", "04n": "☁️",
+            "09d": "🌦️", "09n": "🌦️", "10d": "🌧️", "10n": "🌧️",
+            "11d": "⛈️", "11n": "⛈️", "13d": "🌨️", "13n": "🌨️",
+            "50d": "🌫️", "50n": "🌫️"
         };
+        return iconMap[iconCode] || "🌤️";
+    },
 
-        // Weather API Functions
+    showLoading: (elementId) => {
+        const element = document.getElementById(elementId);
+        if (element) element.style.display = 'block';
+    },
+
+    hideLoading: (elementId) => {
+        const element = document.getElementById(elementId);
+        if (element) element.style.display = 'none';
+    },
+
+    showAlert: (message, type = 'info') => {
+        const alertBanner = document.getElementById('alertBanner');
+        alertBanner.innerHTML = `${type === 'error' ? '' : ''} ${message}`;
+        alertBanner.style.display = 'block';
+        setTimeout(() => {
+            alertBanner.style.display = 'none';
+        }, 5000);
+    },
+
+    calculatePolygonArea: (coordinates) => {
+        if (coordinates.length < 3) return 0;
+        let area = 0;
+        const n = coordinates.length;
+        for (let i = 0; i < n; i++) {
+            const j = (i + 1) % n;
+            area += coordinates[i][0] * coordinates[j][1];
+            area -= coordinates[j][0] * coordinates[i][1];
+        }
+        return Math.abs(area) / 2;
+    },
+
+    convertToHectares: (areaInMapUnits) => {
+        const avgLatRad = APP_STATE.currentLocation.lat * Math.PI / 180;
+        const meterPerDegLat = 111320;
+        const meterPerDegLon = 111320 * Math.cos(avgLatRad);
+        const areaInSqMeters = areaInMapUnits * meterPerDegLat * meterPerDegLon;
+        return areaInSqMeters / 10000;
+    },
+
+    generateId: () => {
+        return 'field_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+};
+
+       
         const WeatherAPI = {
             async getCurrentWeather() {
                 try {
@@ -1866,7 +1166,6 @@
 
             async getHistoricalWeather() {
                 try {
-                    // Create mock historical data as OpenWeatherMap historical API requires subscription
                     this.createMockHistoricalChart();
                 } catch (error) {
                     console.error('Error fetching historical weather:', error);
@@ -1883,7 +1182,6 @@
                 document.getElementById('pressure').textContent = `${data.main.pressure} hPa`;
                 document.getElementById('uvIndex').textContent = data.uvi || Math.floor(Math.random() * 11);
 
-                // Check for weather alerts
                 if (data.main.temp > 35 || data.wind.speed > 15) {
                     Utils.showAlert('Extreme weather conditions detected!', 'warning');
                 }
@@ -1932,35 +1230,7 @@
                 this.createPrecipitationChart(data);
             },
 
-            createMockWeatherCharts() {
-                // Create mock data for demonstration when API fails
-                const mockForecastData = {
-                    list: Array.from({ length: 24 }, (_, i) => ({
-                        dt: (Date.now() / 1000) + (i * 3600 * 3), // Every 3 hours
-                        main: {
-                            temp: 20 + Math.sin(i / 4) * 8 + Math.random() * 4
-                        },
-                        rain: Math.random() > 0.7 ? { '3h': Math.random() * 5 } : null,
-                        weather: [{ description: 'partly cloudy' }]
-                    }))
-                };
-                this.createWeatherCharts(mockForecastData);
-                
-                // Create mock forecast display
-                const mockDailyForecasts = Array.from({ length: 5 }, (_, i) => {
-                    const date = new Date(Date.now() + i * 24 * 60 * 60 * 1000);
-                    return `
-                        <div class="forecast-item">
-                            <div>
-                                <div class="forecast-date">${date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                                <div class="forecast-desc">Partly cloudy</div>
-                            </div>
-                            <div class="forecast-temp">${Math.round(20 + Math.random() * 10)}°/${Math.round(15 + Math.random() * 5)}°</div>
-                        </div>
-                    `;
-                });
-                document.getElementById('forecast').innerHTML = mockDailyForecasts.join('');
-            },
+           
 
             createTemperatureChart(data) {
                 const ctx = document.getElementById('weatherChart').getContext('2d');
@@ -2082,7 +1352,6 @@
             },
 
             createMockHistoricalChart() {
-                // Create mock data for demonstration
                 const mockData = {
                     data: Array.from({ length: 30 }, (_, i) => ({
                         dt: (Date.now() - (30 - i) * 24 * 60 * 60 * 1000) / 1000,
@@ -2192,3 +1461,709 @@
                 this.getHistoricalWeather();
             }
         };
+        const VRAManager = {
+                    viewVRAMap: function(fieldId) {
+                        
+                        window.location.href = `/vra_page/${fieldId}/`;
+                    }
+                };
+
+    
+       const WeatherManager = {
+    activeLayers: [],
+
+    hideWeatherDashboard: function () {
+        const mapContainer = document.querySelector(".map-container");
+        
+        // Toggle the weather-hidden class instead of just adding it
+        if (mapContainer.classList.contains("weather-hidden")) {
+            // Show weather dashboard
+            mapContainer.classList.remove("weather-hidden");
+            document.getElementById("weatherMenuItem").textContent = "Hide Weather Dashboard";
+        } else {
+            // Hide weather dashboard
+            this.activeLayers.forEach(layer => {
+                if (APP_STATE.map.hasLayer(layer)) {
+                    APP_STATE.map.removeLayer(layer);
+                }
+            });
+            this.activeLayers = [];
+            
+            mapContainer.classList.add("weather-hidden");
+            document.getElementById("weatherMenuItem").textContent = "Show Weather Dashboard";
+        }
+
+        // Resize the map to fill available space
+        setTimeout(() => {
+            APP_STATE.map.invalidateSize();
+        }, 300);
+    }
+};
+
+        const InfoPanelManager = {
+    toggleInfoPanel: function () {
+        const mapContainer = document.querySelector(".map-container");
+        const menuItem = document.getElementById("infoPanelMenuItem");
+        
+        // Toggle the info-hidden class
+        if (mapContainer.classList.contains("info-hidden")) {
+            // Show info panel
+            mapContainer.classList.remove("info-hidden");
+            menuItem.textContent = "Hide Info Panel";
+        } else {
+            // Hide info panel
+            mapContainer.classList.add("info-hidden");
+            menuItem.textContent = "Show Info Panel";
+        }
+
+        // Resize the map
+        setTimeout(() => {
+            APP_STATE.map.invalidateSize();
+        }, 300);
+    }
+};
+        const MapManager = {
+            initialize() {
+                // Initialize Leaflet map
+                APP_STATE.map = L.map('map').setView([APP_STATE.currentLocation.lat, APP_STATE.currentLocation.lon], 10);
+
+                // Add tile layers
+                const tileLayers = {
+    openstreetmap: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }),
+
+    satellite: L.layerGroup([
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '© Esri, Maxar, Earthstar Geographics'
+        }),
+        L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '© Esri Boundaries & Places',
+            pane: 'overlayPane'
+        })
+    ]),
+
+    terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenTopoMap contributors'
+    })
+};
+
+                tileLayers.satellite.addTo(APP_STATE.map);
+                
+                // Map event handlers
+                APP_STATE.map.on('click', (e) => {
+                    if (APP_STATE.isDrawingMode) {
+                        this.handleFieldDrawing(e);
+                    } else {
+                        APP_STATE.currentLocation = {
+                            lat: e.latlng.lat,
+                            lon: e.latlng.lng
+                        };
+                        WeatherAPI.updateWeatherForLocation();
+                        
+                    }
+                });
+
+                this.setupControls(tileLayers);
+                WeatherAPI.updateWeatherForLocation();
+                
+            },
+
+            setupControls(tileLayers) {
+                // Layer control
+                document.getElementById("layerSelect").addEventListener("change", (e) => {
+                    Object.values(tileLayers).forEach(layer => APP_STATE.map.removeLayer(layer));
+                    tileLayers[e.target.value].addTo(APP_STATE.map);
+                });
+
+                // Weather overlay controls
+                document.getElementById("tempOverlay").addEventListener("click", () => {
+                    this.toggleWeatherOverlay("temp", document.getElementById("tempOverlay"));
+                    this.showLegend("temperature");
+                });
+
+                document.getElementById("precipOverlay").addEventListener("click", () => {
+                    this.toggleWeatherOverlay("precipitation", document.getElementById("precipOverlay"));
+                    this.showLegend("precipitation");
+                });
+
+                document.getElementById("windOverlay").addEventListener("click", () => {
+                    this.toggleWeatherOverlay("wind", document.getElementById("windOverlay"));
+                    this.showLegend("wind");
+                });
+
+                document.getElementById("cloudsOverlay").addEventListener("click", () => {
+                    this.toggleWeatherOverlay("clouds", document.getElementById("cloudsOverlay"));
+                    this.showLegend("clouds");
+                });
+
+                document.getElementById("clearOverlay").addEventListener("click", () => {
+                    this.clearAllOverlays();
+                });
+
+                // Field drawing controls
+                document.getElementById("addField").addEventListener("click", () => {
+                    this.startDrawingMode();
+                });
+
+                document.getElementById("saveField").addEventListener("click", () => {
+                    this.saveCurrentField();
+                });
+
+                document.getElementById("clearField").addEventListener("click", () => {
+                    this.clearCurrentField();
+                });
+
+                document.getElementById("cancelField").addEventListener("click", () => {
+                    this.cancelDrawingMode();
+                });
+            },
+
+            toggleWeatherOverlay(type, button) {
+                const layerId = `weather_${type}`;
+                
+                if (APP_STATE.weatherLayers[layerId]) {
+                    APP_STATE.map.removeLayer(APP_STATE.weatherLayers[layerId]);
+                    delete APP_STATE.weatherLayers[layerId];
+                    button.classList.remove("active");
+                } else {
+                    const layer = L.tileLayer(
+                        `https://tile.openweathermap.org/map/${type}_new/{z}/{x}/{y}.png?appid=${WEATHER_API_KEY}`,
+                        { opacity: 0.7 }
+                    );
+                    layer.addTo(APP_STATE.map);
+                    APP_STATE.weatherLayers[layerId] = layer;
+                    button.classList.add("active");
+                }
+            },
+
+            clearAllOverlays() {
+                Object.values(APP_STATE.weatherLayers).forEach(layer => {
+                    APP_STATE.map.removeLayer(layer);
+                });
+                APP_STATE.weatherLayers = {};
+                document.querySelectorAll(".weather-btn").forEach(btn => {
+                    btn.classList.remove("active");
+                });
+                document.getElementById("weatherLegend").style.display = "none";
+            },
+
+            showLegend(type) {
+                const legend = document.getElementById("weatherLegend");
+                const content = document.getElementById("legendContent");
+                legend.style.display = "block";
+
+                const legends = {
+                    temperature: [
+                        { color: "#800080", label: "Very Cold (-40°C)" },
+                        { color: "#0000FF", label: "Cold (0°C)" },
+                        { color: "#00FFFF", label: "Cool (10°C)" },
+                        { color: "#00FF00", label: "Moderate (20°C)" },
+                        { color: "#FFFF00", label: "Warm (30°C)" },
+                        { color: "#FF8000", label: "Hot (40°C)" },
+                        { color: "#FF0000", label: "Very Hot (50°C)" }
+                    ],
+                    precipitation: [
+                        { color: "#FFFFFF", label: "No precipitation" },
+                        { color: "#C6E2FF", label: "Light rain (0.1-0.5 mm/h)" },
+                        { color: "#87CEEB", label: "Moderate rain (0.5-4 mm/h)" },
+                        { color: "#0000FF", label: "Heavy rain (4-16 mm/h)" },
+                        { color: "#000080", label: "Very heavy rain (>16 mm/h)" }
+                    ],
+                    wind: [
+                        { color: "#FFFFFF", label: "Calm (0-2 m/s)" },
+                        { color: "#87CEEB", label: "Light breeze (2-6 m/s)" },
+                        { color: "#00BFFF", label: "Moderate breeze (6-11 m/s)" },
+                        { color: "#0000FF", label: "Strong breeze (11-17 m/s)" },
+                        { color: "#000080", label: "Gale (17+ m/s)" }
+                    ],
+                    clouds: [
+                        { color: "#FFFFFF", label: "Clear sky (0-10%)" },
+                        { color: "#E0E0E0", label: "Few clouds (11-25%)" },
+                        { color: "#C0C0C0", label: "Scattered clouds (25-50%)" },
+                        { color: "#808080", label: "Broken clouds (51-84%)" },
+                        { color: "#404040", label: "Overcast (85-100%)" }
+                    ]
+                };
+
+                content.innerHTML = legends[type].map(item => 
+                    `<div class="legend-item">
+                        <div class="legend-color" style="background-color: ${item.color}"></div>
+                        <span>${item.label}</span>
+                    </div>`
+                ).join("");
+            },
+
+           startDrawingMode() {
+                APP_STATE.isDrawingMode = true;
+                const addButton = document.getElementById("addField");
+                addButton.classList.add("drawing-mode");
+                addButton.textContent = "Drawing Mode Active";
+                document.getElementById("drawingControls").classList.add("active");
+                Utils.showAlert("Click on the map to draw field boundaries", "info");
+            },
+
+            handleFieldDrawing(e) {
+                const coords = [e.latlng.lng, e.latlng.lat];
+                APP_STATE.fieldData.coordinates.push(coords);
+
+                // Add marker for each point
+                const marker = L.circleMarker([e.latlng.lat, e.latlng.lng], {
+                    color: '#4ade80',
+                    fillColor: '#4ade80',
+                    fillOpacity: 0.8,
+                    radius: 5
+                }).addTo(APP_STATE.map);
+                
+                APP_STATE.fieldData.markers.push(marker);
+
+                // Draw polygon if we have at least 3 points
+                if (APP_STATE.fieldData.coordinates.length >= 3) {
+                    this.updateFieldPolygon();
+                    this.updateFieldArea();
+                }
+            },
+
+            updateFieldPolygon() {
+                if (APP_STATE.fieldData.currentPolygon) {
+                    APP_STATE.map.removeLayer(APP_STATE.fieldData.currentPolygon);
+                }
+
+                const leafletCoords = APP_STATE.fieldData.coordinates.map(coord => [coord[1], coord[0]]);
+                APP_STATE.fieldData.currentPolygon = L.polygon(leafletCoords, {
+                    color: '#4ade80',
+                    fillColor: '#4ade80',
+                    fillOpacity: 0.3,
+                    weight: 3
+                }).addTo(APP_STATE.map);
+            },
+
+            updateFieldArea() {
+                if (APP_STATE.fieldData.coordinates.length >= 3) {
+                    const area = Utils.calculatePolygonArea(APP_STATE.fieldData.coordinates);
+                    const hectares = Utils.convertToHectares(area);
+                    document.getElementById("fieldArea").textContent = `${hectares.toFixed(2)} ha`;
+                }
+            },
+
+           saveCurrentField() {
+                    if (APP_STATE.fieldData.coordinates.length < 3) {
+                        Utils.showAlert("Please draw at least 3 points to create a field", "error");
+                        return;
+                    }
+
+                    const fieldName = prompt("Enter field name:", `Field ${APP_STATE.savedFields.length + 1}`);
+                    if (!fieldName) return;
+
+                    const area = Utils.calculatePolygonArea(APP_STATE.fieldData.coordinates);
+                    const hectares = Utils.convertToHectares(area);
+
+                    // Ensure polygon is closed
+                    const coords = [...APP_STATE.fieldData.coordinates];
+                    if (coords[0][0] !== coords[coords.length - 1][0] || coords[0][1] !== coords[coords.length - 1][1]) {
+                        coords.push(coords[0]);
+                    }
+
+                    const payload = {
+                        name: fieldName,
+                        coordinates: coords,
+                        area: hectares
+                    };
+
+                    
+
+                    fetch("/save-field/", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": Utils.getCSRFToken() 
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) {
+                            Utils.showAlert(`${data.error}`, "error");
+                        } else {
+                            Utils.showAlert(`Field "${fieldName}" saved to server.`);
+                            this.cancelDrawingMode(); // Reset drawing
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        Utils.showAlert("Failed to save field. Please try again.", "error");
+                    });
+                },
+
+            clearCurrentField() {
+                // Remove markers
+                APP_STATE.fieldData.markers.forEach(marker => {
+                    APP_STATE.map.removeLayer(marker);
+                });
+
+                // Remove polygon
+                if (APP_STATE.fieldData.currentPolygon) {
+                    APP_STATE.map.removeLayer(APP_STATE.fieldData.currentPolygon);
+                }
+
+                // Reset data
+                APP_STATE.fieldData = {
+                    coordinates: [],
+                    markers: [],
+                    currentPolygon: null
+                };
+
+                document.getElementById("fieldArea").textContent = "0 ha";
+              
+            },
+
+            cancelDrawingMode() {
+                APP_STATE.isDrawingMode = false;
+                const addButton = document.getElementById("addField");
+                addButton.classList.remove("drawing-mode");
+                addButton.textContent = "ADD FIELD";
+                document.getElementById("drawingControls").classList.remove("active");
+                this.clearCurrentField();
+            },
+
+            
+        };
+
+        // UI Event Handlers
+        const UIManager = {
+            initialize() {
+                this.setupMenuHandlers();
+                this.setupModalHandlers();
+                this.setupResponsiveHandlers();
+            },
+
+            setupMenuHandlers() {
+                // Menu toggle
+                document.getElementById("menuToggle").addEventListener("click", () => {
+                    const menu = document.getElementById("sidebarMenu");
+                    menu.classList.toggle("collapsed");
+                });
+
+                // Weather panel toggle
+                document.getElementById("hidePanel").addEventListener("click", () => {
+                    const panel = document.getElementById("weatherMenuItem");
+                    panel.classList.toggle("hidden");
+                });
+
+                // Menu items
+                document.getElementById("myFieldsButton").addEventListener("click", () => {
+                    this.showFieldsModal();
+                });
+
+                document.getElementById("vraMapsButton").addEventListener("click", () => {
+                    this.showVraModal();
+                });
+
+                // Other menu items (placeholder functionality)
+                const menuItems = [
+                    "season","monitoring", "overview", 
+                    "fieldActivity", "dataManager", "notifications", "requestDemo", "upgrade"
+                ];
+
+                menuItems.forEach(itemId => {
+                    document.getElementById(itemId).addEventListener("click", () => {
+                        
+                        this.setActiveMenuItem(itemId);
+                    });
+                });
+
+                // Set weather as default active
+                
+            },
+
+            setActiveMenuItem(activeId) {
+                document.querySelectorAll(".menu li").forEach(item => {
+                    item.classList.remove("active");
+                });
+                document.getElementById(activeId).classList.add("active");
+            },
+
+            setupModalHandlers() {
+                // Fields modal
+                document.getElementById("closeFieldsModal").addEventListener("click", () => {
+                    document.getElementById("myFieldsModal").style.display = "none";
+                });
+
+                // VRA modal
+                document.getElementById("closeVraModal").addEventListener("click", () => {
+                    document.getElementById("vraMapsModal").style.display = "none";
+                });
+
+                // Weather modal
+                document.getElementById("closeWeatherModal").addEventListener("click", () => {
+                    document.getElementById("weatherModal").style.display = "none";
+                });
+
+                // Close modals on outside click
+                window.addEventListener("click", (e) => {
+                    const modals = document.querySelectorAll(".modal");
+                    modals.forEach(modal => {
+                        if (e.target === modal) {
+                            modal.style.display = "none";
+                        }
+                    });
+                });
+            },
+
+            setupResponsiveHandlers() {
+                // Handle window resize
+                window.addEventListener("resize", () => {
+                    if (APP_STATE.map) {
+                        APP_STATE.map.invalidateSize();
+                    }
+                });
+            },
+
+            showFieldsModal() {
+                const modal = document.getElementById("myFieldsModal");
+                const table = document.getElementById("fieldsTable");
+                const tbody = table.querySelector("tbody");
+                const loading = document.getElementById("fieldsLoading");
+                const noFieldsMessage = document.getElementById("noFieldsMessage");
+
+                modal.style.display = "block";
+                loading.style.display = "block";
+                table.style.display = "none";
+                noFieldsMessage.style.display = "none";
+
+                fetch("/api/myfields/", {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": Utils.getCSRFToken()
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    loading.style.display = "none";
+
+                    const features = data.features || [];
+                    if (features.length === 0) {
+                        noFieldsMessage.style.display = "block";
+                        return;
+                    }
+
+                    this.populateFieldsTable(features);
+                    table.style.display = "table";
+                })
+                .catch(err => {
+                    loading.style.display = "none";
+                    console.error("Error loading fields:", err);
+                    Utils.showAlert("Failed to load your fields", "error");
+                });
+            },
+
+            populateFieldsTable(fields) {
+                const tbody = document.querySelector("#fieldsTable tbody");
+                tbody.innerHTML = "";
+
+                fields.forEach(field => {
+                    const props = field.properties;
+                    const area = props.area ? props.area.toFixed(2) : "0.00";
+                    const created = new Date(props.created_at).toLocaleDateString();
+
+                    const row = document.createElement("tr");
+                    row.setAttribute("data-id", field.id);
+                    row.innerHTML = `
+                        <td>${String(field.id).substr(0, 8)}...</td>
+                        <td>${props.name}</td>
+                        <td>${area}</td>
+                        <td>${created}</td>
+                        <td>
+                            <button class="analyze-btn" onclick="UIManager.analyzeField('${field.id}')">
+                                Analyze
+                            </button>
+                            <button class="delete-btn" onclick="UIManager.deleteField('${field.id}')">
+                                Delete
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            },
+            
+
+            showVraModal() {
+                const modal = document.getElementById("vraMapsModal");
+                const table = document.getElementById("vraTable");
+                const tbody = table.querySelector("tbody");
+                const loading = document.getElementById("vraLoading");
+                const noVraMessage = document.getElementById("noVraMessage");
+
+                modal.style.display = "block";
+                loading.style.display = "block";
+                table.style.display = "none";
+                noVraMessage.style.display = "none";
+
+                fetch("/api/myfields/", {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": Utils.getCSRFToken()
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    console.log("features array:", data.features);
+                    console.log("Number of features:", data.features.length);
+
+                    loading.style.display = "none";
+
+                    const features = data.features || [];
+                    if (features.length === 0) {
+                        noVraMessage.style.display = "block";
+                        return;
+                    }
+
+                    tbody.innerHTML = ""; 
+
+                    features.forEach(field => {
+                        const props = field.properties;
+                        const area = props.area ? props.area.toFixed(2) : "0.00";
+                        const created = new Date(props.created_at).toLocaleDateString();
+
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td>${field.id}</td>
+                            <td>${props.name}</td>
+                            <td>${area}</td>
+                            <td>${created}</td>
+                            <td>
+                                <button onclick="VRAManager.viewVRAMap('${field.id}')">Get VRA map</button>
+                                
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+
+                    table.style.display = "table"; 
+                })
+                .catch(err => {
+                    console.error("Error fetching fields:", err);
+                    loading.style.display = "none";
+                    Utils.showAlert("Failed to load VRA maps", "error");
+                });
+            },
+
+
+
+            analyzeField(fieldId) {
+               
+
+               
+                document.getElementById("myFieldsModal").style.display = "none";
+
+                 window.location.href = `/api/analyze-field/${fieldId}/`;
+                fetch(`/api/analyze-field/${fieldId}/`, {
+                    method: "GET",
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest",
+                        "X-CSRFToken": Utils.getCSRFToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show result in an alert or modal
+                        
+
+                        // Optionally log or render
+                        
+
+                    } else {
+                        Utils.showAlert(`Analysis failed: ${data.error}`, "error");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error during analysis:", error);
+                    Utils.showAlert(`An error occurred during analysis`, "error");
+                });
+            },
+
+
+            deleteField(fieldId) {
+                    if (!confirm("Are you sure you want to delete this field?")) return;
+
+                    fetch(`/api/delete-field/${fieldId}/`, {
+                        method: "DELETE",
+                        headers: {
+                            "X-CSRFToken": Utils.getCSRFToken()
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error("Failed to delete field");
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                       
+                        const fieldIndex = APP_STATE.savedFields.findIndex(f => f.id === fieldId);
+                        if (fieldIndex !== -1) {
+                            const field = APP_STATE.savedFields[fieldIndex];
+
+                            // Remove polygon from map
+                            if (field.polygon) {
+                                APP_STATE.map.removeLayer(field.polygon);
+                            }
+
+                            // Remove from local state
+                            APP_STATE.savedFields.splice(fieldIndex, 1);
+                        }
+
+                        
+                        const row = document.querySelector(`#fieldsTable tr[data-id="${fieldId}"]`);
+                        if (row) {
+                            row.remove();
+                        }
+
+                        
+
+                        // Optional: if no rows left, show "noFieldsMessage"
+                        const tbody = document.querySelector("#fieldsTable tbody");
+                        if (tbody && tbody.children.length === 0) {
+                            document.getElementById("fieldsTable").style.display = "none";
+                            document.getElementById("noFieldsMessage").style.display = "block";
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Delete error:", error);
+                        Utils.showAlert("Failed to delete field", "error");
+                    });
+                }
+
+        };
+
+        // Application Initialization
+        document.addEventListener("DOMContentLoaded", () => {
+            try {
+                MapManager.initialize();
+                UIManager.initialize();
+                
+                // Initialize field search
+                document.getElementById("fieldSearch").addEventListener("input", (e) => {
+                    // Field search functionality would go here
+                    console.log("Searching for:", e.target.value);
+                });
+
+                document.getElementById("filterBtn").addEventListener("click", () => {
+                   
+                });
+
+              
+                
+            } catch (error) {
+               
+            }
+        });
+
+        // Global error handler
+        
+    </script>
+</body>
+</html>
