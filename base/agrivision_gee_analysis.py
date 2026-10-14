@@ -324,9 +324,15 @@ class AgrivisionCompleteAnalyzer:
         if use_gee:
             try:
                 import ee
-                ee.Initialize()
+                # AGRIVISION_GEE_PROJECT must be set in your environment.
+                # Find it at: console.cloud.google.com → project selector → copy Project ID
+                gee_project = os.environ.get('AGRIVISION_GEE_PROJECT')
+                if gee_project:
+                    ee.Initialize(project=gee_project)
+                else:
+                    ee.Initialize()          # falls back to application default credentials
                 self._ee = ee
-                logger.info("GEE initialised (Analyzer)")
+                logger.info("GEE initialised (Analyzer) project=%s", gee_project or 'default')
             except Exception as exc:
                 logger.warning("GEE init failed (Analyzer): %s", exc)
                 self.use_gee = False
@@ -337,37 +343,74 @@ class AgrivisionCompleteAnalyzer:
     # ── external data fetchers ─────────────────────────────────────────────
 
     def fetch_soilgrids_data(self, lat: float, lon: float) -> Dict:
+        """
+        Fetch soil properties from ISRIC SoilGrids v2 REST API.
+        Endpoint: https://rest.isric.org/soilgrids/v2.0/properties/query
+        Depth layer: 0-30 cm mean
+        """
+        DEFAULTS = {
+            'organic_carbon': 20, 'clay_percent': 30, 'sand_percent': 40,
+            'ph': 6.5, 'cec': 15, 'bulk_density': 1.4,
+            'field_capacity': 0.25, 'wilting_point': 0.12,
+        }
         try:
-            url = "https://isqaper.isric.org/isqaper-rest/api/1.0/query"
-            r = requests.get(url, params={'lon': lon, 'lat': lat,
-                                          'attributes': 'soc,clay,sand,phh2o,cec,bdod',
-                                          'depths': '0-30'}, timeout=30)
+            # SoilGrids v2 — one request with all needed properties
+            url = "https://rest.isric.org/soilgrids/v2.0/properties/query"
+            params = [
+                ('lon',      lon),
+                ('lat',      lat),
+                ('property', 'phh2o'),   # pH ×10
+                ('property', 'soc'),     # SOC g/kg ×10
+                ('property', 'clay'),    # clay g/kg  (÷10 → %)
+                ('property', 'sand'),    # sand g/kg  (÷10 → %)
+                ('property', 'cec'),     # CEC mmolc/kg (÷10 → cmolc/kg)
+                ('property', 'bdod'),    # bulk density cg/cm³ (÷100 → g/cm³)
+                ('depth',    '0-30cm'),
+                ('value',    'mean'),
+            ]
+            r = requests.get(url, params=params, timeout=30)
             r.raise_for_status()
-            d = r.json()
+            data = r.json()
 
-            def gv(prop):
-                try:
-                    return d.get('properties', d).get(prop, {}).get('mean', None)
-                except Exception:
-                    return None
+            # Response shape: data['properties']['layers'] is a list of dicts
+            # Each layer: {'name': 'phh2o', 'depths': [{'label':'0-30cm',
+            #               'values': {'mean': 65}}], ...}
+            layers = {
+                layer['name']: layer['depths'][0]['values'].get('mean')
+                for layer in data.get('properties', {}).get('layers', [])
+                if layer.get('depths')
+            }
 
-            soc  = gv('soc')  or 20
-            clay = gv('clay') or 30
-            sand = gv('sand') or 40
-            ph   = gv('phh2o') or 6.5
-            cec  = gv('cec')  or 15
-            bdod = gv('bdod') or 1.4
-            props = {'organic_carbon': float(soc), 'clay_percent': float(clay),
-                     'sand_percent': float(sand), 'ph': float(ph),
-                     'cec': float(cec), 'bulk_density': float(bdod)}
-            props['field_capacity'] = 0.2576 - 0.002*float(sand) + 0.0036*float(clay)
-            props['wilting_point']  = 0.026  + 0.005*float(clay)
+            def pick(key, divisor, fallback):
+                raw = layers.get(key)
+                return float(raw) / divisor if raw is not None else fallback
+
+            soc  = pick('soc',   10.0,  DEFAULTS['organic_carbon'])   # dg/kg → g/kg
+            clay = pick('clay',  10.0,  DEFAULTS['clay_percent'])      # g/kg  → %
+            sand = pick('sand',  10.0,  DEFAULTS['sand_percent'])      # g/kg  → %
+            ph   = pick('phh2o', 10.0,  DEFAULTS['ph'])                # pH×10 → pH
+            cec  = pick('cec',   10.0,  DEFAULTS['cec'])               # mmol  → cmol
+            bdod = pick('bdod',  100.0, DEFAULTS['bulk_density'])      # cg/cm³→ g/cm³
+
+            props = {
+                'organic_carbon': soc,
+                'clay_percent':   clay,
+                'sand_percent':   sand,
+                'ph':             ph,
+                'cec':            cec,
+                'bulk_density':   bdod,
+                'field_capacity': 0.2576 - 0.002 * sand + 0.0036 * clay,
+                'wilting_point':  0.026  + 0.005 * clay,
+            }
+            logger.info(
+                "SoilGrids v2 OK (%.4f, %.4f) pH=%.1f SOC=%.1f clay=%.1f%%",
+                lat, lon, ph, soc, clay,
+            )
             return props
+
         except Exception as exc:
             logger.warning("SoilGrids fallback: %s", exc)
-            return {'organic_carbon': 20, 'clay_percent': 30, 'sand_percent': 40,
-                    'ph': 6.5, 'cec': 15, 'bulk_density': 1.4,
-                    'field_capacity': 0.25, 'wilting_point': 0.12}
+            return DEFAULTS
 
     def fetch_chirps_rainfall(self, aoi, start_date: str, end_date: str) -> Dict:
         if not self.use_gee:
@@ -395,7 +438,7 @@ class AgrivisionCompleteAnalyzer:
             dt = datetime.strptime(date, '%Y-%m-%d')
             s  = (dt - timedelta(days=3)).strftime('%Y-%m-%d')
             e  = (dt + timedelta(days=3)).strftime('%Y-%m-%d')
-            smap = (ee.ImageCollection('NASA/SMAP/SPL4SMGP/007')
+            smap = (ee.ImageCollection('NASA/SMAP/SPL4SMGP/008')
                       .filterDate(s, e).filterBounds(aoi))
             if smap.size().getInfo() == 0:
                 return 0.25
@@ -427,17 +470,75 @@ class AgrivisionCompleteAnalyzer:
             return {'temperature': 22, 'humidity': 65,
                     'temp_max_series': [26]*60, 'temp_min_series': [14]*60}
 
+    # ── date helpers ───────────────────────────────────────────────────────
+
+    @staticmethod
+    def _clamp_dates(start_date: str, end_date: str) -> tuple:
+        """
+        Two adjustments applied to every satellite query:
+
+        1. End-date clamping — GEE Sentinel-2 SR has a ~5-day processing lag.
+           Any end_date beyond (today - 5) is moved back so the query doesn't
+           sit waiting for imagery that isn't in the catalogue yet.
+
+        2. Minimum window — if clamping collapses the window to < 15 days,
+           push start_date back so there is always a reasonable search period.
+           This handles crops planted very recently.
+        """
+        fmt   = '%Y-%m-%d'
+        today = datetime.utcnow().date()
+        lag   = timedelta(days=5)          # S2 SR processing lag
+        min_w = timedelta(days=15)         # minimum window width
+
+        start = datetime.strptime(start_date, fmt).date()
+        end   = datetime.strptime(end_date,   fmt).date()
+
+        # clamp end to today - lag
+        end = min(end, today - lag)
+
+        # ensure minimum window
+        if (end - start) < min_w:
+            start = end - min_w
+
+        return start.strftime(fmt), end.strftime(fmt)
+
+    @staticmethod
+    def _push_back(start_date: str, days: int) -> str:
+        """Extend start_date further into the past by `days`."""
+        fmt  = '%Y-%m-%d'
+        date = datetime.strptime(start_date, fmt).date() - timedelta(days=days)
+        return date.strftime(fmt)
+
+    # ── Sentinel-2 ────────────────────────────────────────────────────────
+
     def fetch_sentinel2_indices(self, aoi, start_date: str, end_date: str) -> Dict:
+        """
+        Fetch Sentinel-2 SR median composite for a date window.
+
+        Progressive fallback strategy to maximise coverage:
+        ┌──────┬────────────────────────────────┬───────────────┐
+        │ Pass │ Window                         │ Max cloud %   │
+        ├──────┼────────────────────────────────┼───────────────┤
+        │  1   │ original (clamped)             │ 20 %          │
+        │  2   │ start pushed back 30 days      │ 35 %          │
+        │  3   │ start pushed back 60 more days │ 50 %          │
+        └──────┴────────────────────────────────┴───────────────┘
+        Each pass is tried only if the previous one returned 0 scenes.
+        """
         if not self.use_gee:
             return {'NDVI': 0.68, 'EVI': 0.52, 'NDMI': 0.40, 'SAVI': 0.58}
-        try:
-            ee = self._ee
-            s2 = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
-                    .filterBounds(aoi).filterDate(start_date, end_date)
-                    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)))
-            if s2.size().getInfo() == 0:
-                return {'NDVI': 0.68, 'EVI': 0.52, 'NDMI': 0.40, 'SAVI': 0.58}
-            med  = s2.median()
+
+        ee = self._ee
+
+        def _query(s, e, cloud_pct):
+            col = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+                     .filterBounds(aoi)
+                     .filterDate(s, e)
+                     .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_pct)))
+            return col
+
+        def _compute_indices(col):
+            med  = col.median()
             ndvi = med.normalizedDifference(['B8', 'B4']).rename('NDVI')
             evi  = med.expression(
                 '2.5*((NIR-RED)/(NIR+6*RED-7.5*BLUE+1))',
@@ -446,32 +547,107 @@ class AgrivisionCompleteAnalyzer:
             ndmi = med.normalizedDifference(['B8', 'B11']).rename('NDMI')
             savi = med.expression('((NIR-RED)/(NIR+RED+0.5))*1.5',
                 {'NIR': med.select('B8'), 'RED': med.select('B4')}).rename('SAVI')
-            vals = (ee.Image.cat([ndvi, evi, ndmi, savi])
+            return (ee.Image.cat([ndvi, evi, ndmi, savi])
                     .reduceRegion(reducer=ee.Reducer.mean(), geometry=aoi,
                                   scale=10, maxPixels=1e9).getInfo())
+
+        try:
+            s, e = self._clamp_dates(start_date, end_date)
+
+            # Pass 1 — tight window, strict cloud filter
+            col = _query(s, e, cloud_pct=20)
+            n   = col.size().getInfo()
+            logger.info("S2 pass-1 [%s→%s] cloud<20%%: %d scenes", s, e, n)
+
+            if n == 0:
+                # Pass 2 — push start back 30 days, relax cloud to 35 %
+                s2 = self._push_back(s, 30)
+                col = _query(s2, e, cloud_pct=35)
+                n   = col.size().getInfo()
+                logger.info("S2 pass-2 [%s→%s] cloud<35%%: %d scenes", s2, e, n)
+
+            if n == 0:
+                # Pass 3 — push start back another 60 days, relax cloud to 50 %
+                s3 = self._push_back(s, 90)
+                col = _query(s3, e, cloud_pct=50)
+                n   = col.size().getInfo()
+                logger.info("S2 pass-3 [%s→%s] cloud<50%%: %d scenes", s3, e, n)
+
+            if n == 0:
+                logger.warning("S2: no scenes found after 3 passes — using fallback")
+                return {'NDVI': 0.68, 'EVI': 0.52, 'NDMI': 0.40, 'SAVI': 0.58}
+
+            vals = _compute_indices(col)
+            logger.info("S2 OK — NDVI=%.3f EVI=%.3f (%d scenes)",
+                        vals.get('NDVI', 0), vals.get('EVI', 0), n)
             return vals
+
         except Exception as exc:
             logger.warning("S2 fallback: %s", exc)
             return {'NDVI': 0.68, 'EVI': 0.52, 'NDMI': 0.40, 'SAVI': 0.58}
 
+    # ── Sentinel-1 SAR ────────────────────────────────────────────────────
+
     def fetch_sentinel1_sar(self, aoi, start_date: str, end_date: str) -> Dict:
+        """
+        Fetch Sentinel-1 GRD median for a date window.
+
+        Progressive fallback strategy (S1 is cloud-independent but has a
+        12-day revisit; push back further than S2):
+        ┌──────┬──────────────────────────────────┐
+        │ Pass │ Window                           │
+        ├──────┼──────────────────────────────────┤
+        │  1   │ original (clamped, 2-day lag)    │
+        │  2   │ start pushed back 30 days        │
+        │  3   │ start pushed back 60 more days   │
+        └──────┴──────────────────────────────────┘
+        """
         if not self.use_gee:
             return {'VH': 0.15, 'VV': 0.28, 'RSI': 0.54}
+
+        ee = self._ee
+
+        def _query_s1(s, e):
+            return (ee.ImageCollection('COPERNICUS/S1_GRD')
+                      .filterBounds(aoi).filterDate(s, e)
+                      .filter(ee.Filter.listContains(
+                          'transmitterReceiverPolarisation', 'VV'))
+                      .filter(ee.Filter.listContains(
+                          'transmitterReceiverPolarisation', 'VH')))
+
         try:
-            ee = self._ee
-            s1 = (ee.ImageCollection('COPERNICUS/S1_GRD')
-                    .filterBounds(aoi).filterDate(start_date, end_date)
-                    .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
-                    .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VH')))
-            if s1.size().getInfo() == 0:
+            # S1 lag is shorter (~2 days); reuse _clamp_dates then loosen
+            s, e = self._clamp_dates(start_date, end_date)
+
+            col = _query_s1(s, e)
+            n   = col.size().getInfo()
+            logger.info("S1 pass-1 [%s→%s]: %d scenes", s, e, n)
+
+            if n == 0:
+                s2 = self._push_back(s, 30)
+                col = _query_s1(s2, e)
+                n   = col.size().getInfo()
+                logger.info("S1 pass-2 [%s→%s]: %d scenes", s2, e, n)
+
+            if n == 0:
+                s3 = self._push_back(s, 90)
+                col = _query_s1(s3, e)
+                n   = col.size().getInfo()
+                logger.info("S1 pass-3 [%s→%s]: %d scenes", s3, e, n)
+
+            if n == 0:
+                logger.warning("S1: no scenes found after 3 passes — using fallback")
                 return {'VH': 0.15, 'VV': 0.28, 'RSI': 0.54}
-            vals = (s1.median().select(['VH', 'VV'])
+
+            vals = (col.median().select(['VH', 'VV'])
                     .reduceRegion(reducer=ee.Reducer.mean(), geometry=aoi,
                                   scale=10, maxPixels=1e9).getInfo())
             vh  = vals.get('VH', 0.15)
             vv  = vals.get('VV', 0.28)
             rsi = vh / vv if vv else 0.54
+            logger.info("S1 OK — VH=%.3f VV=%.3f RSI=%.3f (%d scenes)", vh, vv, rsi, n)
             return {'VH': vh, 'VV': vv, 'RSI': rsi}
+
         except Exception as exc:
             logger.warning("S1 fallback: %s", exc)
             return {'VH': 0.15, 'VV': 0.28, 'RSI': 0.54}
@@ -714,9 +890,13 @@ class AgrivisionProductionPipeline:
         if use_gee:
             try:
                 import ee
-                ee.Initialize()
+                gee_project = os.environ.get('AGRIVISION_GEE_PROJECT')
+                if gee_project:
+                    ee.Initialize(project=gee_project)
+                else:
+                    ee.Initialize()
                 self._ee = ee
-                logger.info("GEE initialised (Pipeline)")
+                logger.info("GEE initialised (Pipeline) project=%s", gee_project or 'default')
             except Exception as exc:
                 logger.warning("GEE init failed (Pipeline): %s", exc)
                 self.use_gee = False
@@ -917,7 +1097,7 @@ class Command(BaseCommand):
         works regardless of what the app is called in INSTALLED_APPS.
         Default: 'fields'  ← change to your actual app label if different.
         """
-        return os.environ.get('DJANGO_APP_LABEL', 'fields')  # ← set DJANGO_APP_LABEL in your env
+        return os.environ.get('DJANGO_APP_LABEL', 'base')  # ← your app is 'base'
 
     def _get_activities(self, options):
         """
