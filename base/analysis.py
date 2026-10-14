@@ -31,33 +31,24 @@ class IntegratedSoilAnalyzer:
         self.last_request_time = None
         self.min_request_interval = 2
         
-    def get_field_center(self, field_id: int) -> Dict[str, Any]:
+    def get_field_center(self, field_id: int):
         try:
             field = Field.objects.get(pk=field_id)
-
-            # Get the centroid of the geometry
             center = field.geometry.centroid
 
-            # Ensure we are working in EPSG:4326 (WGS84 lat/lon)
             if field.geometry.srid != 4326:
                 transformer = Transformer.from_crs(field.geometry.srid, 4326, always_xy=True)
                 lon, lat = transformer.transform(center.x, center.y)
             else:
                 lon, lat = center.x, center.y
 
-            print(f"DEBUG: Field center - Lat: {lat}, Lon: {lon}")
-
             return {
-                "lat": lat,  # Latitude in WGS84
-                "lon": lon,  # Longitude in WGS84
+                "lat": lat,  
+                "lon": lon,
                 "name": field.name
             }
-
         except Field.DoesNotExist:
             raise ValueError(f"Field with ID {field_id} not found")
-        except Exception as e:
-            raise RuntimeError(f"Error retrieving field center: {e}")
-
     @staticmethod
     def get_soilgrid_data(lat: float, lon: float) -> Optional[pd.DataFrame]:
         url = "https://rest.isric.org/soilgrids/v2.0/properties/query"

@@ -1737,7 +1737,7 @@
 },
 
 handleFieldDrawing(e) {
-    const coords = [e.latlng.lat, e.latlng.lng]; // ✅ Store as [lat, lng]
+    const coords = [e.latlng.lat, e.latlng.lng]; // ✅ [lat, lng]
     APP_STATE.fieldData.coordinates.push(coords);
 
     const marker = L.circleMarker(coords, {
@@ -1755,27 +1755,6 @@ handleFieldDrawing(e) {
     }
 },
 
-updateFieldPolygon() {
-    if (APP_STATE.fieldData.currentPolygon) {
-        APP_STATE.map.removeLayer(APP_STATE.fieldData.currentPolygon);
-    }
-
-    APP_STATE.fieldData.currentPolygon = L.polygon(APP_STATE.fieldData.coordinates, {
-        color: '#4ade80',
-        fillColor: '#4ade80',
-        fillOpacity: 0.3,
-        weight: 3
-    }).addTo(APP_STATE.map);
-},
-
-updateFieldArea() {
-    if (APP_STATE.fieldData.coordinates.length >= 3) {
-        const area = Utils.calculatePolygonArea(APP_STATE.fieldData.coordinates); // ✅ Already lat/lng
-        const hectares = Utils.convertToHectares(area);
-        document.getElementById("fieldArea").textContent = `${hectares.toFixed(2)} ha`;
-    }
-},
-
 saveCurrentField() {
     if (APP_STATE.fieldData.coordinates.length < 3) {
         Utils.showAlert("Please draw at least 3 points to create a field", "error");
@@ -1789,31 +1768,26 @@ saveCurrentField() {
     const hectares = Utils.convertToHectares(area);
 
     const coords = [...APP_STATE.fieldData.coordinates];
-    // ✅ Close polygon if not already closed
-    const first = coords[0];
-    const last = coords[coords.length - 1];
-    if (first[0] !== last[0] || first[1] !== last[1]) {
-        coords.push(first);
+    if (coords[0][0] !== coords[coords.length - 1][0] || coords[0][1] !== coords[coords.length - 1][1]) {
+        coords.push(coords[0]); // ✅ Close polygon
     }
-
-    const payload = {
-        name: fieldName,
-        coordinates: coords,
-        area: hectares
-    };
 
     fetch("/save-field/", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            "X-CSRFToken": Utils.getCSRFToken() 
+            "X-CSRFToken": Utils.getCSRFToken()
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+            name: fieldName,
+            coordinates: coords, // Still [lat, lng] here
+            area: hectares
+        })
     })
     .then(res => res.json())
     .then(data => {
         if (data.error) {
-            Utils.showAlert(`${data.error}`, "error");
+            Utils.showAlert(data.error, "error");
         } else {
             Utils.showAlert(`Field "${fieldName}" saved successfully.`);
             this.cancelDrawingMode();
@@ -1824,6 +1798,7 @@ saveCurrentField() {
         Utils.showAlert("Failed to save field. Please try again.", "error");
     });
 },
+
 
 
             clearCurrentField() {
