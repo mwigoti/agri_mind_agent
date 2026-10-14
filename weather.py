@@ -118,8 +118,8 @@ def format_weather_predictions(predictions):
 
 def main():
     # Example coordinates (New York City)
-    latitude = 40.7128
-    longitude = -74.0060
+    latitude = -1
+    longitude = 36
     
     # Get and format weather predictions
     predictions = get_weather_predictions(latitude, longitude)
