@@ -117,7 +117,7 @@
         #weatherControls,
         #infoPanel {
             width: 300px;
-}
+        }
         
         .weather-panel {
             width: 420px;
@@ -649,6 +649,17 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
         }
+
+        button.vra-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #ffffff;
+        }
+        
+        button.vra-btn:hover {
+            background: linear-gradient(135deg, #059669, #047857);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
         
         /* Scrollbar styling */
         ::-webkit-scrollbar {
@@ -731,7 +742,6 @@
             color: #a3e635;
         }
 
-
         .control-btn {
             padding: 8px 16px;
             margin: 5px;
@@ -756,6 +766,60 @@
         .clear-btn {
             background: linear-gradient(135deg, #f59e0b, #d97706);
             color: #ffffff;
+        }
+        
+        /* Panel visibility classes */
+        .weather-hidden #weatherControls,
+        .weather-hidden #infoPanel {
+            display: none;
+        }
+
+        .weather-hidden #map {
+            width: 100%;
+        }   
+
+        .weather-hidden .weather-panel {
+            display: none !important;
+        }
+
+        .weather-hidden .weather-controls {
+            display: none !important;
+        }
+
+        .weather-hidden .info-panel {
+            display: none !important;
+        }
+
+        .weather-hidden #map {
+            width: 100% !important;
+            flex: 1;
+        }
+
+        .map-container {
+            transition: all 0.3s ease;
+        }
+
+        #map {
+            transition: all 0.3s ease;
+        }
+
+        /* Info Panel Hide/Show Styles */
+        .info-hidden .info-panel {
+            display: none !important;
+        }
+
+        .info-hidden.weather-hidden #map {
+            width: 100% !important;
+        }
+
+        /* Error message styling */
+        .error-message {
+            color: #f87171;
+            text-align: center;
+            padding: 20px;
+            background: rgba(248, 113, 113, 0.1);
+            border-radius: 8px;
+            margin: 20px 0;
         }
         
         /* Responsive Design */
@@ -800,61 +864,11 @@
             .weather-btn {
                 width: 100%;
             }
-        
-        
         }
-        .weather-hidden #weatherControls,
-.weather-hidden #infoPanel {
-    display: none;
-}
-
-.weather-hidden #map {
-    width: 100%;
-}   
-
-
-.weather-hidden .weather-panel {
-    display: none !important;
-}
-
-.weather-hidden .weather-controls {
-    display: none !important;
-}
-
-.weather-hidden .info-panel {
-    display: none !important;
-}
-
-.weather-hidden #map {
-    width: 100% !important;
-    flex: 1;
-}
-
-.map-container {
-    transition: all 0.3s ease;
-}
-
-#map {
-    transition: all 0.3s ease;
-}
-
-/* Info Panel Hide/Show Styles */
-.info-hidden .info-panel {
-    display: none !important;
-}
-
-.info-hidden.weather-hidden #map {
-    width: 100% !important; /* When both panels are hidden */
-}
-
-
     </style>
 </head>
 
 <body>
-    <!-- Menu Toggle Button -->
-    
-    
     <!-- Alert Banner -->
     <div class="alert-banner" id="alertBanner">
         ⚠️ Weather Alert: Severe weather conditions expected in your area
@@ -868,7 +882,6 @@
                 <ul>
                     <li id="infoPanelMenuItem" onclick="InfoPanelManager.toggleInfoPanel()">Hide Info Panel</li>
                     <li id="season2024">Season</li>
-                   
                     <li id="monitoring">Monitoring</li>
                     <li id="weatherMenuItem" onclick="WeatherManager.hideWeatherDashboard()">Hide Weather Dashboard</li>
                     <li id="overview">Overview</li>
@@ -892,7 +905,7 @@
                 <table id="fieldsTable" style="display: none;">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>Field ID</th>
                             <th>Name</th>
                             <th>Area (ha)</th>
                             <th>Created At</th>
@@ -916,7 +929,7 @@
                 <table id="vraTable" style="display: none;">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>Field ID</th>
                             <th>Name</th>
                             <th>Area (ha)</th>
                             <th>Created At</th>
@@ -990,14 +1003,13 @@
             <div id="map" class="map-expanded"></div>
 
             <!-- Weather Panel -->
-            <div class="weather-panel" id="weatherMenuItem">
+            <div class="weather-panel" id="weatherPanel">
                 <h2>🌤️ Weather Dashboard</h2>
                 
                 <!-- Current Weather Card -->
                 <div class="current-weather" id="currentWeather">
                     <div class="weather-icon">🌤️</div>
                     <div class="weather-location" id="weatherLocation">--</div>
-
                     <div class="weather-temp">--°C</div>
                     <div class="weather-desc">Loading weather data...</div>
                     <div class="weather-details">
@@ -1072,78 +1084,76 @@
             savedFields: []
         };
 
-      
         const Utils = {
-    formatDate: (timestamp) => {
-        return new Date(timestamp * 1000).toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric'
-        });
-    },
+            formatDate: (timestamp) => {
+                return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            },
 
-    getCSRFToken: () => {
-        const match = document.cookie.match(/csrftoken=([^;]+)/);
-        return match ? match[1] : '';
-    },
+            getCSRFToken: () => {
+                const match = document.cookie.match(/csrftoken=([^;]+)/);
+                return match ? match[1] : '';
+            },
 
-    getWeatherIcon: (iconCode) => {
-        const iconMap = {
-            "01d": "☀️", "01n": "🌙", "02d": "⛅", "02n": "☁️",
-            "03d": "☁️", "03n": "☁️", "04d": "☁️", "04n": "☁️",
-            "09d": "🌦️", "09n": "🌦️", "10d": "🌧️", "10n": "🌧️",
-            "11d": "⛈️", "11n": "⛈️", "13d": "🌨️", "13n": "🌨️",
-            "50d": "🌫️", "50n": "🌫️"
+            getWeatherIcon: (iconCode) => {
+                const iconMap = {
+                    "01d": "☀️", "01n": "🌙", "02d": "⛅", "02n": "☁️",
+                    "03d": "☁️", "03n": "☁️", "04d": "☁️", "04n": "☁️",
+                    "09d": "🌦️", "09n": "🌦️", "10d": "🌧️", "10n": "🌧️",
+                    "11d": "⛈️", "11n": "⛈️", "13d": "🌨️", "13n": "🌨️",
+                    "50d": "🌫️", "50n": "🌫️"
+                };
+                return iconMap[iconCode] || "🌤️";
+            },
+
+            showLoading: (elementId) => {
+                const element = document.getElementById(elementId);
+                if (element) element.style.display = 'block';
+            },
+
+            hideLoading: (elementId) => {
+                const element = document.getElementById(elementId);
+                if (element) element.style.display = 'none';
+            },
+
+            showAlert: (message, type = 'info') => {
+                const alertBanner = document.getElementById('alertBanner');
+                alertBanner.innerHTML = `${type === 'error' ? '❌' : '✅'} ${message}`;
+                alertBanner.style.display = 'block';
+                setTimeout(() => {
+                    alertBanner.style.display = 'none';
+                }, 5000);
+            },
+
+            calculatePolygonArea: (coordinates) => {
+                if (coordinates.length < 3) return 0;
+                let area = 0;
+                const n = coordinates.length;
+                for (let i = 0; i < n; i++) {
+                    const j = (i + 1) % n;
+                    area += coordinates[i][0] * coordinates[j][1];
+                    area -= coordinates[j][0] * coordinates[i][1];
+                }
+                return Math.abs(area) / 2;
+            },
+
+            convertToHectares: (areaInMapUnits) => {
+                const avgLatRad = APP_STATE.currentLocation.lat * Math.PI / 180;
+                const meterPerDegLat = 111320;
+                const meterPerDegLon = 111320 * Math.cos(avgLatRad);
+                const areaInSqMeters = areaInMapUnits * meterPerDegLat * meterPerDegLon;
+                return areaInSqMeters / 10000;
+            },
+
+            generateId: () => {
+                return 'field_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            }
         };
-        return iconMap[iconCode] || "🌤️";
-    },
 
-    showLoading: (elementId) => {
-        const element = document.getElementById(elementId);
-        if (element) element.style.display = 'block';
-    },
-
-    hideLoading: (elementId) => {
-        const element = document.getElementById(elementId);
-        if (element) element.style.display = 'none';
-    },
-
-    showAlert: (message, type = 'info') => {
-        const alertBanner = document.getElementById('alertBanner');
-        alertBanner.innerHTML = `${type === 'error' ? '' : ''} ${message}`;
-        alertBanner.style.display = 'block';
-        setTimeout(() => {
-            alertBanner.style.display = 'none';
-        }, 5000);
-    },
-
-    calculatePolygonArea: (coordinates) => {
-        if (coordinates.length < 3) return 0;
-        let area = 0;
-        const n = coordinates.length;
-        for (let i = 0; i < n; i++) {
-            const j = (i + 1) % n;
-            area += coordinates[i][0] * coordinates[j][1];
-            area -= coordinates[j][0] * coordinates[i][1];
-        }
-        return Math.abs(area) / 2;
-    },
-
-    convertToHectares: (areaInMapUnits) => {
-        const avgLatRad = APP_STATE.currentLocation.lat * Math.PI / 180;
-        const meterPerDegLat = 111320;
-        const meterPerDegLon = 111320 * Math.cos(avgLatRad);
-        const areaInSqMeters = areaInMapUnits * meterPerDegLat * meterPerDegLon;
-        return areaInSqMeters / 10000;
-    },
-
-    generateId: () => {
-        return 'field_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    }
-};
-
-       
-       const WeatherAPI = {
+        const WeatherAPI = {
             async getCurrentWeather() {
                 try {
                     const response = await fetch(
@@ -1242,8 +1252,6 @@
                 this.createPrecipitationChart(data);
             },
 
-           
-
             createTemperatureChart(data) {
                 const ctx = document.getElementById('weatherChart').getContext('2d');
                 const labels = data.list.slice(0, 24).map(item => {
@@ -1252,7 +1260,9 @@
                 });
                 const temps = data.list.slice(0, 24).map(item => item.main.temp);
 
-                if (APP_STATE.charts.weather) APP_STATE.charts.weather.destroy();
+                if (APP_STATE.charts.weather && typeof APP_STATE.charts.weather.destroy === 'function') {
+                    APP_STATE.charts.weather.destroy();
+                }
                 
                 APP_STATE.charts.weather = new Chart(ctx, {
                     type: 'line',
@@ -1473,96 +1483,85 @@
                 this.getHistoricalWeather();
             }
         };
+
         const VRAManager = {
-                    viewVRAMap: function(fieldId) {
-                        
-                        window.location.href = `/vra_page/${fieldId}/`;
-                    }
-                };
+            viewVRAMap: function(fieldId) {
+                window.location.href = `/vra_page/${fieldId}/`;
+            }
+        };
 
-    
-       const WeatherManager = {
-    activeLayers: [],
+        const WeatherManager = {
+            activeLayers: [],
 
-    hideWeatherDashboard: function () {
-        const mapContainer = document.querySelector(".map-container");
-        
-        // Toggle the weather-hidden class instead of just adding it
-        if (mapContainer.classList.contains("weather-hidden")) {
-            // Show weather dashboard
-            mapContainer.classList.remove("weather-hidden");
-            document.getElementById("weatherMenuItem").textContent = "Hide Weather Dashboard";
-        } else {
-            // Hide weather dashboard
-            this.activeLayers.forEach(layer => {
-                if (APP_STATE.map.hasLayer(layer)) {
-                    APP_STATE.map.removeLayer(layer);
+            hideWeatherDashboard: function () {
+                const mapContainer = document.querySelector(".map-container");
+                
+                if (mapContainer.classList.contains("weather-hidden")) {
+                    mapContainer.classList.remove("weather-hidden");
+                    document.getElementById("weatherMenuItem").textContent = "Hide Weather Dashboard";
+                } else {
+                    this.activeLayers.forEach(layer => {
+                        if (APP_STATE.map.hasLayer(layer)) {
+                            APP_STATE.map.removeLayer(layer);
+                        }
+                    });
+                    this.activeLayers = [];
+                    
+                    mapContainer.classList.add("weather-hidden");
+                    document.getElementById("weatherMenuItem").textContent = "Show Weather Dashboard";
                 }
-            });
-            this.activeLayers = [];
-            
-            mapContainer.classList.add("weather-hidden");
-            document.getElementById("weatherMenuItem").textContent = "Show Weather Dashboard";
-        }
 
-        // Resize the map to fill available space
-        setTimeout(() => {
-            APP_STATE.map.invalidateSize();
-        }, 300);
-    }
-};
+                setTimeout(() => {
+                    APP_STATE.map.invalidateSize();
+                }, 300);
+            }
+        };
 
         const InfoPanelManager = {
-    toggleInfoPanel: function () {
-        const mapContainer = document.querySelector(".map-container");
-        const menuItem = document.getElementById("infoPanelMenuItem");
-        
-        // Toggle the info-hidden class
-        if (mapContainer.classList.contains("info-hidden")) {
-            // Show info panel
-            mapContainer.classList.remove("info-hidden");
-            menuItem.textContent = "Hide Info Panel";
-        } else {
-            // Hide info panel
-            mapContainer.classList.add("info-hidden");
-            menuItem.textContent = "Show Info Panel";
-        }
+            toggleInfoPanel: function () {
+                const mapContainer = document.querySelector(".map-container");
+                const menuItem = document.getElementById("infoPanelMenuItem");
+                
+                if (mapContainer.classList.contains("info-hidden")) {
+                    mapContainer.classList.remove("info-hidden");
+                    menuItem.textContent = "Hide Info Panel";
+                } else {
+                    mapContainer.classList.add("info-hidden");
+                    menuItem.textContent = "Show Info Panel";
+                }
 
-        // Resize the map
-        setTimeout(() => {
-            APP_STATE.map.invalidateSize();
-        }, 300);
-    }
-};
+                setTimeout(() => {
+                    APP_STATE.map.invalidateSize();
+                }, 300);
+            }
+        };
+
         const MapManager = {
             initialize() {
-                // Initialize Leaflet map
                 APP_STATE.map = L.map('map').setView([APP_STATE.currentLocation.lat, APP_STATE.currentLocation.lon], 10);
 
-                // Add tile layers
                 const tileLayers = {
-    openstreetmap: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }),
+                    openstreetmap: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }),
 
-    satellite: L.layerGroup([
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: '© Esri, Maxar, Earthstar Geographics'
-        }),
-        L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-            attribution: '© Esri Boundaries & Places',
-            pane: 'overlayPane'
-        })
-    ]),
+                    satellite: L.layerGroup([
+                        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                            attribution: '© Esri, Maxar, Earthstar Geographics'
+                        }),
+                        L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+                            attribution: '© Esri Boundaries & Places',
+                            pane: 'overlayPane'
+                        })
+                    ]),
 
-    terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenTopoMap contributors'
-    })
-};
+                    terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenTopoMap contributors'
+                    })
+                };
 
                 tileLayers.satellite.addTo(APP_STATE.map);
                 
-                // Map event handlers
                 APP_STATE.map.on('click', (e) => {
                     if (APP_STATE.isDrawingMode) {
                         this.handleFieldDrawing(e);
@@ -1572,23 +1571,19 @@
                             lon: e.latlng.lng
                         };
                         WeatherAPI.updateWeatherForLocation();
-                        
                     }
                 });
 
                 this.setupControls(tileLayers);
                 WeatherAPI.updateWeatherForLocation();
-                
             },
 
             setupControls(tileLayers) {
-                // Layer control
                 document.getElementById("layerSelect").addEventListener("change", (e) => {
                     Object.values(tileLayers).forEach(layer => APP_STATE.map.removeLayer(layer));
                     tileLayers[e.target.value].addTo(APP_STATE.map);
                 });
 
-                // Weather overlay controls
                 document.getElementById("tempOverlay").addEventListener("click", () => {
                     this.toggleWeatherOverlay("temp", document.getElementById("tempOverlay"));
                     this.showLegend("temperature");
@@ -1613,7 +1608,6 @@
                     this.clearAllOverlays();
                 });
 
-                // Field drawing controls
                 document.getElementById("addField").addEventListener("click", () => {
                     this.startDrawingMode();
                 });
@@ -1650,14 +1644,41 @@
             },
 
             clearAllOverlays() {
-                Object.values(APP_STATE.weatherLayers).forEach(layer => {
-                    APP_STATE.map.removeLayer(layer);
-                });
-                APP_STATE.weatherLayers = {};
-                document.querySelectorAll(".weather-btn").forEach(btn => {
-                    btn.classList.remove("active");
-                });
-                document.getElementById("weatherLegend").style.display = "none";
+                try {
+                    Object.entries(APP_STATE.weatherLayers).forEach(([layerId, layer]) => {
+                        try {
+                            if (APP_STATE.map && layer && APP_STATE.map.hasLayer(layer)) {
+                                APP_STATE.map.removeLayer(layer);
+                            }
+                        } catch (layerError) {
+                            console.warn(`Failed to remove layer ${layerId}:`, layerError);
+                        }
+                    });
+                    
+                    APP_STATE.weatherLayers = {};
+                    
+                    if (WeatherManager && WeatherManager.activeLayers) {
+                        WeatherManager.activeLayers = [];
+                    }
+                    
+                    const weatherButtons = document.querySelectorAll(".weather-btn");
+                    if (weatherButtons.length > 0) {
+                        weatherButtons.forEach(btn => {
+                            if (btn && btn.classList) {
+                                btn.classList.remove("active");
+                            }
+                        });
+                    }
+                    
+                    const weatherLegend = document.getElementById("weatherLegend");
+                    if (weatherLegend) {
+                        weatherLegend.style.display = "none";
+                    }
+                    
+                } catch (error) {
+                    console.error("Error in clearAllOverlays:", error);
+                    APP_STATE.weatherLayers = {};
+                }
             },
 
             showLegend(type) {
@@ -1706,7 +1727,7 @@
                 ).join("");
             },
 
-           startDrawingMode() {
+            startDrawingMode() {
                 APP_STATE.isDrawingMode = true;
                 const addButton = document.getElementById("addField");
                 addButton.classList.add("drawing-mode");
@@ -1719,7 +1740,6 @@
                 const coords = [e.latlng.lng, e.latlng.lat];
                 APP_STATE.fieldData.coordinates.push(coords);
 
-                // Add marker for each point
                 const marker = L.circleMarker([e.latlng.lat, e.latlng.lng], {
                     color: '#4ade80',
                     fillColor: '#4ade80',
@@ -1729,7 +1749,6 @@
                 
                 APP_STATE.fieldData.markers.push(marker);
 
-                // Draw polygon if we have at least 3 points
                 if (APP_STATE.fieldData.coordinates.length >= 3) {
                     this.updateFieldPolygon();
                     this.updateFieldArea();
@@ -1758,67 +1777,61 @@
                 }
             },
 
-           saveCurrentField() {
-                    if (APP_STATE.fieldData.coordinates.length < 3) {
-                        Utils.showAlert("Please draw at least 3 points to create a field", "error");
-                        return;
+            saveCurrentField() {
+                if (APP_STATE.fieldData.coordinates.length < 3) {
+                    Utils.showAlert("Please draw at least 3 points to create a field", "error");
+                    return;
+                }
+
+                const fieldName = prompt("Enter field name:", `Field ${APP_STATE.savedFields.length + 1}`);
+                if (!fieldName) return;
+
+                const area = Utils.calculatePolygonArea(APP_STATE.fieldData.coordinates);
+                const hectares = Utils.convertToHectares(area);
+
+                const coords = [...APP_STATE.fieldData.coordinates];
+                if (coords[0][0] !== coords[coords.length - 1][0] || coords[0][1] !== coords[coords.length - 1][1]) {
+                    coords.push(coords[0]);
+                }
+
+                const payload = {
+                    name: fieldName,
+                    coordinates: coords,
+                    area: hectares
+                };
+
+                fetch("/save-field/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": Utils.getCSRFToken() 
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        Utils.showAlert(`${data.error}`, "error");
+                    } else {
+                        Utils.showAlert(`Field "${fieldName}" saved successfully.`);
+                        this.cancelDrawingMode();
                     }
-
-                    const fieldName = prompt("Enter field name:", `Field ${APP_STATE.savedFields.length + 1}`);
-                    if (!fieldName) return;
-
-                    const area = Utils.calculatePolygonArea(APP_STATE.fieldData.coordinates);
-                    const hectares = Utils.convertToHectares(area);
-
-                    // Ensure polygon is closed
-                    const coords = [...APP_STATE.fieldData.coordinates];
-                    if (coords[0][0] !== coords[coords.length - 1][0] || coords[0][1] !== coords[coords.length - 1][1]) {
-                        coords.push(coords[0]);
-                    }
-
-                    const payload = {
-                        name: fieldName,
-                        coordinates: coords,
-                        area: hectares
-                    };
-
-                    
-
-                    fetch("/save-field/", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-CSRFToken": Utils.getCSRFToken() 
-                        },
-                        body: JSON.stringify(payload)
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.error) {
-                            Utils.showAlert(`${data.error}`, "error");
-                        } else {
-                            Utils.showAlert(`Field "${fieldName}" saved to server.`);
-                            this.cancelDrawingMode(); // Reset drawing
-                        }
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        Utils.showAlert("Failed to save field. Please try again.", "error");
-                    });
-                },
+                })
+                .catch(err => {
+                    console.error(err);
+                    Utils.showAlert("Failed to save field. Please try again.", "error");
+                });
+            },
 
             clearCurrentField() {
-                // Remove markers
                 APP_STATE.fieldData.markers.forEach(marker => {
                     APP_STATE.map.removeLayer(marker);
                 });
 
-                // Remove polygon
                 if (APP_STATE.fieldData.currentPolygon) {
                     APP_STATE.map.removeLayer(APP_STATE.fieldData.currentPolygon);
                 }
 
-                // Reset data
                 APP_STATE.fieldData = {
                     coordinates: [],
                     markers: [],
@@ -1826,7 +1839,6 @@
                 };
 
                 document.getElementById("fieldArea").textContent = "0 ha";
-              
             },
 
             cancelDrawingMode() {
@@ -1836,82 +1848,29 @@
                 addButton.textContent = "ADD FIELD";
                 document.getElementById("drawingControls").classList.remove("active");
                 this.clearCurrentField();
-            },
-
-            
+            }
         };
 
         // UI Event Handlers
         const UIManager = {
             initialize() {
-                this.setupMenuHandlers();
                 this.setupModalHandlers();
                 this.setupResponsiveHandlers();
             },
 
-            setupMenuHandlers() {
-                // Menu toggle
-                document.getElementById("menuToggle").addEventListener("click", () => {
-                    const menu = document.getElementById("sidebarMenu");
-                    menu.classList.toggle("collapsed");
-                });
-
-                // Weather panel toggle
-                document.getElementById("hidePanel").addEventListener("click", () => {
-                    const panel = document.getElementById("weatherMenuItem");
-                    panel.classList.toggle("hidden");
-                });
-
-                // Menu items
-                document.getElementById("myFieldsButton").addEventListener("click", () => {
-                    this.showFieldsModal();
-                });
-
-                document.getElementById("vraMapsButton").addEventListener("click", () => {
-                    this.showVraModal();
-                });
-
-                // Other menu items (placeholder functionality)
-                const menuItems = [
-                    "season","monitoring", "overview", 
-                    "fieldActivity", "dataManager", "notifications", "requestDemo", "upgrade"
-                ];
-
-                menuItems.forEach(itemId => {
-                    document.getElementById(itemId).addEventListener("click", () => {
-                        
-                        this.setActiveMenuItem(itemId);
-                    });
-                });
-
-                // Set weather as default active
-                
-            },
-
-            setActiveMenuItem(activeId) {
-                document.querySelectorAll(".menu li").forEach(item => {
-                    item.classList.remove("active");
-                });
-                document.getElementById(activeId).classList.add("active");
-            },
-
             setupModalHandlers() {
-                // Fields modal
                 document.getElementById("closeFieldsModal").addEventListener("click", () => {
                     document.getElementById("myFieldsModal").style.display = "none";
                 });
 
-                // VRA modal
                 document.getElementById("closeVraModal").addEventListener("click", () => {
                     document.getElementById("vraMapsModal").style.display = "none";
                 });
 
-                // Weather modal
                 document.getElementById("closeWeatherModal").addEventListener("click", () => {
                     document.getElementById("weatherModal").style.display = "none";
                 });
 
-                // Close modals on outside click
                 window.addEventListener("click", (e) => {
                     const modals = document.querySelectorAll(".modal");
                     modals.forEach(modal => {
@@ -1923,7 +1882,6 @@
             },
 
             setupResponsiveHandlers() {
-                // Handle window resize
                 window.addEventListener("resize", () => {
                     if (APP_STATE.map) {
                         APP_STATE.map.invalidateSize();
@@ -1943,6 +1901,9 @@
                 table.style.display = "none";
                 noFieldsMessage.style.display = "none";
 
+                // Clear existing table content
+                tbody.innerHTML = "";
+
                 fetch("/api/myfields/", {
                     method: "GET",
                     headers: {
@@ -1950,23 +1911,49 @@
                         "X-CSRFToken": Utils.getCSRFToken()
                     }
                 })
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP error! status: ${res.status}`);
+                    }
+                    return res.json();
+                })
                 .then(data => {
                     loading.style.display = "none";
+                    
+                    console.log("Fields data received:", data);
+                    
+                    // Handle different possible response structures
+                    let fields = [];
+                    if (data.features) {
+                        fields = data.features;
+                    } else if (Array.isArray(data)) {
+                        fields = data;
+                    } else if (data.fields) {
+                        fields = data.fields;
+                    }
 
-                    const features = data.features || [];
-                    if (features.length === 0) {
+                    if (fields.length === 0) {
                         noFieldsMessage.style.display = "block";
                         return;
                     }
 
-                    this.populateFieldsTable(features);
+                    this.populateFieldsTable(fields);
                     table.style.display = "table";
                 })
                 .catch(err => {
                     loading.style.display = "none";
                     console.error("Error loading fields:", err);
-                    Utils.showAlert("Failed to load your fields", "error");
+                    
+                    // Show error message in the modal
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="error-message">
+                                Failed to load fields. Please try again later.
+                                <br><small>Error: ${err.message}</small>
+                            </td>
+                        </tr>
+                    `;
+                    table.style.display = "table";
                 });
             },
 
@@ -1974,31 +1961,51 @@
                 const tbody = document.querySelector("#fieldsTable tbody");
                 tbody.innerHTML = "";
 
-                fields.forEach(field => {
-                    const props = field.properties;
-                    const area = props.area ? props.area.toFixed(2) : "0.00";
-                    const created = new Date(props.created_at).toLocaleDateString();
+                console.log("Populating table with fields:", fields);
+
+                fields.forEach((field, index) => {
+                    // Handle different field data structures
+                    let fieldId, fieldName, fieldArea, createdAt;
+                    
+                    if (field.properties) {
+                        // GeoJSON format
+                        fieldId = field.id || `field_${index}`;
+                        fieldName = field.properties.name || `Field ${index + 1}`;
+                        fieldArea = field.properties.area || 0;
+                        createdAt = field.properties.created_at || new Date().toISOString();
+                    } else {
+                        // Direct object format
+                        fieldId = field.id || field.field_id || `field_${index}`;
+                        fieldName = field.name || `Field ${index + 1}`;
+                        fieldArea = field.area || 0;
+                        createdAt = field.created_at || field.createdAt || new Date().toISOString();
+                    }
+
+                    const area = typeof fieldArea === 'number' ? fieldArea.toFixed(2) : "0.00";
+                    const created = new Date(createdAt).toLocaleDateString();
+                    const shortId = String(fieldId).length > 12 ? String(fieldId).substr(0, 8) + "..." : fieldId;
 
                     const row = document.createElement("tr");
-                    row.setAttribute("data-id", field.id);
+                    row.setAttribute("data-id", fieldId);
                     row.innerHTML = `
-                        <td>${String(field.id).substr(0, 8)}...</td>
-                        <td>${props.name}</td>
+                        <td title="${fieldId}">${shortId}</td>
+                        <td>${fieldName}</td>
                         <td>${area}</td>
                         <td>${created}</td>
                         <td>
-                            <button class="analyze-btn" onclick="UIManager.analyzeField('${field.id}')">
+                            <button class="analyze-btn" onclick="UIManager.analyzeField('${fieldId}')">
                                 Analyze
                             </button>
-                            <button class="delete-btn" onclick="UIManager.deleteField('${field.id}')">
+                            <button class="delete-btn" onclick="UIManager.deleteField('${fieldId}')">
                                 Delete
                             </button>
                         </td>
                     `;
                     tbody.appendChild(row);
                 });
+
+                console.log("Table populated with", fields.length, "fields");
             },
-            
 
             showVraModal() {
                 const modal = document.getElementById("vraMapsModal");
@@ -2012,6 +2019,9 @@
                 table.style.display = "none";
                 noVraMessage.style.display = "none";
 
+                // Clear existing table content
+                tbody.innerHTML = "";
+
                 fetch("/api/myfields/", {
                     method: "GET",
                     headers: {
@@ -2019,163 +2029,214 @@
                         "X-CSRFToken": Utils.getCSRFToken()
                     }
                 })
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP error! status: ${res.status}`);
+                    }
+                    return res.json();
+                })
                 .then(data => {
-                    console.log("features array:", data.features);
-                    console.log("Number of features:", data.features.length);
-
                     loading.style.display = "none";
+                    
+                    console.log("VRA data received:", data);
 
-                    const features = data.features || [];
-                    if (features.length === 0) {
+                    // Handle different possible response structures
+                    let fields = [];
+                    if (data.features) {
+                        fields = data.features;
+                    } else if (Array.isArray(data)) {
+                        fields = data;
+                    } else if (data.fields) {
+                        fields = data.fields;
+                    }
+
+                    if (fields.length === 0) {
                         noVraMessage.style.display = "block";
                         return;
                     }
 
-                    tbody.innerHTML = ""; 
-
-                    features.forEach(field => {
-                        const props = field.properties;
-                        const area = props.area ? props.area.toFixed(2) : "0.00";
-                        const created = new Date(props.created_at).toLocaleDateString();
-
-                        const row = document.createElement("tr");
-                        row.innerHTML = `
-                            <td>${field.id}</td>
-                            <td>${props.name}</td>
-                            <td>${area}</td>
-                            <td>${created}</td>
-                            <td>
-                                <button onclick="VRAManager.viewVRAMap('${field.id}')">Get VRA map</button>
-                                
-                            </td>
-                        `;
-                        tbody.appendChild(row);
-                    });
-
-                    table.style.display = "table"; 
+                    this.populateVraTable(fields);
+                    table.style.display = "table";
                 })
                 .catch(err => {
-                    console.error("Error fetching fields:", err);
                     loading.style.display = "none";
-                    Utils.showAlert("Failed to load VRA maps", "error");
+                    console.error("Error loading VRA maps:", err);
+                    
+                    // Show error message in the modal
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="error-message">
+                                Failed to load VRA maps. Please try again later.
+                                <br><small>Error: ${err.message}</small>
+                            </td>
+                        </tr>
+                    `;
+                    table.style.display = "table";
                 });
             },
 
+            populateVraTable(fields) {
+                const tbody = document.querySelector("#vraTable tbody");
+                tbody.innerHTML = "";
 
+                console.log("Populating VRA table with fields:", fields);
+
+                fields.forEach((field, index) => {
+                    // Handle different field data structures
+                    let fieldId, fieldName, fieldArea, createdAt;
+                    
+                    if (field.properties) {
+                        // GeoJSON format
+                        fieldId = field.id || `field_${index}`;
+                        fieldName = field.properties.name || `Field ${index + 1}`;
+                        fieldArea = field.properties.area || 0;
+                        createdAt = field.properties.created_at || new Date().toISOString();
+                    } else {
+                        // Direct object format
+                        fieldId = field.id || field.field_id || `field_${index}`;
+                        fieldName = field.name || `Field ${index + 1}`;
+                        fieldArea = field.area || 0;
+                        createdAt = field.created_at || field.createdAt || new Date().toISOString();
+                    }
+
+                    const area = typeof fieldArea === 'number' ? fieldArea.toFixed(2) : "0.00";
+                    const created = new Date(createdAt).toLocaleDateString();
+                    const shortId = String(fieldId).length > 12 ? String(fieldId).substr(0, 8) + "..." : fieldId;
+
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td title="${fieldId}">${shortId}</td>
+                        <td>${fieldName}</td>
+                        <td>${area}</td>
+                        <td>${created}</td>
+                        <td>
+                            <button class="vra-btn" onclick="VRAManager.viewVRAMap('${fieldId}')">
+                                Get VRA Map
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                console.log("VRA Table populated with", fields.length, "fields");
+            },
 
             analyzeField(fieldId) {
-               
-
-               
                 document.getElementById("myFieldsModal").style.display = "none";
+                
+                // Show loading state
+                Utils.showAlert("Starting field analysis...", "info");
+                
+                // Navigate to analysis page
+                window.location.href = `/api/analyze-field/${fieldId}/`;
+            },
 
-                 window.location.href = `/api/analyze-field/${fieldId}/`;
-                fetch(`/api/analyze-field/${fieldId}/`, {
-                    method: "GET",
+            deleteField(fieldId) {
+                if (!confirm("Are you sure you want to delete this field?")) return;
+
+                fetch(`/api/delete-field/${fieldId}/`, {
+                    method: "DELETE",
                     headers: {
-                        "X-Requested-With": "XMLHttpRequest",
                         "X-CSRFToken": Utils.getCSRFToken()
                     }
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Failed to delete field");
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    if (data.success) {
-                        // Show result in an alert or modal
-                        
+                    const fieldIndex = APP_STATE.savedFields.findIndex(f => f.id === fieldId);
+                    if (fieldIndex !== -1) {
+                        const field = APP_STATE.savedFields[fieldIndex];
 
-                        // Optionally log or render
-                        
+                        if (field.polygon) {
+                            APP_STATE.map.removeLayer(field.polygon);
+                        }
 
-                    } else {
-                        Utils.showAlert(`Analysis failed: ${data.error}`, "error");
+                        APP_STATE.savedFields.splice(fieldIndex, 1);
+                    }
+
+                    const row = document.querySelector(`#fieldsTable tr[data-id="${fieldId}"]`);
+                    if (row) {
+                        row.remove();
+                    }
+
+                    Utils.showAlert("Field deleted successfully", "success");
+
+                    const tbody = document.querySelector("#fieldsTable tbody");
+                    if (tbody && tbody.children.length === 0) {
+                        document.getElementById("fieldsTable").style.display = "none";
+                        document.getElementById("noFieldsMessage").style.display = "block";
                     }
                 })
                 .catch(error => {
-                    console.error("Error during analysis:", error);
-                    Utils.showAlert(`An error occurred during analysis`, "error");
+                    console.error("Delete error:", error);
+                    Utils.showAlert("Failed to delete field", "error");
                 });
-            },
+            }
+        };
 
+        // Menu button handlers
+        function setupMenuHandlers() {
+            document.getElementById("myFieldsButton").addEventListener("click", () => {
+                UIManager.showFieldsModal();
+            });
 
-            deleteField(fieldId) {
-                    if (!confirm("Are you sure you want to delete this field?")) return;
+            document.getElementById("vraMapsButton").addEventListener("click", () => {
+                UIManager.showVraModal();
+            });
 
-                    fetch(`/api/delete-field/${fieldId}/`, {
-                        method: "DELETE",
-                        headers: {
-                            "X-CSRFToken": Utils.getCSRFToken()
-                        }
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error("Failed to delete field");
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                       
-                        const fieldIndex = APP_STATE.savedFields.findIndex(f => f.id === fieldId);
-                        if (fieldIndex !== -1) {
-                            const field = APP_STATE.savedFields[fieldIndex];
+            // Other menu items (placeholder functionality)
+            const menuItems = [
+                "season2024", "monitoring", "overview", 
+                "fieldActivity", "dataManager", "notifications", "requestDemo", "upgrade"
+            ];
 
-                            // Remove polygon from map
-                            if (field.polygon) {
-                                APP_STATE.map.removeLayer(field.polygon);
-                            }
-
-                            // Remove from local state
-                            APP_STATE.savedFields.splice(fieldIndex, 1);
-                        }
-
-                        
-                        const row = document.querySelector(`#fieldsTable tr[data-id="${fieldId}"]`);
-                        if (row) {
-                            row.remove();
-                        }
-
-                        
-
-                        // Optional: if no rows left, show "noFieldsMessage"
-                        const tbody = document.querySelector("#fieldsTable tbody");
-                        if (tbody && tbody.children.length === 0) {
-                            document.getElementById("fieldsTable").style.display = "none";
-                            document.getElementById("noFieldsMessage").style.display = "block";
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Delete error:", error);
-                        Utils.showAlert("Failed to delete field", "error");
+            menuItems.forEach(itemId => {
+                const element = document.getElementById(itemId);
+                if (element) {
+                    element.addEventListener("click", () => {
+                        console.log(`${itemId} clicked`);
+                        // Add functionality here
                     });
                 }
-
-        };
+            });
+        }
 
         // Application Initialization
         document.addEventListener("DOMContentLoaded", () => {
             try {
+                console.log("Initializing application...");
                 MapManager.initialize();
                 UIManager.initialize();
+                setupMenuHandlers();
                 
                 // Initialize field search
-                document.getElementById("fieldSearch").addEventListener("input", (e) => {
-                    // Field search functionality would go here
-                    console.log("Searching for:", e.target.value);
-                });
+                const fieldSearch = document.getElementById("fieldSearch");
+                if (fieldSearch) {
+                    fieldSearch.addEventListener("input", (e) => {
+                        console.log("Searching for:", e.target.value);
+                        // Field search functionality would go here
+                    });
+                }
 
-                document.getElementById("filterBtn").addEventListener("click", () => {
-                   
-                });
+                const filterBtn = document.getElementById("filterBtn");
+                if (filterBtn) {
+                    filterBtn.addEventListener("click", () => {
+                        console.log("Filter button clicked");
+                        // Filter functionality would go here
+                    });
+                }
 
-              
+                console.log("Application initialized successfully");
                 
             } catch (error) {
-               
+                console.error("Error initializing application:", error);
+                Utils.showAlert("Failed to initialize application", "error");
             }
         });
-
-        // Global error handler
-        
     </script>
 </body>
 </html>
