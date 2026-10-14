@@ -74,8 +74,8 @@ class IntegratedSoilAnalyzer:
         except requests.RequestException as e:
             print(f"SoilGrids API Error: {e}")
             return None
-
-    def get_climate_data(self, lat: float, lon: float, days: int = 7) -> Optional[Dict[str, Any]]:
+    @staticmethod
+    def get_climate_data(lat: float, lon: float, days: int = 7) -> Optional[Dict[str, Any]]:
         base_url = "https://api.open-meteo.com/v1/forecast"
 
         params = {
@@ -140,59 +140,86 @@ class IntegratedSoilAnalyzer:
         }
         return weather_codes.get(code, "Unknown weather condition")
 
-    @staticmethod
-    def format_weather_predictions(predictions: Dict[str, Any]) -> None:
-        """
-        Format and print weather predictions in a readable format
+    
+    def format_weather_predictions(self, predictions: Dict[str, Any]) -> Dict[str, Any]:
+        """Process raw climate API response into structured format."""
+        if not predictions or 'daily' not in predictions:
+            return {}
+
+        processed = {
+            "summary": {
+                "temp_range": [],
+                "precipitation_days": 0,
+                "weather_types": {},
+                "avg_max_temp": None,
+                "avg_min_temp": None,
+                "dominant_weather": None
+            },
+            "daily_details": []
+        }
+
+        try:
+            # Process daily data with proper type checking
+            daily_data = predictions.get('daily', {})
+            for i in range(len(daily_data.get('time', []))):
+                daily_entry = {
+                    "date": daily_data['time'][i],
+                    "max_temp": float(daily_data['temperature_2m_max'][i]),
+                    "min_temp": float(daily_data['temperature_2m_min'][i]),
+                    "weather_condition": self.interpret_weather_code(
+                        int(daily_data['weathercode'][i])
+                    ),
+                    "precip_prob": int(daily_data['precipitation_probability_max'][i]),
+                    "uv_index": float(daily_data['uv_index_max'][i])
+                }
+                
+                # Update summary
+                processed['summary']['temp_range'].extend([daily_entry['max_temp'], daily_entry['min_temp']])
+                if daily_entry['precip_prob'] > 40:
+                    processed['summary']['precipitation_days'] += 1
+                processed['summary']['weather_types'][daily_entry['weather_condition']] = processed['summary']['weather_types'].get(daily_entry['weather_condition'], 0) + 1
+                
+                processed['daily_details'].append(daily_entry)
+
+            # Calculate averages only if data exists
+            if processed['daily_details']:
+                processed['summary']['avg_max_temp'] = round(
+                    sum(d['max_temp'] for d in processed['daily_details']) / len(processed['daily_details']), 1
+                )
+                processed['summary']['avg_min_temp'] = round(
+                    sum(d['min_temp'] for d in processed['daily_details']) / len(processed['daily_details']), 1
+                )
+                processed['summary']['dominant_weather'] = max(
+                    processed['summary']['weather_types'].items(),
+                    key=lambda x: x[1],
+                    default=("Unknown", 0)
+                )[0]
+
+        except (KeyError, IndexError, TypeError) as e:
+            print(f"Error processing climate data: {e}")
         
-        Args:
-            predictions (dict): Weather predictions from Open-Meteo
-        """
-        if not predictions:
-         
-            return
-        
-        
-        
-        # Daily predictions
-        for i in range(len(predictions['daily']['time'])):
-            date = predictions['daily']['time'][i]
-            max_temp = predictions['daily']['temperature_2m_max'][i]
-            min_temp = predictions['daily']['temperature_2m_min'][i]
-            weather_code = predictions['daily']['weathercode'][i]
-            precip_prob = predictions['daily']['precipitation_probability_max'][i]
-            uv_index = predictions['daily']['uv_index_max'][i]
-            
-            return {
-                "date": date,
-                "max_temp": max_temp,
-                "min_temp": min_temp,
-                "weather_code": weather_code,
-                "precip_prob": precip_prob,
-                "uv_index": uv_index
-            }
+            return processed
+
+
 
     def analyze_combined_data(self, soil_data: Union[pd.DataFrame, Dict[str, Any], int], climate_data: Union[Dict[str, Any], str]) -> Dict[str, Any]:
-        # Handle field ID input
+        # Process input data (keeping this part the same)
         if isinstance(soil_data, int):
             field_center = self.get_field_center(soil_data)
             soil_data = self.get_soilgrid_data(field_center['lat'], field_center['lon'])
-            
+            climate_data = {"data": self.format_weather_predictions(climate_data)}
             if soil_data is None:
                 raise ValueError(f"Could not retrieve soil data for field ID {soil_data}")
         
-        # Convert soil_data to DataFrame if it's a dictionary
         elif isinstance(soil_data, dict):
             soil_data = pd.DataFrame([soil_data])
         
-        # Validate soil_data
         if not isinstance(soil_data, pd.DataFrame):
             raise ValueError(f"Invalid soil_data type: {type(soil_data)}. Expected pandas DataFrame, dictionary, or field ID.")
         
         if soil_data.empty:
             raise ValueError("Empty soil data provided")
         
-        # Handle climate_data parsing
         if isinstance(climate_data, str):
             try:
                 climate_data = json.loads(climate_data)
@@ -202,7 +229,6 @@ class IntegratedSoilAnalyzer:
         if not isinstance(climate_data, dict):
             climate_data = {"data": {"note": "Invalid climate data format"}}
         
-        # Ensure climate_data has the expected structure
         if "data" not in climate_data:
             climate_data = {"data": climate_data}
             
@@ -211,12 +237,26 @@ class IntegratedSoilAnalyzer:
             "climate_conditions": climate_data['data']
         }
         
-        prompt = self._generate_analysis_prompt(combined_data)
+        # Create a more concise prompt to reduce token count
+        prompt = self._generate_concise_prompt(combined_data)
         
         for retry in range(self.max_retries):
             try:
                 self._handle_rate_limit()
                 
+                # First check if the model is ready to process
+                check_response = requests.get(
+                    self.model_url,
+                    headers=self.headers
+                )
+                
+                # If model is loading, wait before sending the actual request
+                if check_response.status_code == 503:
+                    estimated_time = check_response.json().get('estimated_time', 20)
+                    print(f"Model loading. Waiting {estimated_time} seconds...")
+                    time.sleep(estimated_time)
+                
+                # Send the actual inference request
                 response = requests.post(
                     self.model_url,
                     headers=self.headers,
@@ -226,17 +266,51 @@ class IntegratedSoilAnalyzer:
                             "max_new_tokens": 1000,
                             "temperature": 0.7,
                             "top_p": 0.95,
-                            "return_full_text": True
+                            "return_full_text": False,
+                            "use_cache": True  # Enable caching to speed up repeated requests
+                        },
+                        "options": {
+                            "wait_for_model": True  # Wait if model is loading
                         }
                     },
-                    timeout=45
+                    timeout=90  # Increased timeout
                 )
                 
-                response.raise_for_status()
-                analysis = self._extract_analysis(response.json())
+                # Handle potential errors
+                if response.status_code != 200:
+                    error_msg = f"API Error: {response.status_code} - {response.text}"
+                    print(error_msg)
+                    if retry == self.max_retries - 1:
+                        return {
+                            "success": False,
+                            "error": error_msg,
+                            "model": "falcon-7b-instruct",
+                            "timestamp": datetime.now().isoformat(),
+                            "metadata": {"retries": retry + 1}
+                        }
+                    time.sleep(self.retry_delay * (2 ** retry))
+                    continue
+                    
+                # Process the response
+                response_data = response.json()
+                
+                # Debug the raw response if needed
+                print(f"Raw API response: {json.dumps(response_data)[:200]}...")
+                
+                analysis = self._extract_analysis(response_data)
                 
                 if not analysis.strip():
-                    raise ValueError("Empty analysis received")
+                    print("Empty analysis received. Retrying...")
+                    if retry == self.max_retries - 1:
+                        return {
+                            "success": False,
+                            "error": "Empty analysis received from API",
+                            "model": "falcon-7b-instruct",
+                            "timestamp": datetime.now().isoformat(),
+                            "metadata": {"retries": retry + 1}
+                        }
+                    time.sleep(self.retry_delay * (2 ** retry))
+                    continue
                 
                 return {
                     "success": True,
@@ -247,6 +321,7 @@ class IntegratedSoilAnalyzer:
                 }
                 
             except Exception as e:
+                print(f"Exception during API request: {str(e)}")
                 if retry == self.max_retries - 1:
                     return {
                         "success": False,
@@ -256,39 +331,49 @@ class IntegratedSoilAnalyzer:
                         "metadata": {"retries": retry + 1}
                     }
                 time.sleep(self.retry_delay * (2 ** retry))
-
     def _handle_rate_limit(self):
+        """
+        Handles rate limiting for API requests.
+        Ensures that consecutive requests are separated by at least self.min_request_interval seconds.
+        """
         if self.last_request_time:
             elapsed = (datetime.now() - self.last_request_time).total_seconds()
             if elapsed < self.min_request_interval:
                 time.sleep(self.min_request_interval - elapsed)
         self.last_request_time = datetime.now()
 
-    @staticmethod
-    def _generate_analysis_prompt(combined_data: Dict[str, Any]) -> str:
-        return f"""Based on the following soil data, provide specific crop recommendations:
+    def _generate_concise_prompt(self, combined_data: Dict[str, Any]) -> str:
+        """Generate a more concise prompt to reduce token usage"""
+        soil = combined_data['soil_properties']
+        climate = combined_data['climate_conditions'].get('summary', {})
+        
+        # Create a simpler representation of soil data
+        soil_str = f"SOIL: sand:{soil.get('sand')}, clay:{soil.get('clay')}, pH:{soil.get('phh2o')}, "
+        soil_str += f"CEC:{soil.get('cec')}, nitrogen:{soil.get('nitrogen')}, organic carbon:{soil.get('soc')}, "
+        soil_str += f"water retention (3 levels): {soil.get('wv0010')}, {soil.get('wv0033')}, {soil.get('wv1500')}"
+        
+        # Get climate summary
+        temp_max = climate.get('avg_max_temp')
+        temp_min = climate.get('avg_min_temp')
+        temp_str = f"Temp:{temp_max}°C max, {temp_min}°C min" if temp_max and temp_min else "Temp: Unknown"
+        precip = climate.get('precipitation_days', 0)
+        weather = climate.get('dominant_weather', 'Unknown')
+        
+        # Create prompt
+        return f"""As an agricultural expert, analyze these field conditions and provide recommendations:
 
-Soil Properties:
-{json.dumps(combined_data['soil_properties'], indent=2)}
+    {soil_str}
 
-Climate Conditions:
-{json.dumps(combined_data['climate_conditions'], indent=2)}
+    CLIMATE: {temp_str}, Precipitation days: {precip}, Pattern: {weather}
 
-Key soil parameters interpretation:
-- Clay content ({combined_data['soil_properties'].get('clay', 'N/A')})
-- Sand content ({combined_data['soil_properties'].get('sand', 'N/A')})
-- pH (phh2o) ({combined_data['soil_properties'].get('phh2o', 'N/A')})
-- CEC ({combined_data['soil_properties'].get('cec', 'N/A')})
-- Nitrogen ({combined_data['soil_properties'].get('nitrogen', 'N/A')})
-- Water retention (wv0033) ({combined_data['soil_properties'].get('wv0033', 'N/A')})
+    Provide:
+    1. Top 5 suitable crops with soil-climate synergies for each
+    2. Climate risks and mitigations
+    3. Planting timing recommendations
+    4. Irrigation strategy based on water retention and precipitation
 
-Based on these soil characteristics:
-1. List the top 5 most suitable crops for this soil type
-2. For each recommended crop, explain in depth why it's well-suited based on the specific soil values
-3. Include any special management recommendations for the suggested crops
-
-Focus on practical, actionable recommendations that consider both the soil's strengths and limitations."""
-
+    Keep analysis concise and practical for sustainable farming."""
+            
     @staticmethod
     def _extract_analysis(result: Any) -> str:
         if isinstance(result, list) and result:
