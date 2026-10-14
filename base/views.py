@@ -204,27 +204,150 @@ class DeleteFieldView(APIView):
 from django.shortcuts import render
 
 def analyze_field_view(request, id):
+    """
+    Enhanced field analysis view with proper data extraction
+    """
     try:
-        huggingface_token = settings.HUGGINGFACE_TOKEN
-        analyzer = IntegratedSoilAnalyzer()
-        result = analyzer.analyze_combined_data(id, huggingface_token)
-        field = Field.objects.get(id=id)
+        # Get the field object
+        field = get_object_or_404(Field, id=id)
         area = field.area
-        data = analyzer.analyze_combined_data(soil_data=id, climate_data=id)
-
-        # Ensure 'analysis' exists
-        if "analysis" not in result:
-            result["analysis"] = "No analysis available."
-
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':  # If AJAX request
-            return JsonResponse({"success": True, "result": result})
         
-        result["area"] = area
-
-        return render(request, 'analysis.html', {"result": json.dumps(result), "id": id, "area": f"{area: .2f}", "data": data})
-
+        # Initialize the analyzer
+        analyzer = IntegratedSoilAnalyzer()
+        
+        # Get the raw analysis result (this contains the AI response)
+        raw_result = analyzer.analyze_combined_data(soil_data=id, climate_data=id)
+        
+        if not raw_result.get("success", False):
+            error_msg = raw_result.get("error", "Analysis failed")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({"success": False, "error": error_msg})
+            return render(request, 'analysis.html', {
+                "result": json.dumps({"error": error_msg}), 
+                "id": id, 
+                "area": f"{area:.2f}"
+            })
+        
+        # Extract the analysis text from the raw result
+        analysis_text = raw_result.get("analysis", "")
+        from .import DataExtractor
+        
+        extractor = DataExtractor()
+        extracted_soil_data = extractor.extract_soil_data(analysis_text)
+        extracted_climate_data = extractor.extract_climate_data(analysis_text)
+        extracted_recommendations = extractor.extract_recommendations(analysis_text)
+        
+        # Get the original soil and climate data from the analyzer
+        field_center = analyzer.get_field_center(id)
+        original_soil_data = analyzer.get_soilgrid_data(field_center['lat'], field_center['lon'])
+        raw_climate = analyzer.get_climate_data(field_center['lat'], field_center['lon'])
+        original_climate_data = analyzer.format_weather_predictions(raw_climate) if raw_climate else {}
+        
+        # Merge original data with extracted data (extracted data takes precedence if available)
+        merged_soil_data = {}
+        if original_soil_data is not None and not original_soil_data.empty:
+            merged_soil_data = original_soil_data.to_dict(orient='records')[0]
+        
+        # Override with extracted values where available
+        for key, value in extracted_soil_data.items():
+            if value is not None:
+                merged_soil_data[key] = value
+        
+        # Merge climate data
+        merged_climate_data = original_climate_data.copy()
+        if extracted_climate_data:
+            if 'summary' not in merged_climate_data:
+                merged_climate_data['summary'] = {}
+            merged_climate_data['summary'].update(extracted_climate_data)
+        
+        # Create the final result structure
+        final_result = {
+            "success": True,
+            "analysis": analysis_text,
+            "soil_properties": merged_soil_data,
+            "climate_conditions": merged_climate_data,
+            "recommendations": extracted_recommendations,
+            "field_info": {
+                "id": id,
+                "name": field.name,
+                "area": area,
+                "center": field_center
+            },
+            "timestamp": raw_result.get("timestamp"),
+            "model": raw_result.get("model"),
+            "metadata": raw_result.get("metadata", {})
+        }
+        
+        # Handle AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                "success": True, 
+                "result": final_result
+            })
+        
+        # For regular requests, render the template
+        context = {
+            "result": json.dumps(final_result),
+            "id": id,
+            "area": f"{area:.2f}",
+            "field_name": field.name
+        }
+        
+        return render(request, 'analysis.html', context)
+        
     except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
+        error_msg = f"Error analyzing field: {str(e)}"
+        print(f"DEBUG: {error_msg}")  # For debugging
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({"success": False, "error": error_msg}, status=500)
+        
+        return render(request, 'analysis.html', {
+            "result": json.dumps({"success": False, "error": error_msg}),
+            "id": id,
+            "area": "0.00"
+        })
+
+
+def get_field_data_view(request, id):
+    """
+    API endpoint to get field data for AJAX requests
+    """
+    try:
+        field = get_object_or_404(Field, id=id)
+        analyzer = IntegratedSoilAnalyzer()
+        
+        # Get field center coordinates
+        field_center = analyzer.get_field_center(id)
+        
+        # Get soil data from SoilGrids
+        soil_data = analyzer.get_soilgrid_data(field_center['lat'], field_center['lon'])
+        
+        # Get climate data from Open-Meteo
+        raw_climate = analyzer.get_climate_data(field_center['lat'], field_center['lon'])
+        climate_data = analyzer.format_weather_predictions(raw_climate) if raw_climate else {}
+        
+        response_data = {
+            "success": True,
+            "field_info": {
+                "id": id,
+                "name": field.name,
+                "area": field.area,
+                "center": field_center
+            },
+            "soil_properties": soil_data.to_dict(orient='records')[0] if soil_data is not None and not soil_data.empty else {},
+            "climate_conditions": climate_data
+        }
+        
+        return JsonResponse(response_data)
+        
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        }, status=500)
+
+
 
         
 def load(request):

@@ -361,190 +361,257 @@
 
         // --- Data Population Functions ---
         
-        function populatePage(data) {
-            const resultDiv = document.getElementById('result');
-            const recommendationDiv = document.getElementById('recommendation-list');
-            resultDiv.classList.remove('loading');
-            
-            // Populate analysis section
-            displayText(resultDiv, data.analysis, 'No analysis available.');
-            
-            // Extract recommendations from the analysis text
-            const recommendations = extractRecommendations(data.analysis);
-            displayText(recommendationDiv, recommendations, 'No recommendations available.');
-            
-            updateFieldInformation(data);
-            generateCharts(data);
-        }
+        // Enhanced JavaScript functions for your HTML template
 
-        function extractRecommendations(analysisText) {
-            if (!analysisText) return '';
-            
-            const lines = analysisText.split('\n');
-            const recommendations = [];
-            let inRecommendationsSection = false;
-
-            for (const line of lines) {
-                // Check for a heading that indicates recommendations
-                if (line.match(/^1\. Top 5 suitable crops/)) {
-                    inRecommendationsSection = true;
-                    recommendations.push(line);
-                } else if (inRecommendationsSection && line.match(/^2\. Climate risks/)) {
-                     recommendations.push(line);
-                } else if (inRecommendationsSection && line.match(/^3\. Planting timing/)) {
-                     recommendations.push(line);
-                } else if (inRecommendationsSection && line.match(/^4\. Irrigation strategy/)) {
-                     recommendations.push(line);
-                } else if (inRecommendationsSection) {
-                    // If we're inside the section, add the line
-                    recommendations.push(line);
+// Enhanced data extraction function
+function extractDataFromAnalysis(analysisText) {
+    if (!analysisText) return {};
+    
+    const text = analysisText.toLowerCase();
+    const extractedData = {};
+    
+    // Soil composition patterns
+    const patterns = {
+        sand: [
+            /sand[:\s]*(\d+\.?\d*)%?/,
+            /sand\s*content[:\s]*(\d+\.?\d*)%?/,
+            /(\d+\.?\d*)%?\s*sand/,
+            /-\s*sand[:\s]*(\d+\.?\d*)%?/
+        ],
+        clay: [
+            /clay[:\s]*(\d+\.?\d*)%?/,
+            /clay\s*content[:\s]*(\d+\.?\d*)%?/,
+            /(\d+\.?\d*)%?\s*clay/,
+            /-\s*clay[:\s]*(\d+\.?\d*)%?/
+        ],
+        silt: [
+            /silt[:\s]*(\d+\.?\d*)%?/,
+            /silt\s*content[:\s]*(\d+\.?\d*)%?/,
+            /(\d+\.?\d*)%?\s*silt/,
+            /-\s*silt[:\s]*(\d+\.?\d*)%?/
+        ],
+        ph: [
+            /ph[:\s]*(\d+\.?\d*)/,
+            /ph\s*level[:\s]*(\d+\.?\d*)/,
+            /acidity[:\s]*(\d+\.?\d*)/
+        ],
+        nitrogen: [
+            /nitrogen[:\s]*(\d+\.?\d*)/,
+            /n[:\s]*(\d+\.?\d*)\s*(?:ppm|mg\/kg|%)/,
+            /total\s*nitrogen[:\s]*(\d+\.?\d*)/,
+            /-\s*nitrogen[:\s]*(\d+\.?\d*)/
+        ],
+        organic_carbon: [
+            /organic\s*carbon[:\s]*(\d+\.?\d*)%?/,
+            /soc[:\s]*(\d+\.?\d*)%?/,
+            /carbon\s*content[:\s]*(\d+\.?\d*)%?/,
+            /organic\s*matter[:\s]*(\d+\.?\d*)%?/
+        ],
+        cec: [
+            /cec[:\s]*(\d+\.?\d*)/,
+            /cation\s*exchange\s*capacity[:\s]*(\d+\.?\d*)/,
+            /exchange\s*capacity[:\s]*(\d+\.?\d*)/
+        ],
+        phosphorus: [
+            /phosphorus[:\s]*(\d+\.?\d*)/,
+            /p[:\s]*(\d+\.?\d*)\s*(?:ppm|mg\/kg)/,
+            /available\s*phosphorus[:\s]*(\d+\.?\d*)/
+        ],
+        potassium: [
+            /potassium[:\s]*(\d+\.?\d*)/,
+            /k[:\s]*(\d+\.?\d*)\s*(?:ppm|mg\/kg)/,
+            /available\s*potassium[:\s]*(\d+\.?\d*)/
+        ]
+    };
+    
+    // Extract values using patterns
+    for (const [dataType, patternList] of Object.entries(patterns)) {
+        for (const pattern of patternList) {
+            const match = text.match(pattern);
+            if (match) {
+                const value = parseFloat(match[1]);
+                if (!isNaN(value)) {
+                    extractedData[dataType] = value;
+                    break; // Use first successful match
                 }
             }
-            
-            // This is a simple regex-based extraction; a more robust approach might be needed
-            // depending on the LLM's output format.
-            const recommendationPattern = /(1\. Top 5 suitable crops with soil-climate synergies.*|2\. Climate risks and mitigations.*|3\. Planting timing recommendations.*|4\. Irrigation strategy based on water retention and precipitation.*)/s;
-            const match = analysisText.match(recommendationPattern);
-            
-            if (match) {
-                return match[1];
-            }
-
-            return '';
-        }
-
-        function displayText(element, text, fallbackText) {
-            if (element) {
-                element.innerHTML = text ? `<p>${text.replace(/\n/g, '<br>')}</p>` : `<p>${fallbackText}</p>`;
-            }
-        }
-        
-        function displayError(errorMessage) {
-            const resultDiv = document.getElementById('result');
-            resultDiv.classList.remove('loading');
-            resultDiv.classList.add('error');
-            resultDiv.innerHTML = `<strong><i class="fas fa-exclamation-triangle"></i> Error:</strong><br>${errorMessage}`;
-        }
-
-        function updateFieldInformation(data) {
-            const fieldInfoDiv = document.getElementById('field-details');
-            if (!fieldInfoDiv) return;
-
-            const soil = data.soil_properties || {};
-    const climate = (data.climate_conditions && data.climate_conditions.summary) || {};
-
-    // Extract pH from data.analysis string if available
-    let phMatch = null;
-    if (data.analysis) {
-        const match = data.analysis.match(/pH:\s*([\d.]+)/);
-        if (match) {
-            phMatch = match[1];
         }
     }
     
+    return extractedData;
+}
 
-    const items = {
-        "Field ID": "{{ id }}", // This is okay — Django will insert the ID from backend
-        "pH": phMatch ?? soil.phh2o ?? 'N/A',
-        "Area": "{{ area }} ha", // Assuming you pass `area` in context
-        "Dominant Weather": climate.dominant_weather ?? 'N/A',
-        "Avg Max Temp": climate.avg_max_temp ? `${climate.avg_max_temp.toFixed(1)} °C` : 'N/A',
-        "Avg Min Temp": climate.avg_min_temp ? `${climate.avg_min_temp.toFixed(1)} °C` : 'N/A',
-    };
-            
-            let html = '';
-            for (const [key, value] of Object.entries(items)) {
-                html += `
-                    <div class="info-item">
-                        <h3>${key}</h3>
-                        <p>${value}</p>
-                    </div>`;
-            }
-            fieldInfoDiv.innerHTML = html;
+// Updated populatePage function
+function populatePage(data) {
+    const resultDiv = document.getElementById('result');
+    const recommendationDiv = document.getElementById('recommendation-list');
+    resultDiv.classList.remove('loading');
+    
+    // Extract data from analysis text
+    const extractedData = extractDataFromAnalysis(data.analysis);
+    
+    // Merge extracted data with existing data
+    const mergedData = {
+        ...data,
+        soil_properties: {
+            ...data.soil_properties,
+            ...extractedData
         }
-       
+    };
+    
+    // Populate analysis section
+    displayText(resultDiv, data.analysis, 'No analysis available.');
+    
+    // Extract and display recommendations
+    const recommendations = extractRecommendations(data.analysis);
+    displayText(recommendationDiv, recommendations, 'No recommendations available.');
+    
+    updateFieldInformation(mergedData);
+    generateCharts(mergedData);
+}
 
-            let sandMatch = null, clayMatch = null, siltMatch = null;
+// Enhanced updateFieldInformation function
+function updateFieldInformation(data) {
+    const fieldInfoDiv = document.getElementById('field-details');
+    if (!fieldInfoDiv) return;
 
-            if (data.analysis) {
-                // Regex allows optional dash and case-insensitivity
-                const sand = data.analysis.match(/-?\s*sand:\s*([\d.]+)/i);
-                const clay = data.analysis.match(/-?\s*clay:\s*([\d.]+)/i);
-                const silt = data.analysis.match(/-?\s*silt:\s*([\d.]+)/i);
+    const soil = data.soil_properties || {};
+    const climate = (data.climate_conditions && data.climate_conditions.summary) || {};
 
-                if (sand) sandMatch = parseFloat(sand[1]);
-                if (clay) clayMatch = parseFloat(clay[1]);
-                if (silt) siltMatch = parseFloat(silt[1]);
-            }
+    // Use extracted data or fallback to original data
+    const items = {
+        "Field ID": data.field_id || "{{ id }}", 
+        "pH": soil.ph?.toFixed(1) || 'N/A',
+        "Area": data.area ? `${data.area} ha` : "{{ area }} ha",
+        "Sand %": soil.sand?.toFixed(1) || 'N/A',
+        "Clay %": soil.clay?.toFixed(1) || 'N/A',
+        "Nitrogen": soil.nitrogen?.toFixed(2) || 'N/A'
+    };
+    
+    let html = '';
+    for (const [key, value] of Object.entries(items)) {
+        html += `
+            <div class="info-item">
+                <h3>${key}</h3>
+                <p>${value}</p>
+            </div>`;
+    }
+    fieldInfoDiv.innerHTML = html;
+}
 
-            function generateCharts(data) {
-                if (nutrientChart) nutrientChart.destroy();
-                if (compositionChart) compositionChart.destroy();
+// Enhanced generateCharts function
+function generateCharts(data) {
+    if (nutrientChart) nutrientChart.destroy();
+    if (compositionChart) compositionChart.destroy();
 
-                const soil = data.soil_properties || {};
-                
-                const compCtx = document.getElementById('compositionChart')?.getContext('2d');
-                if (compCtx) {
-                    const sand = sandMatch ?? soil.sand ?? 0;
-                    const clay = clayMatch ?? soil.clay ?? 0;
-                    const silt = siltMatch ?? soil.silt ?? 0;
-                    
-                    compositionChart = new Chart(compCtx, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Sand %', 'Clay %', 'Silt %'],
-                            datasets: [{
-                                data: [sand, clay, silt],
-                                backgroundColor: ['#f4a261', '#e76f51', '#2a9d8f'],
-                                borderColor: '#1a2332',
-                                borderWidth: 4
-                            }]
-                        },
-                        options: { 
-                            ...chartOptions, 
-                            scales: {},
-                            plugins: {
-                                ...chartOptions.plugins,
-                                title: {
-                                    display: true,
-                                    text: 'Soil Composition',
-                                    color: '#e8eaed',
-                                    font: { size: 16 }
-                                }
-                            }
-                        }
-                    });
+    const soil = data.soil_properties || {};
+    
+    // Soil Composition Chart
+    const compCtx = document.getElementById('compositionChart')?.getContext('2d');
+    if (compCtx) {
+        const sand = soil.sand || 0;
+        const clay = soil.clay || 0;
+        const silt = soil.silt || 0;
+        
+        // Ensure values add up to 100% if they're all present
+        const total = sand + clay + silt;
+        const normalizedData = total > 0 ? [
+            (sand / total) * 100,
+            (clay / total) * 100,
+            (silt / total) * 100
+        ] : [sand, clay, silt];
+        
+        compositionChart = new Chart(compCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Sand %', 'Clay %', 'Silt %'],
+                datasets: [{
+                    data: normalizedData,
+                    backgroundColor: ['#f4a261', '#e76f51', '#2a9d8f'],
+                    borderColor: '#1a2332',
+                    borderWidth: 4
+                }]
+            },
+            options: { 
+                ...chartOptions, 
+                scales: {},
+                plugins: {
+                    ...chartOptions.plugins,
+                    title: {
+                        display: true,
+                        text: 'Soil Composition',
+                        color: '#e8eaed',
+                        font: { size: 16 }
+                    }
                 }
             }
+        });
+    }
 
-            // Nutrient Chart (Bar)
-            const nutrientCtx = document.getElementById('nutrientChart')?.getContext('2d');
-            if (nutrientCtx) {
-                nutrientChart = new Chart(nutrientCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Nitrogen', 'CEC', 'Organic Carbon'],
-                        datasets: [{
-                            label: 'Value',
-                            data: [soil.nitrogen ?? 0, soil.cec ?? 0, soil.soc ?? 0],
-                            backgroundColor: ['#4ade80', '#3b82f6', '#f59e0b']
-                        }]
-                    },
-                    options: {
-                        ...chartOptions,
-                        plugins: {
-                            ...chartOptions.plugins,
-                            title: {
-                                display: true,
-                                text: 'Key Nutrient Levels',
-                                color: '#e8eaed',
-                                font: { size: 16 }
-                            }
-                        }
-                    }
-                });
-            }
+    // Nutrient Chart (Bar)
+    const nutrientCtx = document.getElementById('nutrientChart')?.getContext('2d');
+    if (nutrientCtx) {
+        const nutrients = {
+            'Nitrogen': soil.nitrogen || 0,
+            'Phosphorus': soil.phosphorus || 0,
+            'Potassium': soil.potassium || 0,
+            'Organic Carbon': soil.organic_carbon || soil.soc || 0,
+            'CEC': soil.cec || 0
+        };
         
+        // Filter out zero values for cleaner display
+        const nonZeroNutrients = Object.entries(nutrients).filter(([_, value]) => value > 0);
+        const labels = nonZeroNutrients.map(([label, _]) => label);
+        const values = nonZeroNutrients.map(([_, value]) => value);
+        
+        nutrientChart = new Chart(nutrientCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Value',
+                    data: values,
+                    backgroundColor: ['#4ade80', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6']
+                }]
+            },
+            options: {
+                ...chartOptions,
+                plugins: {
+                    ...chartOptions.plugins,
+                    title: {
+                        display: true,
+                        text: 'Key Nutrient Levels',
+                        color: '#e8eaed',
+                        font: { size: 16 }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Helper function to safely get numeric values
+function getNumericValue(obj, key, fallback = 0) {
+    const value = obj[key];
+    return (typeof value === 'number' && !isNaN(value)) ? value : fallback;
+}
+
+// Enhanced error handling
+function displayError(errorMessage) {
+    const resultDiv = document.getElementById('result');
+    resultDiv.classList.remove('loading');
+    resultDiv.classList.add('error');
+    resultDiv.innerHTML = `
+        <div style="text-align: center;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #f87171; margin-bottom: 1rem;"></i>
+            <h3>Analysis Error</h3>
+            <p>${errorMessage}</p>
+            <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #4ade80; border: none; border-radius: 5px; cursor: pointer;">
+                Retry Analysis
+            </button>
+        </div>
+    `;
+}
         
         function setupActionButtons() {
             document.getElementById('download-report')?.addEventListener('click', () => alert('Download feature coming soon.'));
