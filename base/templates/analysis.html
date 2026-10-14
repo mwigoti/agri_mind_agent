@@ -441,6 +441,20 @@
             phMatch = match[1];
         }
     }
+    let sandMatch=null;
+    if (data.analysis) {
+        const sand = data.analysis.match(/sand: \s*([\d.]+)/);
+        if (sand) {
+            sandMatch = match[1];
+        }
+    }
+    let clayMatch = null;
+    if (data.analysis) {
+        const clay = data.analysis.match(/clay: \s*([\d.]+)/);
+        if (clay) {
+            clayMatch = match[1];
+        }
+    }
 
     const items = {
         "Field ID": "{{ id }}", // This is okay — Django will insert the ID from backend
@@ -471,8 +485,8 @@
             // Soil Composition Chart (Pie)
             const compCtx = document.getElementById('compositionChart')?.getContext('2d');
             if (compCtx) {
-                const sand = soil.sand ?? 0;
-                const clay = soil.clay ?? 0;
+                const sand = sandMatch ?? soil.sand ?? 0;
+                const clay = clayMatch ?? soil.clay ?? 0;
                 const silt = soil.silt ?? 0;
                 
                 compositionChart = new Chart(compCtx, {
