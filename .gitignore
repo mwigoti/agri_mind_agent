@@ -1,18 +1,40 @@
+# Virtual environments
 venv/
 /venv
 venv
+.venv/
+
+# Secrets and local configs
+.env/
+.env
+.env.*
 cert.pem
 /cert.pem
 key.pem/
-/target
-
 /key.pem
-.env/
-.env
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Local data and generated files
+*.sqlite3
+db.sqlite3
+layer_2/
+layer_2/**
+ussd.log
+
+# Rust / compiled outputs
 **/*.rlib
 **/*.o
 analysis_engine/target/
 .target/
 target/
 .target
-__pycache__/
+
+# Static generated folders
+staticfiles/
