@@ -197,6 +197,9 @@ class DeleteFieldView(APIView):
         return Response({'message': 'Field deleted successfully'}, status=status.HTTP_200_OK)
 
 
+from django.http import JsonResponse
+from django.shortcuts import render
+
 def analyze_field_view(request, id):
     try:
         huggingface_token = settings.HUGGINGFACE_TOKEN
@@ -214,6 +217,7 @@ def analyze_field_view(request, id):
 
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
         
 def load(request):
     return render(request, 'load.html')
