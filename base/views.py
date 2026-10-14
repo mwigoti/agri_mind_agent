@@ -204,6 +204,9 @@ def analyze_field_view(request, id):
         huggingface_token = settings.HUGGINGFACE_TOKEN
         analyzer = IntegratedSoilAnalyzer()
         result = analyzer.analyze_combined_data(id, huggingface_token)
+        field = Field.objects.get(id=id)
+        area = field.area
+        data = analyzer.analyze_combined_data(soil_data=id, climate_data=None)
 
         # Ensure 'analysis' exists
         if "analysis" not in result:
@@ -211,8 +214,10 @@ def analyze_field_view(request, id):
 
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':  # If AJAX request
             return JsonResponse({"success": True, "result": result})
+        
+        result["area"] = area
 
-        return render(request, 'analysis.html', {"result": result, "id": id})
+        return render(request, 'analysis.html', {"result": json.dumps(result), "id": id, "area": f"{area: .2f}", "data": data})
 
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=500)
@@ -499,7 +504,6 @@ class VRAAnalysisView(APIView):
                 "view_logs": "Check the Rust service console output"
             }
         }
-        
         if "connection" in error_msg.lower():
             troubleshooting["specific_issue"] = "Service Connection"
             troubleshooting["likely_cause"] = "The Rust VRA Analysis Engine is not running"

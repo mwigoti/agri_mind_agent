@@ -465,7 +465,7 @@ Provide:
 4. Irrigation strategy based on water retention and precipitation
 
 
-Keep analysis concise and practical for sustainable farming."""
+Keep analysis detailed and practical for sustainable farming."""
             
     @staticmethod
     def _extract_analysis(result: Any) -> str:
