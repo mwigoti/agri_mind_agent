@@ -2096,7 +2096,7 @@
             </svg>
           </div>
           <div class="logo-text">
-            <h1>CropWatch</h1>
+            <h1>Agrivision</h1>
             <span>SMART FIELD MONITORING</span>
           </div>
         </div>
@@ -2231,7 +2231,7 @@
     </header>
     <div id="reportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
       <div style="background:white; padding:2rem; border-radius:12px; max-width:500px; width:90%;">
-        <h3 style="margin-bottom:1rem; color:hsl(var(--primary));">🤖 AI Agronomic Report</h3>
+        <h3 style="margin-bottom:1rem; color:hsl(var(--primary));">AI Agronomic Report</h3>
         <h1 id="modalYieldDisplay" style="margin-bottom:1rem; font-size:2rem; color:#111;"></h1>
         <p id="modalReportContent" style="line-height:1.6; color:#444; font-size:1.1rem;"></p>
         <button onclick="document.getElementById('reportModal').style.display='none'" style="margin-top:1.5rem; width:100%; padding:0.75rem; background:hsl(var(--primary)); color:white; border:none; border-radius:6px; cursor:pointer;">Close Report</button>
@@ -2650,7 +2650,7 @@
     }
 
     function _loadingPanelHTML() {
-      return `<div class="analysis-panel-header"><h4>🤖 AI Yield Forecaster</h4></div><div style="padding:2.5rem;text-align:center;"><div style="width:30px;height:30px;border:3px solid #ddd;border-top-color:hsl(var(--primary));border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 1rem;"></div><p style="font-weight:600;color:hsl(var(--primary));">Analyzing Satellite & Climate Data...</p></div><style>@keyframes spin{100%{transform:rotate(360deg);}}</style>`;
+      return `<div class="analysis-panel-header"><h4>AI Yield Forecaster</h4></div><div style="padding:2.5rem;text-align:center;"><div style="width:30px;height:30px;border:3px solid #ddd;border-top-color:hsl(var(--primary));border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 1rem;"></div><p style="font-weight:600;color:hsl(var(--primary));">Analyzing Satellite & Climate Data...</p></div><style>@keyframes spin{100%{transform:rotate(360deg);}}</style>`;
     }
 
     function _setAnalysisPanelError(panelId, message) {
@@ -2719,7 +2719,7 @@
         <div class="report-modal report-printable" id="reportPrintArea">
           <div class="report-modal-header">
             <div class="report-modal-header-left">
-              <div class="report-modal-icon">🤖</div>
+              <div class="report-modal-icon"></div>
               <div class="report-modal-title"><h2>AI Agronomic Report</h2><span>Satellite & Climate Analysis</span></div>
             </div>
             <button class="report-modal-close" onclick="document.getElementById('aiFullReportOverlay').remove()">✕</button>
