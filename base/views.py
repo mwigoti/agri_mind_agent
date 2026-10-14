@@ -138,7 +138,8 @@ def weather(request):
     return render(request, 'weather.html')
 
 def upgrade(request):
-    return render(request, 'upgrade.html')
+    amount = request.GET.get('amount', 0)
+    return render(request, 'upgrade.html', {'amount': amount})
 
 
 def pricing(request):

@@ -1,0 +1,120 @@
+/* styles.css */
+
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: linear-gradient(135deg, #666, green);
+    overflow: hidden;
+}
+
+.container {
+    position: relative;
+    width: 90%;
+    max-width: 800px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+h1 {
+    text-align: center;
+    font-size: 2.5rem;
+    color: #333;
+    padding: 20px 0;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.loading-bar {
+    height: 10px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 5px;
+    margin: 20px 0;
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    width: 0; /* Start with 0 width and animate later */
+    background: linear-gradient(90deg, #ff6a6a, #ffb6b6);
+    animation: loading 2s forwards;
+}
+
+@keyframes loading {
+    to {
+        width: 100%;
+    }
+}
+
+.cards {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    text-align: center;
+    font-size: 1.5rem;
+    position: relative;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+h2 {
+    font-size: 2rem;
+    margin: 0;
+    color: #333;
+    position: relative;
+}
+
+.card p {
+    font-size: 1.25rem;
+    color: #666;
+}
+
+/* Responsive Styles */
+@media (min-width: 768px) {
+    .cards {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+    .card {
+        flex: 1;
+        margin: 0 10px;
+    }
+}
+
+.background-animation {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background: url('your-animation-image-url.jpg') no-repeat center center/cover;
+    animation: move-background 30s linear infinite;
+}
+
+@keyframes move-background {
+    from {
+        background-position: 0 0;
+    }
+    to {
+        background-position: 100% 100%;
+    }
+}
