@@ -441,20 +441,7 @@
             phMatch = match[1];
         }
     }
-    let sandMatch=null;
-    if (data.analysis) {
-        const sand = data.analysis.match(/sand: \s*([\d.]+)/);
-        if (sand) {
-            sandMatch = match[1];
-        }
-    }
-    let clayMatch = null;
-    if (data.analysis) {
-        const clay = data.analysis.match(/clay: \s*([\d.]+)/);
-        if (clay) {
-            clayMatch = match[1];
-        }
-    }
+    
 
     const items = {
         "Field ID": "{{ id }}", // This is okay — Django will insert the ID from backend
@@ -475,45 +462,59 @@
             }
             fieldInfoDiv.innerHTML = html;
         }
+       
 
-        function generateCharts(data) {
-            if (nutrientChart) nutrientChart.destroy();
-            if (compositionChart) compositionChart.destroy();
+            let sandMatch = null, clayMatch = null, siltMatch = null;
 
-            const soil = data.soil_properties || {};
-            
-            // Soil Composition Chart (Pie)
-            const compCtx = document.getElementById('compositionChart')?.getContext('2d');
-            if (compCtx) {
-                const sand = sandMatch ?? soil.sand ?? 0;
-                const clay = clayMatch ?? soil.clay ?? 0;
-                const silt = soil.silt ?? 0;
+            if (data.analysis) {
+                // Regex allows optional dash and case-insensitivity
+                const sand = data.analysis.match(/-?\s*sand:\s*([\d.]+)/i);
+                const clay = data.analysis.match(/-?\s*clay:\s*([\d.]+)/i);
+                const silt = data.analysis.match(/-?\s*silt:\s*([\d.]+)/i);
+
+                if (sand) sandMatch = parseFloat(sand[1]);
+                if (clay) clayMatch = parseFloat(clay[1]);
+                if (silt) siltMatch = parseFloat(silt[1]);
+            }
+
+            function generateCharts(data) {
+                if (nutrientChart) nutrientChart.destroy();
+                if (compositionChart) compositionChart.destroy();
+
+                const soil = data.soil_properties || {};
                 
-                compositionChart = new Chart(compCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Sand %', 'Clay %', 'Silt %'],
-                        datasets: [{
-                            data: [sand, clay, silt],
-                            backgroundColor: ['#f4a261', '#e76f51', '#2a9d8f'],
-                            borderColor: '#1a2332',
-                            borderWidth: 4
-                        }]
-                    },
-                    options: { 
-                        ...chartOptions, 
-                        scales: {},
-                        plugins: {
-                            ...chartOptions.plugins,
-                            title: {
-                                display: true,
-                                text: 'Soil Composition',
-                                color: '#e8eaed',
-                                font: { size: 16 }
+                const compCtx = document.getElementById('compositionChart')?.getContext('2d');
+                if (compCtx) {
+                    const sand = sandMatch ?? soil.sand ?? 0;
+                    const clay = clayMatch ?? soil.clay ?? 0;
+                    const silt = siltMatch ?? soil.silt ?? 0;
+                    
+                    compositionChart = new Chart(compCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Sand %', 'Clay %', 'Silt %'],
+                            datasets: [{
+                                data: [sand, clay, silt],
+                                backgroundColor: ['#f4a261', '#e76f51', '#2a9d8f'],
+                                borderColor: '#1a2332',
+                                borderWidth: 4
+                            }]
+                        },
+                        options: { 
+                            ...chartOptions, 
+                            scales: {},
+                            plugins: {
+                                ...chartOptions.plugins,
+                                title: {
+                                    display: true,
+                                    text: 'Soil Composition',
+                                    color: '#e8eaed',
+                                    font: { size: 16 }
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                }
             }
 
             // Nutrient Chart (Bar)
@@ -543,7 +544,7 @@
                     }
                 });
             }
-        }
+        
         
         function setupActionButtons() {
             document.getElementById('download-report')?.addEventListener('click', () => alert('Download feature coming soon.'));
