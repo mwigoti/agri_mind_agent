@@ -4,13 +4,30 @@ use geo::{Geometry, BoundingRect, Coordinate};
 use reqwest;
 use std::collections::HashMap;
 use base64;
+use dotenv::dotenv;
+use std::env;
+use geojson::{Geometry as GeoJsonGeometry};
+use geo_types::{Geometry as GeoGeometry};
+use geojson::GeoJson;
+use geojson::quick_collection;
+use std::convert::TryInto;
+
+
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Field {
     id: u32,
     name: String,
     area: f64,
-    geometry: Geometry<f64>,
+    pub geometry: GeoJsonGeometry,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+
+pub struct VRARequest {
+    pub field_id: i32,
+    pub user_id: i32,
+    pub geometry: GeoJsonGeometry,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -191,7 +208,9 @@ async fn create_ndvi_request(
     config: &mut SentinelHubConfig,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let token = config.get_access_token().await?;
-    let coordinates = geometry_to_coordinates(&field.geometry);
+    let geo_geometry: GeoGeometry<f64> = field.geometry.clone().try_into().expect("Invalid geometry conversion");
+    let coordinates = geometry_to_coordinates(&geo_geometry);
+
 
     // Calculate image dimensions based on field size
     let width = 512;
@@ -369,12 +388,7 @@ fn generate_vra_recommendations(field_area: f64, zones: &[VRAZone]) -> VRARecomm
 }
 
 // Process field and generate VRA map
-async fn process_field_vra(
-    field: &Field,
-    config: &mut SentinelHubConfig,
-) -> VRAMapResponse {
-    println!("Processing VRA for field: {}", field.name);
-    
+async fn process_field_vra(field: &Field, config: &mut SentinelHubConfig) -> VRAMapResponse {
     // Get NDVI image from Sentinel Hub
     let ndvi_map = match create_ndvi_request(field, config).await {
         Ok(image) => image,
@@ -385,7 +399,8 @@ async fn process_field_vra(
         }
     };
     
-    let bbox = extract_bounding_box(&field.geometry).unwrap_or(BoundingBox {
+    let geo_geometry: GeoGeometry<f64> = field.geometry.clone().try_into().expect("Invalid geometry conversion");
+    let bbox = extract_bounding_box(&geo_geometry).unwrap_or(BoundingBox {
         min_lon: 0.0,
         min_lat: 0.0,
         max_lon: 0.0,
