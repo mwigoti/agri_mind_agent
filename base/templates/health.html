@@ -366,40 +366,7 @@
       color: hsl(var(--foreground));
       line-height: 1.3;
     }
-    /* Animations */
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-
-    @keyframes slideIn {
-      from {
-        transform: translateX(400px);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-
-    @keyframes slideOut {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(400px);
-        opacity: 0;
-      }
-    }
-
-    /* Irrigation button active state */
-    .irrigation-btn.active {
-      background: hsl(var(--primary));
-      color: white;
-      border-color: hsl(var(--primary));
-    }
+    
 
     .field-card-info p {
       font-size: 0.875rem;
@@ -1948,6 +1915,9 @@
     // ========================================
     // FETCH FIELDS FROM DATABASE
     // ========================================
+    // ========================================
+    // FETCH FIELDS FROM DATABASE
+    // ========================================
     async function fetchFieldsFromDatabase() {
       try {
         const response = await fetch('/api/myfields/', {
@@ -1969,59 +1939,62 @@
         }
 
         const data = await response.json();
-        console.log('✅ Raw API response:', data);
+        console.log('Raw API response:', data);
         
-        // Handle different response formats
+        // Handle GeoJSON FeatureCollection format
         let fieldsArray = [];
         
-        // Check if data is already an array
-        if (Array.isArray(data)) {
-          fieldsArray = data;
-        } 
-        // Check if data has a 'features' property (GeoJSON FeatureCollection)
-        else if (data.features && Array.isArray(data.features)) {
+        if (data.type === 'FeatureCollection' && Array.isArray(data.features)) {
           fieldsArray = data.features;
-        }
-        // Check if data has a 'results' property (DRF pagination)
-        else if (data.results && Array.isArray(data.results)) {
-          fieldsArray = data.results;
-        }
-        // If it's a single object, wrap it in an array
-        else if (typeof data === 'object' && data !== null) {
-          fieldsArray = [data];
+        } else if (Array.isArray(data)) {
+          fieldsArray = data;
+        } else {
+          console.error('Unexpected API format:', data);
+          showError('Unexpected data format from server');
+          return [];
         }
         
-        console.log('✅ Fields array:', fieldsArray);
+        console.log('Fields array:', fieldsArray);
         
-        // Transform GeoJSON data to our fields format
+        // Transform GeoJSON features to our fields format
         fields = fieldsArray.map(feature => {
-          // Handle both GeoJSON feature format and direct object format
-          const props = feature.properties || feature;
-          const geom = feature.geometry || { coordinates: [[]] };
-          
-          return {
-            id: props.id,
-            name: props.name || 'Unnamed Field',
-            area: props.area || 0,
-            coordinates: geom.coordinates[0] || [],
+          // In GeoJSON format:
+          // - id is at feature level
+          // - other properties are in feature.properties
+          const fieldData = {
+            id: feature.id,  // ← This is the key fix!
+            name: feature.properties.name || 'Unnamed Field',
+            area: feature.properties.area || 0,
+            coordinates: feature.geometry?.coordinates?.[0] || [],
             crop: null,
-            createdAt: props.created_at || new Date().toISOString()
+            createdAt: feature.properties.created_at || new Date().toISOString(),
+            owner: feature.properties.owner
           };
+          
+          console.log('Processed field:', fieldData.name, 'ID:', fieldData.id);
+          
+          return fieldData;
         });
 
-        console.log('✅ Transformed fields:', fields);
+        console.log('Transformed fields:', fields);
+        
+        // Validate fields have IDs
+        const missingIds = fields.filter(f => !f.id);
+        if (missingIds.length > 0) {
+          console.error('Fields missing IDs:', missingIds);
+          showError('Some fields are missing IDs');
+        }
         
         renderFields();
         updateStats();
         
         return fields;
       } catch (error) {
-        console.error('❌ Failed to fetch fields:', error);
+        console.error(' Failed to fetch fields:', error);
         showError('Failed to load fields: ' + error.message);
         return [];
       }
     }
-
     // ========================================
     // RENDER FIELDS TO UI
     // ========================================
