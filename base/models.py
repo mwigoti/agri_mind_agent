@@ -309,7 +309,13 @@ class AnalysisResult(_models.Model):
 
     pipeline_status = _models.CharField(max_length=20, choices=STATUS_CHOICES, default="queued")
     error_message   = _models.TextField(blank=True, null=True)
-
+    # Add to AnalysisResult in models.py
+    sar_scene_count  = models.IntegerField(default=0)
+    vh_latest        = models.DecimalField(max_digits=7, decimal_places=4, null=True, blank=True)
+    vv_latest        = models.DecimalField(max_digits=7, decimal_places=4, null=True, blank=True)
+    vh_auc           = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
+    fused_ndvi_auc   = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
+    gap_fill_count   = models.IntegerField(default=0)
     # ── Sentinel-2 ────────────────────────────────────────────
     ndvi_latest      = _models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
     ndre_latest      = _models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
@@ -369,42 +375,42 @@ class FieldSoilData(models.Model):
     field                  = models.OneToOneField(Field, on_delete=models.CASCADE,
                                                   related_name='soil_data')
     # Physical
-    sand_pct               = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    clay_pct               = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    silt_pct               = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    bulk_density           = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    sand_pct               = models.DecimalField(max_digits=5,  decimal_places=2, null=True, blank=True)  # 0-100 %
+    clay_pct               = models.DecimalField(max_digits=5,  decimal_places=2, null=True, blank=True)  # 0-100 %
+    silt_pct               = models.DecimalField(max_digits=5,  decimal_places=2, null=True, blank=True)  # 0-100 %
+    bulk_density           = models.DecimalField(max_digits=7,  decimal_places=2, null=True, blank=True)  # kg/m3 e.g. 1108
     # Chemical
-    soc_gkg                = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
-    soil_ph                = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
-    cec                    = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
-    electrical_conductivity= models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    soc_gkg                = models.DecimalField(max_digits=7,  decimal_places=3, null=True, blank=True)  # g/kg
+    soil_ph                = models.DecimalField(max_digits=4,  decimal_places=2, null=True, blank=True)  # 0-14
+    cec                    = models.DecimalField(max_digits=7,  decimal_places=2, null=True, blank=True)  # cmolc/kg
+    electrical_conductivity= models.DecimalField(max_digits=8,  decimal_places=3, null=True, blank=True)  # dS/m
     # Nutrients
-    nitrogen_gkg           = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
-    total_phosphorus_mgkg  = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
-    total_potassium_mgkg   = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
-    exchangeable_k         = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
-    phosphorus_olsen_mgkg  = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    nitrogen_gkg           = models.DecimalField(max_digits=7,  decimal_places=3, null=True, blank=True)  # g/kg
+    total_phosphorus_mgkg  = models.DecimalField(max_digits=9,  decimal_places=2, null=True, blank=True)  # mg/kg
+    total_potassium_mgkg   = models.DecimalField(max_digits=9,  decimal_places=2, null=True, blank=True)  # mg/kg
+    exchangeable_k         = models.DecimalField(max_digits=7,  decimal_places=3, null=True, blank=True)  # cmolc/kg
+    phosphorus_olsen_mgkg  = models.DecimalField(max_digits=8,  decimal_places=2, null=True, blank=True)  # mg/kg
     # Water
-    water_capacity_pf2     = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    water_capacity_pf2_5   = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    wilting_point          = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    plant_available_water  = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    water_capacity_pf2     = models.DecimalField(max_digits=5,  decimal_places=2, null=True, blank=True)  # %
+    water_capacity_pf2_5   = models.DecimalField(max_digits=5,  decimal_places=2, null=True, blank=True)  # %
+    wilting_point          = models.DecimalField(max_digits=5,  decimal_places=2, null=True, blank=True)  # %
+    plant_available_water  = models.DecimalField(max_digits=8,  decimal_places=2, null=True, blank=True)  # mm
     # Classification
     soil_type              = models.CharField(max_length=100, null=True, blank=True)
     climate_type           = models.CharField(max_length=100, null=True, blank=True)
     # Geomorphology
-    elevation_m            = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
-    slope_pct              = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    elevation_m            = models.DecimalField(max_digits=8,  decimal_places=2, null=True, blank=True)  # metres asl
+    slope_pct              = models.DecimalField(max_digits=6,  decimal_places=2, null=True, blank=True)  # %
     # Biological
-    microbial_abundance    = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    macrofauna_groups      = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    microbial_abundance    = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)  # large counts
+    macrofauna_groups      = models.DecimalField(max_digits=7,  decimal_places=2, null=True, blank=True)
     # Threats
-    soil_loss              = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    soil_loss              = models.DecimalField(max_digits=9,  decimal_places=2, null=True, blank=True)  # t/ha/yr
     erosion_class          = models.CharField(max_length=50,  null=True, blank=True)
     desertification_vuln   = models.CharField(max_length=50,  null=True, blank=True)
     # Meteo (background reference)
-    annual_temp_c          = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    annual_precip_mm       = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    annual_temp_c          = models.DecimalField(max_digits=5,  decimal_places=2, null=True, blank=True)  # deg C
+    annual_precip_mm       = models.DecimalField(max_digits=8,  decimal_places=2, null=True, blank=True)  # mm
 
     fetched_at             = models.DateTimeField(auto_now=True)
 

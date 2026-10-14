@@ -3,6 +3,7 @@ import requests
 import logging
 from typing import Optional, Dict, Any
 from .models import Field, FieldSoilData
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +51,9 @@ def _get(data: Dict, *keys: str, default: Any = None) -> Any:
 # ─────────────────────────────────────────────────────────────
 def _parse(raw: Dict) -> Dict:
     feature = raw["features"][0]
-    props   = feature.get("properties", {}).get("properties", {})
-    geo     = feature.get("properties", {})
+    top     = feature.get("properties", {})
+    props   = top.get("properties", {})   # numeric bands live under nested "properties"
+    geo     = top                          # classification, geomorphology, etc. live here
 
     # ── Physical ─────────────────────────────────────────────
     sand         = _get(props, "SNDPPT_M_sl1_250m_ll_0-30cm.tif",            "value")
@@ -63,14 +65,16 @@ def _parse(raw: Dict) -> Dict:
     ph             = _get(props, "PHIHOX_M_sl1_250m_ll_by10_0-30cm.tif",     "value")
     organic_carbon = _get(props, "ORCDRC_M_sl1_250m_ll_0-30cm.tif",          "value")
     cec            = _get(props, "CECSOL_M_sl1_250m_ll_0-30cm.tif",          "value")
-    ec             = _get(props, "Electrical_conductivity_0-29cm_250m.tif",   "value")
+    ec             = None  # fetched below from soil_nutrients
 
-    # ── Nutrients ────────────────────────────────────────────
-    total_n  = _get(props, "Total_nitrogen_0-29cm_250m.tif",                  "value")
-    total_p  = _get(props, "Total_phosphorus_0-29cm_250m.tif",                "value")
-    total_k  = _get(props, "Total_potassium_0-29cm_250m.tif",                 "value")
-    exch_k   = _get(props, "Exchangeable_potassium_0-29cm_250m.tif",          "value")
-    p_olsen  = _get(props, "Phosphorus_Olsen_method_0-29cm_250m.tif",         "value")
+    # ── Nutrients (live under top["soil_nutrients"], not top["properties"]) ──
+    nutrients = geo.get("soil_nutrients", {})
+    total_n  = _get(nutrients, "Total_nitrogen_0-29cm_250m.tif",              "value")
+    total_p  = _get(nutrients, "Total_phosphorus_0-29cm_250m.tif",            "value")
+    total_k  = _get(nutrients, "Total_potassium_0-29cm_250m.tif",             "value")
+    exch_k   = _get(nutrients, "Exchangeable_potassium_0-29cm_250m.tif",      "value")
+    p_olsen  = _get(nutrients, "Phosphorus_Olsen_method_0-29cm_250m.tif",     "value")
+    ec       = _get(nutrients, "Electrical_conductivity_0-29cm_250m.tif",     "value")
 
     # ── Water ────────────────────────────────────────────────
     water_pf2   = _get(props, "AWCh1_M_sl1_250m_ll_pF2_0-30cm.tif",          "value")
@@ -92,9 +96,9 @@ def _parse(raw: Dict) -> Dict:
     slope     = _get(geomorph, "Slope_percentage_gdal.tif",                   "value")
 
     # ── Biological ───────────────────────────────────────────
-    bio       = geo.get("biological_properties", {})
+    bio       = geo.get("biology", {})
     microbial = _get(bio, "Global_estimates_of_soil_microbial_abundance.tif", "value")
-    macrofauna= _get(bio, "Soil_macrofauna.tif",                              "value")
+    macrofauna= _get(geo.get("macrofauna", {}), "Soil_macrofauna.tif",        "value")
 
     # ── Threats ──────────────────────────────────────────────
     threats       = geo.get("threats", {})
@@ -107,8 +111,8 @@ def _parse(raw: Dict) -> Dict:
     annual_temp    = _get(meteo, "Annual_mean_temperature_oC_250m.tif",       "value")
     annual_precip  = _get(meteo, "Annual_precipitation_mm.tif",               "value")
 
-    # ph is stored ×10 in ISQAper — divide to get real pH
-    ph_real = round(ph / 10, 2) if ph is not None else None
+    # ISQAper returns real pH value directly (not x10)
+    ph_real = round(float(ph), 2) if ph is not None else None
 
     return {
         # Physical
