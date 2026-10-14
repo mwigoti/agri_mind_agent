@@ -1,83 +1,68 @@
 from __future__ import annotations
-from django.shortcuts import render, redirect
-from django.core.mail import send_mail
-from django.contrib import messages
-from django.conf import settings
-from django.http import JsonResponse
-from django.contrib.auth import authenticate, login
-import json
 
-
-import ee
-from django.http import JsonResponse, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-from django.core.files.base import ContentFile
-import json
-from datetime import datetime
-import traceback
-
-from .agrivision_gee_analysis import *
-from .report_generator import AgrivisionReportGenerator
-
-from django.shortcuts import render, get_object_or_404, redirect
-
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-from django.utils.dateparse import parse_datetime
-from django.utils import timezone
-from django.db.models import Q, Avg, Count, Max, Min
-from django.core.paginator import Paginator
-
-
-
+# Standard Library
 import json
 import logging
 import os
 import threading
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import Any, Dict
 
+# Third-Party Libraries
+import ee
 import numpy as np
+import requests
+import stripe
 
-from django.apps import apps
+# Django Core
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import (
+    authenticate,
+    get_user_model,
+    login,
+    logout,
+)
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import JsonResponse
+from django.core.files.base import ContentFile
+from django.core.mail import send_mail, BadHeaderError
+from django.core.paginator import Paginator
+from django.db.models import Avg, Count, Max, Min, Q
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import (
+    get_object_or_404,
+    redirect,
+    render,
+)
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from django.utils.decorators import method_decorator
 from django.views import View
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+
+# GIS
+from django.contrib.gis.geos import GEOSGeometry, Polygon
+
+# Django REST Framework
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+# Local Applications
+from .agrivision_gee_analysis import *
+from .analysis import IntegratedSoilAnalyzer
+from .models import *
+
+# IMPORTANT:
+# Remove this import from here if possible and lazy-load it
+# inside the report generation view.
+# from .report_generator import AgrivisionReportGenerator
 
 logger = logging.getLogger(__name__)
-
-# ── import pipeline classes from the management command ────────────────────
-# Adjust the import path to wherever you placed agrivision_pipeline.py.
-# If it lives at  yourapp/management/commands/agrivision_pipeline.py  use:
-from .agrivision_gee_analysis import *
-
-
-from datetime import datetime, timedelta
-
-import requests
-from decimal import Decimal
-import logging
-from django.utils.decorators import method_decorator
-from django.contrib.gis.geos import GEOSGeometry
-
-import stripe
-from .models import *
-from django.core.mail import send_mail, BadHeaderError
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.contrib.gis.geos import Polygon
-
-from django.shortcuts import get_object_or_404
-
-from django.utils.decorators import method_decorator  # Add this import
-from django.contrib.auth import get_user_model
-from django.contrib.auth import logout
-from .analysis import IntegratedSoilAnalyzer
 
 CustomUser = get_user_model()
 # Create your views here.
@@ -1540,6 +1525,7 @@ def generate_report(request):
     Returns:
         PDF/DOCX file download or JSON response
     """
+    from .report_generator import AgrivisionReportGenerator
     try:
         data = json.loads(request.body)
         
@@ -1895,7 +1881,7 @@ Celery task is in tasks.py (see bottom of this file).
 import json
 import logging
 
-from django.http        import JsonResponse
+from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf   import csrf_exempt   # remove if using session auth properly
@@ -2107,9 +2093,9 @@ agrivision_api_views.py
 Two API endpoints consumed by the "Analyze Crop" button in the frontend.
 
   POST /api/analyze-crop/
-      Body: { "field_id": 5, "activity_id": 12 }
-      → Creates / resets an AnalysisResult row (status = "queued")
-      → Spawns a background thread that runs the full GEE pipeline
+      Body: { "field_id": 5, "activity_id": 12 }}
+      → Creates / resets an AnalysisResult row }(status = "queued")
+      → Spawns a background thread that runs th}e full GEE pipeline
       → Returns: { "status": "queued", "result_id": 42 }
 
   GET  /api/analysis-status/<result_id>/
