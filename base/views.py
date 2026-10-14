@@ -1421,7 +1421,7 @@ import json
 from datetime import datetime
 import traceback
 
-from .agrivision_gee_analysis import AgrivisionGEEAnalyzer, run_complete_analysis
+from .agrivision_gee_analysis import *
 from .report_generator import AgrivisionReportGenerator
 
 
@@ -1473,7 +1473,7 @@ def analyze_field(request):
                 }, status=400)
         
         # Run analysis
-        results = run_complete_analysis(
+        results = analyze_field(
             field_coordinates=data['field_coordinates'],
             field_name=data['field_name'],
             crop_type=data['crop_type'],
@@ -1599,7 +1599,7 @@ def get_vegetation_indices(request):
     try:
         data = json.loads(request.body)
         
-        analyzer = AgrivisionGEEAnalyzer()
+        analyzer = AgrivisionCompleteAnalyzer()
         aoi = analyzer.define_aoi(data['field_coordinates'])
         
         target_date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
@@ -1663,7 +1663,7 @@ def get_yield_prediction(request):
     try:
         data = json.loads(request.body)
         
-        analyzer = AgrivisionGEEAnalyzer()
+        analyzer = AgrivisionCompleteAnalyzer()
         
         yield_prediction = analyzer.predict_yield(
             indices=data['indices'],
@@ -1704,7 +1704,7 @@ def get_health_score(request):
     try:
         data = json.loads(request.body)
         
-        analyzer = AgrivisionGEEAnalyzer()
+        analyzer = AgrivisionCompleteAnalyzer()
         
         health_score = analyzer.calculate_crop_health_score(
             indices=data['indices'],
@@ -1744,7 +1744,7 @@ def analyze_temporal_trends(request):
     try:
         data = json.loads(request.body)
         
-        analyzer = AgrivisionGEEAnalyzer()
+        analyzer = AgrivisionCompleteAnalyzer()
         aoi = analyzer.define_aoi(data['field_coordinates'])
         
         # Get image collection
@@ -1795,7 +1795,7 @@ def create_management_zones(request):
     try:
         data = json.loads(request.body)
         
-        analyzer = AgrivisionGEEAnalyzer()
+        analyzer = AgrivisionCompleteAnalyzer()
         aoi = analyzer.define_aoi(data['field_coordinates'])
         
         target_date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
@@ -1830,7 +1830,7 @@ def health_check(request):
     Check if GEE is properly initialized
     """
     try:
-        analyzer = AgrivisionGEEAnalyzer()
+        analyzer = AgrivisionCompleteAnalyzer()
         # Simple test
         test_point = ee.Geometry.Point([0, 0])
         test_point.getInfo()
