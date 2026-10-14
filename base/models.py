@@ -6,8 +6,8 @@ from django.contrib.gis.db import models
 
 
 
-from django.db import models
-from django.contrib.gis.db import models
+
+
 
 
 
@@ -34,6 +34,9 @@ class CustomUser(AbstractUser):
     location = models.CharField(max_length=100, blank=True, null=True)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
+    registered_via_ussd = models.BooleanField(default=False)
+    ussd_registration_date = models.DateTimeField(null=True, blank=True)
+
     
     objects = CustomUserManager()
 
@@ -51,3 +54,16 @@ class Field(models.Model):
     def __str__(self):
         return self.name
 
+class USSDSession(models.Model):
+    session_id = models.CharField(max_length=100, unique=True)
+    phone_number = models.CharField(max_length=15)
+    current_step = models.CharField(max_length=50, default='start')
+    data = models.JSONField(default=dict)  # Store temporary registration data
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Session {self.session_id} - {self.phone_number}"
+
+    class Meta:
+        db_table = 'ussd_sessions'

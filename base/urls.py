@@ -25,5 +25,6 @@ urlpatterns = [
     path('api/vra-analysis/<int:field_id>/', VRAAnalysisView.as_view(), name='vra-analysis-api'),
     path('vra_pageanalysis/<int:field_id>/', vra_page, name='vra-page' ),
     path('api/vra-engine-status/', check_vra_engine_status, name='vra-engine-status'),
+    path('ussd/callback/', USSDView.as_view(), name='ussd_callback'),
    
 ]

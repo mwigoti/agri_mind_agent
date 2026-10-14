@@ -90,10 +90,7 @@ WSGI_APPLICATION = 'AgriVision.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-import os
 
-
-import os
 from urllib.parse import urlparse
 
 DATABASE_URL = os.getenv("DATABASE_URL", '')
@@ -187,3 +184,46 @@ EMAIL_USE_SSL = False  # True if using port 465
 EMAIL_HOST_USER = 'henrymwoha02@gmail.com'  # Your email address
 EMAIL_HOST_PASSWORD = 'igadgejoknyqsviq '  # Your password or app password
 DEFAULT_FROM_EMAIL = 'henrymwoha02@gmail.com'  # Default sender email
+
+
+# At the top of settings.py
+from decouple import config
+
+
+# Add Africa's Talking configuration
+AFRICAS_TALKING_USERNAME = config('AFRICAS_TALKING_USERNAME', default='sandbox')
+AFRICAS_TALKING_API_KEY = config('AFRICAS_TALKING_API_KEY', default='')
+AFRICAS_TALKING_USSD_CODE = config('AFRICAS_TALKING_USSD_CODE', default='*384*1234#')
+AFRICAS_TALKING_SANDBOX = config('AFRICAS_TALKING_SANDBOX', default=True, cast=bool)
+
+# Add logging for USSD
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'ussd.log',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'your_app_name.views': {  # Replace with your actual app name
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
