@@ -1383,8 +1383,141 @@
             updateWeatherForLocation();
         }, 600000);
 
-        // Add keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
+        
+        
+            document.addEventListener("DOMContentLoaded", function () {
+                const myFieldsButton = document.getElementById("myFieldsButton");
+                const myFieldsModal = document.getElementById("myFieldsModal");
+                const closeModal = document.getElementById("closeModal");
+                const fieldsTableBody = document.querySelector("#fieldsTable tbody");
+
+                // Open modal and fetch fields
+                myFieldsButton.addEventListener("click", function () {
+                    fetch("/api/myfields/")
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log(data);
+
+                            fieldsTableBody.innerHTML = ""; // Clear existing rows
+
+                            data.features.forEach((field) => {
+                                const row = document.createElement("tr");
+
+                                // Field ID
+                                const idCell = document.createElement("td");
+                                idCell.textContent = field.id;
+
+                                // Field Name
+                                const nameCell = document.createElement("td");
+                                nameCell.textContent = field.properties.name;
+
+                                // Created At
+                                const createdAtCell = document.createElement("td");
+                                createdAtCell.textContent = field.properties.created_at;
+
+                                // Area (formatted)
+                                const areaCell = document.createElement("td");
+                                areaCell.textContent = field.properties.area
+                                    ? field.properties.area.toFixed(2)
+                                    : "N/A";
+
+                                // Actions (Analyze + Delete)
+                                const actionsCell = document.createElement("td");
+
+                                const analyzeButton = document.createElement("button");
+                                analyzeButton.textContent = "Analyze";
+                                analyzeButton.addEventListener("click", () => {
+                                    const fieldId = field.id;
+                                    window.location.href = `/api/analyze-field/${fieldId}/`;
+                                });
+
+                                const deleteButton = document.createElement("button");
+                                deleteButton.textContent = "Delete";
+                                deleteButton.addEventListener("click", () => {
+                                    if (confirm(`Are you sure you want to delete "${field.properties.name}"?`)) {
+                                        deleteField(field.id, row);
+                                    }
+                                });
+
+                                actionsCell.appendChild(analyzeButton);
+                                actionsCell.appendChild(deleteButton);
+
+                                // Append all cells to row
+                                row.appendChild(idCell);
+                                row.appendChild(nameCell);
+                                row.appendChild(createdAtCell);
+                                row.appendChild(areaCell);
+                                row.appendChild(actionsCell);
+
+                                fieldsTableBody.appendChild(row);
+                            });
+
+                            // Show modal
+                            myFieldsModal.style.display = "block";
+                        })
+                        .catch(error => {
+                            console.error("Error fetching fields:", error);
+                            alert("Failed to load your fields. Please try again later.");
+                        });
+                });
+
+                // Close modal
+                closeModal.addEventListener("click", function () {
+                    myFieldsModal.style.display = "none";
+                });
+
+                // Close modal when clicking outside
+                window.addEventListener("click", function (event) {
+                    if (event.target === myFieldsModal) {
+                        myFieldsModal.style.display = "none";
+                    }
+                });
+
+                // CSRF token helper
+                function getCSRFToken() {
+                    return document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") ||
+                        document.querySelector('[name=csrfmiddlewaretoken]')?.value || null;
+                }
+
+                // Delete field function
+                function deleteField(fieldId, row) {
+                    const csrfToken = getCSRFToken();
+                    if (!csrfToken) {
+                        alert("CSRF token missing. Cannot proceed with request.");
+                        return;
+                    }
+
+                    console.log(`Attempting to delete field with ID: ${fieldId}`);
+
+                    fetch(`/api/delete-field/${fieldId}/`, {
+                        method: "DELETE",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": csrfToken
+                        }
+                    })
+                        .then(response => {
+                            console.log(`Response status: ${response.status}`);
+                            if (response.ok) {
+                                alert("Field deleted successfully!");
+                                row.remove(); // Remove row from DOM without page reload
+                            } else {
+                                return response.json().then(data => {
+                                    console.error("Error from server:", data);
+                                    throw new Error(data.detail || "Failed to delete field!");
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error deleting field:", error);
+                            alert(error.message || "An unexpected error occurred.");
+                        });
+                }
+            }
+        )
+            
+
+            document.addEventListener('keydown', function(e) {
             if (e.ctrlKey) {
                 switch(e.key) {
                     case 'w':
