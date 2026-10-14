@@ -21,7 +21,7 @@ body {
 /* Sidebar Menu */
 .menu {
     width: 250px;
-    background-color: #556b2f;
+    background-color: #2E3A59;
     color: white;
     padding: 20px;
     display: flex;
@@ -165,16 +165,7 @@ button {
     transition: all 0.3s ease;
 }
 
-#myFieldsButton {
-    background-color: #2980b9;
-    color: white;
-    margin-bottom: 20px;
-    font-weight: 500;
-}
 
-#myFieldsButton:hover {
-    background-color: #3498db;
-}
 
 .add-field-button {
     background-color: #27ae60;

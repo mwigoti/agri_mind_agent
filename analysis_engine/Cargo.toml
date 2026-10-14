@@ -12,6 +12,9 @@ tokio = { version = "1.0", features = ["full"] }
 gdal = "0.16"
 
 futures-util = "0.3"
+linfa = "0.7"
+linfa-clustering = "0.7"
+fastrand = "2.0"
 
 
 
@@ -25,8 +28,10 @@ futures = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-# HTTP client
-reqwest = { version = "0.11", features = ["json"] }
+#HTTP client
+reqwest = { version = "0.11", features = ["stream", "json"] }
+
+
 
 # Geospatial processing
 geo = "0.26"
@@ -53,6 +58,7 @@ anyhow = "1.0"
 # Optional: For more advanced image processing
 image = "0.24"
 ndarray = "0.15"
+bytes = "1.10.1"
 
 # Optional: For statistical calculations
 # statrs = "0.16"
