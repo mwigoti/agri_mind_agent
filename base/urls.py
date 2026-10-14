@@ -22,6 +22,5 @@ urlpatterns = [
     path('api/analyze-field/<int:id>/', analyze_field_view, name="analyze-field"),
     
     path('res/', res, name='res'),
-    path('api/send-report/', send_analysis_report, name='send_report'),
-    path('api/test-email/', test_email_config, name='test_email'),
+   
 ]
