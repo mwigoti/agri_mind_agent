@@ -1437,7 +1437,7 @@ pub fn transform_geometry_to_wgs84(
         GeoJsonValue::Polygon(polygon) => {
             let mut transformed_rings = Vec::new();
             
-            // Process exterior ring
+            
             if let Some(exterior) = polygon.iter().next() {
                 let mut transformed_coords = Vec::new();
                 
@@ -1452,7 +1452,7 @@ pub fn transform_geometry_to_wgs84(
                 transformed_rings.push(transformed_coords);
             }
             
-            // Process interior rings (holes)
+
             for interior in polygon.iter().skip(1) {
                 let mut transformed_coords = Vec::new();
                 
