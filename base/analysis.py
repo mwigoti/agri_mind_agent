@@ -13,16 +13,13 @@ from .models import Field  # Assuming this is a Django/ORM model
 
 class IntegratedSoilAnalyzer:
     def __init__(self, huggingface_token: Optional[str] = None):
-        self.huggingface_token = huggingface_token or os.getenv("HUGGINGFACE_TOKEN")
+        self.huggingface_token = huggingface_token or os.getenv("HUGGINGFACE_TOKEN") or os.getenv("HF_TOKEN")
         if not self.huggingface_token:
             raise ValueError("Hugging Face token is required")
             
-        # Try different models - falcon-7b-instruct might not be available
-        self.model_url = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium"
-        # Alternative models to try:
-        # "https://api-inference.huggingface.co/models/gpt2"
-        # "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium"
-        # "https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-1.3B"
+        # Use the correct HuggingFace chat completions endpoint
+        self.model_url = "https://router.huggingface.co/together/v1/chat/completions"
+        
         self.headers = {
             "Authorization": f"Bearer {self.huggingface_token}",
             "Content-Type": "application/json"
@@ -341,23 +338,24 @@ class IntegratedSoilAnalyzer:
                 print(f"DEBUG: Attempt {retry + 1} of {self.max_retries}")
                 self._handle_rate_limit()
                 
-                # Send the actual inference request
+                # Use the correct chat completions format
+                payload = {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "model": "Qwen/Qwen2.5-7B-Instruct-Turbo",
+                    "max_tokens": 1000,
+                    "temperature": 0.7,
+                    "top_p": 0.95
+                }
+                
                 response = requests.post(
                     self.model_url,
                     headers=self.headers,
-                    json={
-                        "inputs": prompt,
-                        "parameters": {
-                            "max_new_tokens": 1000,
-                            "temperature": 0.7,
-                            "top_p": 0.95,
-                            "return_full_text": False,
-                            "use_cache": True
-                        },
-                        "options": {
-                            "wait_for_model": True
-                        }
-                    },
+                    json=payload,
                     timeout=90
                 )
                 
@@ -371,7 +369,7 @@ class IntegratedSoilAnalyzer:
                         return {
                             "success": False,
                             "error": error_msg,
-                            "model": "falcon-7b-instruct",
+                            "model": "Qwen/Qwen2.5-7B-Instruct-Turbo",
                             "timestamp": datetime.now().isoformat(),
                             "metadata": {"retries": retry + 1}
                         }
@@ -392,7 +390,7 @@ class IntegratedSoilAnalyzer:
                         return {
                             "success": False,
                             "error": "Empty analysis received from API",
-                            "model": "falcon-7b-instruct",
+                            "model": "Qwen/Qwen2.5-7B-Instruct-Turbo",
                             "timestamp": datetime.now().isoformat(),
                             "metadata": {"retries": retry + 1, "raw_response": response_data}
                         }
@@ -401,7 +399,7 @@ class IntegratedSoilAnalyzer:
                 
                 return {
                     "success": True,
-                    "model": "falcon-7b-instruct",
+                    "model": "Qwen/Qwen2.5-7B-Instruct-Turbo",
                     "analysis": analysis,
                     "timestamp": datetime.now().isoformat(),
                     "metadata": {"retries": retry}
@@ -413,7 +411,7 @@ class IntegratedSoilAnalyzer:
                     return {
                         "success": False,
                         "error": str(e),
-                        "model": "falcon-7b-instruct",
+                        "model": "Qwen/Qwen2.5-7B-Instruct-Turbo",
                         "timestamp": datetime.now().isoformat(),
                         "metadata": {"retries": retry + 1}
                     }
@@ -467,14 +465,32 @@ Keep analysis concise and practical for sustainable farming."""
             
     @staticmethod
     def _extract_analysis(result: Any) -> str:
+        """Extract analysis from HuggingFace chat completions response"""
         print(f"DEBUG: Extracting analysis from result type: {type(result)}")
         
-        if isinstance(result, list) and result:
+        # Handle the chat completions response format
+        if isinstance(result, dict):
+            # Check for the standard chat completions format
+            if 'choices' in result and result['choices']:
+                choice = result['choices'][0]
+                if 'message' in choice:
+                    return choice['message'].get('content', '')
+                elif 'text' in choice:
+                    return choice['text']
+            # Fallback for other dict formats
+            elif 'generated_text' in result:
+                return result['generated_text']
+            elif 'content' in result:
+                return result['content']
+        
+        # Handle list format (legacy)
+        elif isinstance(result, list) and result:
             if isinstance(result[0], dict):
-                return result[0].get('generated_text', '')
+                if 'generated_text' in result[0]:
+                    return result[0]['generated_text']
+                elif 'message' in result[0]:
+                    return result[0]['message'].get('content', '')
             else:
                 return str(result[0])
-        elif isinstance(result, dict):
-            return result.get('generated_text', '')
         
         return str(result)
