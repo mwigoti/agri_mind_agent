@@ -431,6 +431,7 @@ class IntegratedSoilAnalyzer:
 
     def _generate_concise_prompt(self, combined_data: Dict[str, Any]) -> str:
         """Generate a more concise prompt to reduce token usage"""
+        area = Field.area
         soil = combined_data['soil_properties']
         climate = combined_data['climate_conditions'].get('summary', {})
         
@@ -453,14 +454,16 @@ class IntegratedSoilAnalyzer:
         return f"""As an agricultural expert, analyze these field conditions and provide recommendations:
 
 {soil_str}
+{area}
 
 CLIMATE: {temp_str}, Precipitation days: {precip}, Pattern: {weather}
 
 Provide:
-1. Top 5 suitable crops with soil-climate synergies for each
+1. Top 5 suitable crops with soil-climate synergies for each and based on area {area} provide yield estimation
 2. Climate risks and mitigations
 3. Planting timing recommendations
 4. Irrigation strategy based on water retention and precipitation
+
 
 Keep analysis concise and practical for sustainable farming."""
             
