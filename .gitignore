@@ -11,3 +11,4 @@ key.pem/
 .env
 **/*.rlib
 **/*.o
+analysis_engine/target/
