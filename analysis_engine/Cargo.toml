@@ -1,17 +1,67 @@
 [package]
-name = "analysis_engine"
-version = "0.1.0"
+name = "vra-analysis-engine"
+version = "2.0.0"
 edition = "2021"
+description = "Variable Rate Application Analysis Engine for Precision Agriculture"
+authors = ["Your Name <your.email@example.com>"]
 
 [dependencies]
-actix-web = "4.0"
-serde = { version = "1.0", features = ["derive"] }
-geo = { version = "0.27", features = ["serde"] }
-reqwest = { version = "0.11", features = ["json"] }
-base64 = "0.21"
-chrono = { version = "0.4", features = ["serde"] }
-serde_json = "1.0"
+# Web framework
+actix-web = "4.4"
 tokio = { version = "1.0", features = ["full"] }
-geo-types = { version = "0.7", features = ["serde"] }
-dotenv = "0.15.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json"] }
+
+# Geospatial processing
+geo = "0.26"
+geo-types = "0.7"
 geojson = "0.24"
+
+# Encoding
+base64 = "0.21"
+
+# Environment variables
+dotenv = "0.15"
+
+# Date and time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+log = "0.4"
+env_logger = "0.10"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Optional: For more advanced image processing
+image = "0.24"
+ndarray = "0.15"
+
+# Optional: For statistical calculations
+# statrs = "0.16"
+
+[dev-dependencies]
+# Testing dependencies
+tokio-test = "0.4"
+
+[[bin]]
+name = "vra-engine"
+path = "src/main.rs"
+
+[profile.release]
+# Optimize for performance
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+# Faster compilation for development
+opt-level = 0
+debug = true
