@@ -17,7 +17,12 @@ class IntegratedSoilAnalyzer:
         if not self.huggingface_token:
             raise ValueError("Hugging Face token is required")
             
-        self.model_url = "https://api-inference.huggingface.co/models/tiiuae/falcon-7b-instruct"
+        # Try different models - falcon-7b-instruct might not be available
+        self.model_url = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium"
+        # Alternative models to try:
+        # "https://api-inference.huggingface.co/models/gpt2"
+        # "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium"
+        # "https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-1.3B"
         self.headers = {
             "Authorization": f"Bearer {self.huggingface_token}",
             "Content-Type": "application/json"
@@ -35,6 +40,7 @@ class IntegratedSoilAnalyzer:
             center = field.geometry.centroid
             lon, lat = transformer.transform(center.x, center.y)
             
+            print(f"DEBUG: Field center - Lat: {lat}, Lon: {lon}")
             return {
                 "lat": lat,
                 "lon": lon,
@@ -61,19 +67,64 @@ class IntegratedSoilAnalyzer:
         }
         
         try:
+            print(f"DEBUG: Requesting SoilGrids data for lat={lat}, lon={lon}")
             response = requests.get(url, params=params, timeout=60)
+            print(f"DEBUG: SoilGrids response status: {response.status_code}")
             response.raise_for_status()
             data = response.json()
             
+            print(f"DEBUG: SoilGrids raw response keys: {data.keys()}")
+            
+            # Check if properties exist in response
+            if 'properties' not in data:
+                print("ERROR: No 'properties' in SoilGrids response")
+                return None
+                
+            if 'layers' not in data['properties']:
+                print("ERROR: No 'layers' in SoilGrids properties")
+                return None
+            
             soil_data = {}
             for layer in data['properties']['layers']:
-                soil_data[layer['name']] = layer['depths'][0]['values']['mean']
+                layer_name = layer['name']
+                print(f"DEBUG: Processing layer: {layer_name}")
+                print(f"DEBUG: Layer structure: {layer.keys()}")
+                
+                if 'depths' in layer and layer['depths']:
+                    print(f"DEBUG: Found {len(layer['depths'])} depths for {layer_name}")
+                    
+                    # Try each depth until we find one with data
+                    value_found = False
+                    for depth_idx, depth in enumerate(layer['depths']):
+                        print(f"DEBUG: Depth {depth_idx} structure: {depth.keys()}")
+                        if 'values' in depth:
+                            print(f"DEBUG: Values available: {depth['values'].keys()}")
+                            if 'mean' in depth['values'] and depth['values']['mean'] is not None:
+                                soil_data[layer_name] = depth['values']['mean']
+                                print(f"DEBUG: Found value for {layer_name}: {depth['values']['mean']}")
+                                value_found = True
+                                break
+                    
+                    if not value_found:
+                        print(f"WARNING: No valid mean value found for layer {layer_name}")
+                else:
+                    print(f"WARNING: No depths found for layer {layer_name}")
+                        
+            print(f"DEBUG: Final extracted soil data: {soil_data}")
+            
+            if not soil_data:
+                print("ERROR: No soil data extracted")
+                return None
                 
             return pd.DataFrame([soil_data])
             
         except requests.RequestException as e:
             print(f"SoilGrids API Error: {e}")
             return None
+        except Exception as e:
+            print(f"ERROR processing SoilGrids data: {e}")
+            return None
+
     @staticmethod
     def get_climate_data(lat: float, lon: float, days: int = 7) -> Optional[Dict[str, Any]]:
         base_url = "https://api.open-meteo.com/v1/forecast"
@@ -81,7 +132,6 @@ class IntegratedSoilAnalyzer:
         params = {
             "latitude": lat,
             "longitude": lon,
-           
             "daily": [
                 "weathercode",
                 "temperature_2m_max",
@@ -97,9 +147,13 @@ class IntegratedSoilAnalyzer:
         }
 
         try:
+            print(f"DEBUG: Requesting climate data for lat={lat}, lon={lon}")
             response = requests.get(base_url, params=params)
+            print(f"DEBUG: Climate API response status: {response.status_code}")
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            print(f"DEBUG: Climate data keys: {data.keys()}")
+            return data
         except requests.RequestException as e:
             print(f"Climate API Error: {e}")
             return None
@@ -134,10 +188,10 @@ class IntegratedSoilAnalyzer:
         }
         return weather_codes.get(code, "Unknown weather condition")
 
-    
     def format_weather_predictions(self, predictions: Dict[str, Any]) -> Dict[str, Any]:
         """Process raw climate API response into structured format."""
         if not predictions or 'daily' not in predictions:
+            print("ERROR: No daily data in climate predictions")
             return {}
 
         processed = {
@@ -153,91 +207,139 @@ class IntegratedSoilAnalyzer:
         }
 
         try:
-            # Process daily data with proper type checking
             daily_data = predictions.get('daily', {})
-            for i in range(len(daily_data.get('time', []))):
-                daily_entry = {
-                    "date": daily_data['time'][i],
-                    "max_temp": float(daily_data['temperature_2m_max'][i]),
-                    "min_temp": float(daily_data['temperature_2m_min'][i]),
-                    "avg_temp" : float(daily_data['apparent_temperature_mean'][i]),
-                    "weather_condition": self.interpret_weather_code(
-                        int(daily_data['weathercode'][i])
-                    ),
-                    "precip_prob": int(daily_data['precipitation_probability_max'][i]),
-                    "uv_index": float(daily_data['uv_index_max'][i])
-                }
+            time_data = daily_data.get('time', [])
+            
+            if not time_data:
+                print("ERROR: No time data in daily predictions")
+                return processed
                 
-                # Update summary
-                processed['summary']['temp_range'].extend([daily_entry['max_temp'], daily_entry['min_temp']])
-                if daily_entry['precip_prob'] > 40:
-                    processed['summary']['precipitation_days'] += 1
-                processed['summary']['weather_types'][daily_entry['weather_condition']] = processed['summary']['weather_types'].get(daily_entry['weather_condition'], 0) + 1
+            print(f"DEBUG: Processing {len(time_data)} days of climate data")
+            
+            temps_max = []
+            temps_min = []
+            
+            for i in range(len(time_data)):
+                try:
+                    daily_entry = {
+                        "date": daily_data['time'][i],
+                        "max_temp": float(daily_data['temperature_2m_max'][i]),
+                        "min_temp": float(daily_data['temperature_2m_min'][i]),
+                        "avg_temp": float(daily_data['apparent_temperature_mean'][i]),
+                        "weather_condition": self.interpret_weather_code(
+                            int(daily_data['weathercode'][i])
+                        ),
+                        "precip_prob": int(daily_data['precipitation_probability_max'][i]),
+                        "uv_index": float(daily_data['uv_index_max'][i])
+                    }
+                    
+                    temps_max.append(daily_entry['max_temp'])
+                    temps_min.append(daily_entry['min_temp'])
+                    
+                    processed['summary']['temp_range'].extend([daily_entry['max_temp'], daily_entry['min_temp']])
+                    if daily_entry['precip_prob'] > 40:
+                        processed['summary']['precipitation_days'] += 1
+                    processed['summary']['weather_types'][daily_entry['weather_condition']] = processed['summary']['weather_types'].get(daily_entry['weather_condition'], 0) + 1
+                    
+                    processed['daily_details'].append(daily_entry)
+                    
+                except (KeyError, IndexError, ValueError) as e:
+                    print(f"ERROR processing day {i}: {e}")
+                    continue
+            
+            # Calculate averages
+            if temps_max:
+                processed['summary']['avg_max_temp'] = sum(temps_max) / len(temps_max)
+            if temps_min:
+                processed['summary']['avg_min_temp'] = sum(temps_min) / len(temps_min)
                 
-                processed['daily_details'].append(daily_entry)
-
-           
+            # Find dominant weather
+            if processed['summary']['weather_types']:
+                processed['summary']['dominant_weather'] = max(
+                    processed['summary']['weather_types'], 
+                    key=processed['summary']['weather_types'].get
+                )
+            
+            print(f"DEBUG: Processed climate summary: {processed['summary']}")
 
         except (KeyError, IndexError, TypeError) as e:
             print(f"Error processing climate data: {e}")
         
-            return processed
-
-
+        return processed
 
     def analyze_combined_data(self, soil_data: Union[pd.DataFrame, Dict[str, Any], int], climate_data: Union[Dict[str, Any], str]) -> Dict[str, Any]:
-        # Process input data (keeping this part the same)
+        print(f"DEBUG: Starting analysis with soil_data type: {type(soil_data)}, climate_data type: {type(climate_data)}")
+        
+        # Process input data
         if isinstance(soil_data, int):
+            print(f"DEBUG: Processing field ID: {soil_data}")
             field_center = self.get_field_center(soil_data)
             soil_data = self.get_soilgrid_data(field_center['lat'], field_center['lon'])
-            climate_data = {"data": self.format_weather_predictions(climate_data)}
+            raw_climate = self.get_climate_data(field_center['lat'], field_center['lon'])
+            
             if soil_data is None:
-                raise ValueError(f"Could not retrieve soil data for field ID {soil_data}")
+                return {
+                    "success": False,
+                    "error": f"Could not retrieve soil data for field ID {soil_data}",
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            if raw_climate is None:
+                return {
+                    "success": False,
+                    "error": f"Could not retrieve climate data for field ID {soil_data}",
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+            climate_data = self.format_weather_predictions(raw_climate)
         
         elif isinstance(soil_data, dict):
             soil_data = pd.DataFrame([soil_data])
         
         if not isinstance(soil_data, pd.DataFrame):
-            raise ValueError(f"Invalid soil_data type: {type(soil_data)}. Expected pandas DataFrame, dictionary, or field ID.")
+            return {
+                "success": False,
+                "error": f"Invalid soil_data type: {type(soil_data)}. Expected pandas DataFrame, dictionary, or field ID.",
+                "timestamp": datetime.now().isoformat()
+            }
         
         if soil_data.empty:
-            raise ValueError("Empty soil data provided")
+            return {
+                "success": False,
+                "error": "Empty soil data provided",
+                "timestamp": datetime.now().isoformat()
+            }
         
+        # Process climate data
         if isinstance(climate_data, str):
             try:
                 climate_data = json.loads(climate_data)
             except json.JSONDecodeError:
-                climate_data = {"data": {"note": "No climate data available"}}
+                climate_data = {"summary": {"note": "No climate data available"}}
         
         if not isinstance(climate_data, dict):
-            climate_data = {"data": {"note": "Invalid climate data format"}}
+            climate_data = {"summary": {"note": "Invalid climate data format"}}
         
-        if "data" not in climate_data:
-            climate_data = {"data": climate_data}
+        # Ensure proper structure
+        if "summary" not in climate_data and "daily_details" not in climate_data:
+            climate_data = {"summary": climate_data}
             
         combined_data = {
             "soil_properties": soil_data.to_dict(orient='records')[0],
-            "climate_conditions": climate_data['data']
+            "climate_conditions": climate_data
         }
+        
+        print(f"DEBUG: Combined data - soil keys: {list(combined_data['soil_properties'].keys())}")
+        print(f"DEBUG: Combined data - climate keys: {list(combined_data['climate_conditions'].keys())}")
         
         # Create a more concise prompt to reduce token count
         prompt = self._generate_concise_prompt(combined_data)
+        print(f"DEBUG: Generated prompt length: {len(prompt)} characters")
         
         for retry in range(self.max_retries):
             try:
+                print(f"DEBUG: Attempt {retry + 1} of {self.max_retries}")
                 self._handle_rate_limit()
-                
-                # First check if the model is ready to process
-                check_response = requests.get(
-                    self.model_url,
-                    headers=self.headers
-                )
-                
-                # If model is loading, wait before sending the actual request
-                if check_response.status_code == 503:
-                    estimated_time = check_response.json().get('estimated_time', 20)
-                    print(f"Model loading. Waiting {estimated_time} seconds...")
-                    time.sleep(estimated_time)
                 
                 # Send the actual inference request
                 response = requests.post(
@@ -250,14 +352,16 @@ class IntegratedSoilAnalyzer:
                             "temperature": 0.7,
                             "top_p": 0.95,
                             "return_full_text": False,
-                            "use_cache": True  # Enable caching to speed up repeated requests
+                            "use_cache": True
                         },
                         "options": {
-                            "wait_for_model": True  # Wait if model is loading
+                            "wait_for_model": True
                         }
                     },
-                    timeout=90  # Increased timeout
+                    timeout=90
                 )
+                
+                print(f"DEBUG: HuggingFace API response status: {response.status_code}")
                 
                 # Handle potential errors
                 if response.status_code != 200:
@@ -276,21 +380,21 @@ class IntegratedSoilAnalyzer:
                     
                 # Process the response
                 response_data = response.json()
-                
-                # Debug the raw response if needed
-                print(f"Raw API response: {json.dumps(response_data)[:200]}...")
+                print(f"DEBUG: Raw API response type: {type(response_data)}")
+                print(f"DEBUG: Raw API response preview: {str(response_data)[:500]}...")
                 
                 analysis = self._extract_analysis(response_data)
+                print(f"DEBUG: Extracted analysis length: {len(analysis)} characters")
                 
                 if not analysis.strip():
-                    print("Empty analysis received. Retrying...")
+                    print("ERROR: Empty analysis received. Retrying...")
                     if retry == self.max_retries - 1:
                         return {
                             "success": False,
                             "error": "Empty analysis received from API",
                             "model": "falcon-7b-instruct",
                             "timestamp": datetime.now().isoformat(),
-                            "metadata": {"retries": retry + 1}
+                            "metadata": {"retries": retry + 1, "raw_response": response_data}
                         }
                     time.sleep(self.retry_delay * (2 ** retry))
                     continue
@@ -314,6 +418,7 @@ class IntegratedSoilAnalyzer:
                         "metadata": {"retries": retry + 1}
                     }
                 time.sleep(self.retry_delay * (2 ** retry))
+
     def _handle_rate_limit(self):
         """
         Handles rate limiting for API requests.
@@ -330,37 +435,46 @@ class IntegratedSoilAnalyzer:
         soil = combined_data['soil_properties']
         climate = combined_data['climate_conditions'].get('summary', {})
         
-        # Create a simpler representation of soil data
-        soil_str = f"SOIL: sand:{soil.get('sand')}, clay:{soil.get('clay')}, pH:{soil.get('phh2o')}, "
-        soil_str += f"CEC:{soil.get('cec')}, nitrogen:{soil.get('nitrogen')}, organic carbon:{soil.get('soc')}, "
-        soil_str += f"water retention (3 levels): {soil.get('wv0010')}, {soil.get('wv0033')}, {soil.get('wv1500')}"
+        # Create a simpler representation of soil data with null checks
+        soil_str = f"SOIL: sand:{soil.get('sand', 'N/A')}, clay:{soil.get('clay', 'N/A')}, pH:{soil.get('phh2o', 'N/A')}, "
+        soil_str += f"CEC:{soil.get('cec', 'N/A')}, nitrogen:{soil.get('nitrogen', 'N/A')}, organic carbon:{soil.get('soc', 'N/A')}, "
+        soil_str += f"water retention: {soil.get('wv0010', 'N/A')}, {soil.get('wv0033', 'N/A')}, {soil.get('wv1500', 'N/A')}"
         
-        # Get climate summary
+        # Get climate summary with null checks
         temp_max = climate.get('avg_max_temp')
         temp_min = climate.get('avg_min_temp')
-        temp_str = f"Temp:{temp_max}°C max, {temp_min}°C min" if temp_max and temp_min else "Temp: Unknown"
+        temp_str = f"Temp:{temp_max:.1f}°C max, {temp_min:.1f}°C min" if temp_max and temp_min else "Temp: Unknown"
         precip = climate.get('precipitation_days', 0)
         weather = climate.get('dominant_weather', 'Unknown')
+        
+        print(f"DEBUG: Soil string: {soil_str}")
+        print(f"DEBUG: Climate string: {temp_str}, Precip: {precip}, Weather: {weather}")
         
         # Create prompt
         return f"""As an agricultural expert, analyze these field conditions and provide recommendations:
 
-    {soil_str}
+{soil_str}
 
-    CLIMATE: {temp_str}, Precipitation days: {precip}, Pattern: {weather}
+CLIMATE: {temp_str}, Precipitation days: {precip}, Pattern: {weather}
 
-    Provide:
-    1. Top 5 suitable crops with soil-climate synergies for each
-    2. Climate risks and mitigations
-    3. Planting timing recommendations
-    4. Irrigation strategy based on water retention and precipitation
+Provide:
+1. Top 5 suitable crops with soil-climate synergies for each
+2. Climate risks and mitigations
+3. Planting timing recommendations
+4. Irrigation strategy based on water retention and precipitation
 
-    Keep analysis concise and practical for sustainable farming."""
+Keep analysis concise and practical for sustainable farming."""
             
     @staticmethod
     def _extract_analysis(result: Any) -> str:
+        print(f"DEBUG: Extracting analysis from result type: {type(result)}")
+        
         if isinstance(result, list) and result:
-            return result[0].get('generated_text', '')
+            if isinstance(result[0], dict):
+                return result[0].get('generated_text', '')
+            else:
+                return str(result[0])
         elif isinstance(result, dict):
             return result.get('generated_text', '')
+        
         return str(result)

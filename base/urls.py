@@ -22,6 +22,5 @@ urlpatterns = [
     path('api/analyze-field/<int:id>/', analyze_field_view, name="analyze-field"),
     
     path('res/', res, name='res'),
-    path("create-payment-intent/", create_payment_intent, name="create_payment_intent"), 
-    path("payment-success/", payment_success, name="payment_success"),  
+    
 ]
