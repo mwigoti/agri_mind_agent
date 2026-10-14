@@ -1,12 +1,5 @@
 from django.urls import path
-from .views import (
-    home, services, contact, research, register, map, weather,
-    upgrade, login_view, logout_user, pricing, get_fields_geojson,
-    analyze_field_view, res, vra_page, check_vra_engine_status,
-    activity, get_activities_json, add_activity, activity_analytics,
-    get_weather_forecast, get_smart_recommendations,
-    mark_recommendation_read, get_activity_optimization
-)
+from .views import *
 from .views import SaveFieldView, DeleteFieldView, VRAAnalysisView, USSDView
 
 urlpatterns = [
@@ -38,13 +31,12 @@ urlpatterns = [
     
     # Activities
     path('field_activity/', activity, name='activity'),
-    path('activities/json/', get_activities_json, name='get_activities_json'),
-    path('activities/add/', add_activity, name='add_activity'),
-    path('activities/analytics/<int:field_id>/', activity_analytics, name='activity_analytics'),
+
+
     
     # Weather integration
     path('weather/', weather, name='weather'),
-    path('weather/forecast/<int:field_id>/', get_weather_forecast, name='get_weather_forecast'),
+    
     
     # Smart recommendations
     path('recommendations/<int:field_id>/', get_smart_recommendations, name='get_smart_recommendations'),

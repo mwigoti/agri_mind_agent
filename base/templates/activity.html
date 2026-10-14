@@ -6,85 +6,60 @@
     <title>Agrivision - Smart Field Activity Management</title>
     <meta name="description" content="Comprehensive farm management and activity tracking system with AI-powered recommendations">
     <style>
+        :root {
+            --primary: 142 76% 36%;
+            --primary-foreground: 0 0% 98%;
+            --secondary: 210 40% 98%;
+            --secondary-foreground: 222.2 84% 4.9%;
+            --muted: 210 40% 96%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 90%;
+            --accent-foreground: 222.2 84% 4.9%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 142 76% 36%;
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --success: 142 76% 36%;
+            --warning: 38 92% 50%;
+            --error: 0 84.2% 60.2%;
+            --weather-temp: 14 100% 57%;
+            --weather-humidity: 200 80% 50%;
+            --weather-rain: 210 70% 55%;
+            --weather-wind: 160 60% 45%;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        :root {
-            /* HSL Color System */
-            --background: 222 84% 5%;
-            --foreground: 213 31% 91%;
-            --card: 222 84% 5%;
-            --card-foreground: 213 31% 91%;
-            --popover: 222 84% 5%;
-            --popover-foreground: 213 31% 91%;
-            --primary: 142 76% 36%;
-            --primary-foreground: 355 100% 97%;
-            --primary-glow: 142 69% 58%;
-            --secondary: 217 33% 17%;
-            --secondary-foreground: 210 40% 98%;
-            --muted: 215 28% 17%;
-            --muted-foreground: 218 11% 65%;
-            --accent: 215 28% 17%;
-            --accent-foreground: 210 40% 98%;
-            --destructive: 0 63% 31%;
-            --destructive-foreground: 210 40% 98%;
-            --border: 215 28% 17%;
-            --input: 215 28% 17%;
-            --ring: 142 76% 36%;
-            --surface: 217 33% 17%;
-            --surface-accent: 215 28% 17%;
-            --success: 120 61% 50%;
-            --warning: 38 92% 50%;
-            --error: 0 84% 60%;
-            
-            /* Weather specific colors */
-            --weather-temp: 14 100% 57%;
-            --weather-humidity: 200 100% 50%;
-            --weather-rain: 220 100% 50%;
-            --weather-wind: 160 100% 50%;
-            
-            /* Gradients */
-            --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
-            --gradient-surface: linear-gradient(145deg, hsl(var(--surface)), hsl(var(--background)));
-            
-            /* Shadows */
-            --shadow-sm: 0 1px 2px 0 hsl(var(--primary) / 0.05);
-            --shadow-md: 0 4px 6px -1px hsl(var(--primary) / 0.1), 0 2px 4px -2px hsl(var(--primary) / 0.1);
-            --shadow-lg: 0 10px 15px -3px hsl(var(--primary) / 0.1), 0 4px 6px -4px hsl(var(--primary) / 0.1);
-            --shadow-glow: 0 0 20px hsl(var(--primary-glow) / 0.3);
-            
-            /* Transitions */
-            --transition-all: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: hsl(var(--background));
-            color: hsl(var(--foreground));
-            line-height: 1.6;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
             min-height: 100vh;
+            color: hsl(var(--foreground));
         }
 
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 0 24px;
+            padding: 0 1rem;
         }
 
-        /* Header Styles */
         .header {
-            background: hsl(var(--card) / 0.95);
-            backdrop-filter: blur(10px);
-            padding: 1rem 0;
+            background: hsl(var(--card));
             border-bottom: 1px solid hsl(var(--border));
-            box-shadow: var(--shadow-md);
+            padding: 1rem 0;
             position: sticky;
             top: 0;
             z-index: 100;
+            backdrop-filter: blur(10px);
         }
 
         .header-content {
@@ -94,112 +69,84 @@
         }
 
         .header-icon {
-            width: 64px;
-            height: 64px;
-            background: var(--gradient-primary);
-            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: var(--shadow-glow);
+            width: 48px;
+            height: 48px;
+            background: hsl(var(--primary));
+            border-radius: 12px;
         }
 
         .sprout-icon {
-            width: 32px;
-            height: 32px;
-            color: white;
+            width: 24px;
+            height: 24px;
+            color: hsl(var(--primary-foreground));
         }
 
         .header-text h1 {
-            color: hsl(var(--primary-glow));
-            font-size: 2.5rem;
-            font-weight: 800;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: hsl(var(--foreground));
             margin-bottom: 0.25rem;
-            text-shadow: 0 2px 4px hsl(var(--background) / 0.5);
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
         .header-text p {
-            color: hsl(var(--primary-glow) / 0.8);
-            font-size: 1.125rem;
-            font-weight: 500;
+            color: hsl(var(--muted-foreground));
+            font-size: 0.875rem;
         }
 
-        /* Main Layout */
         .main {
             padding: 2rem 0;
         }
 
         .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            grid-template-columns: 1fr 1fr;
             gap: 2rem;
             margin-bottom: 2rem;
         }
 
         .form-calendar-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 1fr 1fr;
             gap: 2rem;
             margin-bottom: 2rem;
         }
 
-        /* Card Styles */
         .card {
-            background: var(--gradient-surface);
-            border-radius: 16px;
-            padding: 2rem;
-            box-shadow: var(--shadow-lg);
+            background: hsl(var(--card));
             border: 1px solid hsl(var(--border));
-            transition: var(--transition-all);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
         }
 
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: var(--gradient-primary);
-            opacity: 0;
-            transition: var(--transition-all);
-        }
-
         .card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg), var(--shadow-glow);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
         }
 
-        .card:hover::before {
-            opacity: 1;
-        }
-
-        /* Section Headers */
         .section-header {
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            margin-bottom: 2rem;
-            color: hsl(var(--primary-glow));
-            font-weight: 700;
-            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            color: hsl(var(--foreground));
             padding-bottom: 1rem;
             border-bottom: 1px solid hsl(var(--border));
         }
 
         .section-icon {
-            width: 24px;
-            height: 24px;
-            color: hsl(var(--primary-glow));
+            width: 20px;
+            height: 20px;
+            color: hsl(var(--primary));
         }
 
-        /* Weather Section */
         .weather-metrics {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -208,192 +155,160 @@
         }
 
         .weather-metric {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             text-align: center;
-            padding: 1.5rem;
-            background: hsl(var(--surface));
+            padding: 1rem;
+            background: hsl(var(--muted));
             border-radius: 12px;
-            border: 1px solid hsl(var(--border));
-            transition: var(--transition-all);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .weather-metric::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: var(--gradient-primary);
-            opacity: 0;
-            transition: var(--transition-all);
+            transition: transform 0.2s;
         }
 
         .weather-metric:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .weather-metric:hover::before {
-            opacity: 0.05;
-        }
-
-        .weather-metric > * {
-            position: relative;
-            z-index: 1;
+            transform: scale(1.02);
         }
 
         .metric-icon {
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             margin-bottom: 0.5rem;
         }
 
         .metric-value {
             font-size: 1.5rem;
             font-weight: 700;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.25rem;
         }
 
         .metric-label {
-            font-size: 0.875rem;
+            font-size: 0.75rem;
             color: hsl(var(--muted-foreground));
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
         .forecast-container {
-            overflow-x: auto;
-            padding-bottom: 0.5rem;
+            margin-top: 1rem;
         }
 
         .forecast-grid {
-            display: flex;
-            gap: 1rem;
-            min-width: max-content;
-        }
-
-        .forecast-day {
-            min-width: 100px;
-            text-align: center;
-            padding: 1rem;
-            background: hsl(var(--surface));
-            border-radius: 12px;
-            border: 1px solid hsl(var(--border));
-            transition: var(--transition-all);
-        }
-
-        .forecast-day:hover {
-            transform: translateY(-2px);
-            background: hsl(var(--surface-accent));
-        }
-
-        /* Recommendations */
-        .recommendation {
-            background: hsl(var(--surface));
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            border-left: 4px solid hsl(var(--primary));
-            transition: var(--transition-all);
-            cursor: pointer;
-        }
-
-        .recommendation:hover {
-            transform: translateX(4px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .recommendation.urgent {
-            border-left-color: hsl(var(--error));
-        }
-
-        .recommendation.high {
-            border-left-color: hsl(var(--warning));
-        }
-
-        .recommendation.medium {
-            border-left-color: hsl(var(--primary));
-        }
-
-        .recommendation.low {
-            border-left-color: hsl(var(--success));
-        }
-
-        .rec-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 0.75rem;
-        }
-
-        .rec-title {
-            font-weight: 600;
-            color: hsl(var(--foreground));
-        }
-
-        .urgency-badge {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            text-transform: uppercase;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        .urgency-urgent { background: hsl(var(--error)); color: white; }
-        .urgency-high { background: hsl(var(--warning)); color: white; }
-        .urgency-medium { background: hsl(var(--primary)); color: white; }
-        .urgency-low { background: hsl(var(--success)); color: white; }
-
-        .rec-message {
-            color: hsl(var(--muted-foreground));
-            line-height: 1.5;
-            margin-bottom: 1rem;
-        }
-
-        .rec-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.875rem;
-            color: hsl(var(--muted-foreground));
-        }
-
-        .confidence-display {
-            display: flex;
-            align-items: center;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
             gap: 0.5rem;
         }
 
-        .confidence-bar {
-            width: 60px;
-            height: 4px;
-            background: hsl(var(--border));
-            border-radius: 2px;
-            overflow: hidden;
+        .forecast-item {
+            text-align: center;
+            padding: 0.75rem 0.25rem;
+            background: hsl(var(--muted));
+            border-radius: 8px;
+            font-size: 0.75rem;
+            transition: background-color 0.2s;
         }
 
-        .confidence-fill {
-            height: 100%;
-            background: var(--gradient-primary);
-            transition: var(--transition-all);
+        .forecast-item:hover {
+            background: hsl(var(--accent));
         }
 
-        /* Activity Timeline - Scrollable */
+        .forecast-day {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+            color: hsl(var(--foreground));
+        }
+
+        .forecast-temp {
+            font-weight: 600;
+            color: hsl(var(--weather-temp));
+            margin-bottom: 0.25rem;
+        }
+
+        .forecast-desc {
+            color: hsl(var(--muted-foreground));
+            font-size: 0.625rem;
+        }
+
+        .recommendation-item {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem;
+            background: hsl(var(--muted));
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+            border-left: 4px solid hsl(var(--primary));
+        }
+
+        .recommendation-item:hover {
+            background: hsl(var(--accent));
+            transform: translateX(4px);
+        }
+
+        .recommendation-icon {
+            width: 40px;
+            height: 40px;
+            background: hsl(var(--primary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: hsl(var(--primary-foreground));
+            flex-shrink: 0;
+        }
+
+        .recommendation-content {
+            flex: 1;
+        }
+
+        .recommendation-title {
+            font-weight: 600;
+            color: hsl(var(--foreground));
+            margin-bottom: 0.25rem;
+        }
+
+        .recommendation-desc {
+            color: hsl(var(--muted-foreground));
+            font-size: 0.875rem;
+            line-height: 1.4;
+        }
+
+        .recommendation-priority {
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+
+        .priority-high {
+            background: hsl(var(--error) / 0.1);
+            color: hsl(var(--error));
+        }
+
+        .priority-medium {
+            background: hsl(var(--warning) / 0.1);
+            color: hsl(var(--warning));
+        }
+
+        .priority-low {
+            background: hsl(var(--success) / 0.1);
+            color: hsl(var(--success));
+        }
+
         .timeline-section {
-            position: relative;
+            grid-column: 1 / -1;
         }
 
         .timeline-container {
-            height: 300px;
-            background: hsl(var(--surface));
-            border-radius: 12px;
-            padding: 1.5rem;
             position: relative;
+            height: 200px;
             overflow: hidden;
-            border: 1px solid hsl(var(--border));
+            background: linear-gradient(90deg, 
+                hsl(var(--muted)) 0%, 
+                hsl(var(--accent)) 50%, 
+                hsl(var(--muted)) 100%
+            );
+            border-radius: 12px;
+            margin-bottom: 1rem;
         }
 
         .timeline-grid {
@@ -403,96 +318,62 @@
             right: 0;
             bottom: 0;
             background-image: 
-                linear-gradient(hsl(var(--primary) / 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, hsl(var(--primary) / 0.1) 1px, transparent 1px);
-            background-size: 20px 20px;
-            opacity: 0.5;
+                linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px);
+            background-size: 4.16667% 100%;
         }
 
         .timeline-scroll {
-            position: relative;
-            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             overflow-x: auto;
             overflow-y: hidden;
-            padding: 1rem 0;
         }
 
         .timeline-content {
+            height: 100%;
             display: flex;
-            align-items: end;
-            gap: 1rem;
-            min-width: max-content;
-            height: 200px;
-            padding: 0 1rem;
-        }
-
-        .timeline-bar {
-            min-width: 80px;
-            background: hsl(var(--surface-accent));
-            border-radius: 8px;
-            border: 2px solid;
-            transition: var(--transition-all);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 0.5rem;
-            cursor: pointer;
             position: relative;
-        }
-
-        .timeline-bar:hover {
-            transform: scale(1.05) translateY(-4px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .timeline-bar.optimal {
-            border-color: hsl(var(--success));
-            background: linear-gradient(135deg, hsl(var(--surface-accent)), hsl(var(--success) / 0.1));
-        }
-
-        .timeline-bar.good {
-            border-color: hsl(var(--primary));
-            background: linear-gradient(135deg, hsl(var(--surface-accent)), hsl(var(--primary) / 0.1));
-        }
-
-        .timeline-bar.poor {
-            border-color: hsl(var(--warning));
-            background: linear-gradient(135deg, hsl(var(--surface-accent)), hsl(var(--warning) / 0.1));
-        }
-
-        .timeline-score {
-            font-weight: 700;
-            font-size: 1.25rem;
-            margin-bottom: 0.5rem;
+            min-width: 100%;
         }
 
         .timeline-activity {
+            position: absolute;
+            border-radius: 6px;
+            padding: 0.5rem;
+            color: white;
             font-size: 0.75rem;
-            color: hsl(var(--muted-foreground));
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            text-align: center;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+        }
+
+        .timeline-activity:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         .timeline-labels {
             display: flex;
             justify-content: space-between;
-            margin-top: 1rem;
-            font-size: 0.875rem;
-            color: hsl(var(--muted-foreground));
-            overflow-x: auto;
+            padding: 0 0.5rem;
+            margin-top: 0.5rem;
         }
 
         .timeline-labels-content {
             display: flex;
-            gap: 1rem;
-            min-width: max-content;
-            padding: 0 1rem;
+            justify-content: space-between;
+            width: 100%;
         }
 
         .timeline-label {
-            min-width: 80px;
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground));
             text-align: center;
         }
 
@@ -501,13 +382,17 @@
             justify-content: center;
             gap: 2rem;
             margin-top: 1rem;
-            font-size: 0.875rem;
+            padding: 1rem;
+            background: hsl(var(--muted));
+            border-radius: 8px;
         }
 
         .legend-item {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            font-size: 0.875rem;
+            color: hsl(var(--muted-foreground));
         }
 
         .legend-dot {
@@ -516,115 +401,10 @@
             border-radius: 50%;
         }
 
-        /* Calendar */
-        .calendar-nav {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.5rem;
-        }
-
-        .nav-btn {
-            background: var(--gradient-primary);
-            border: none;
-            border-radius: 10px;
-            padding: 0.75rem;
-            cursor: pointer;
-            transition: var(--transition-all);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .nav-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .nav-btn svg {
-            width: 20px;
-            height: 20px;
-            color: white;
-        }
-
-        .month-year {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: hsl(var(--primary-glow));
-        }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 1px;
-            background: hsl(var(--border));
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .day-header {
-            background: hsl(var(--primary));
-            color: white;
-            padding: 1rem 0.5rem;
-            text-align: center;
-            font-weight: 600;
-            font-size: 0.875rem;
-        }
-
-        .day-cell {
-            background: hsl(var(--surface));
-            padding: 0.75rem 0.5rem;
-            min-height: 80px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            transition: var(--transition-all);
-        }
-
-        .day-cell:hover {
-            background: hsl(var(--surface-accent));
-        }
-
-        .day-cell.other-month {
-            color: hsl(var(--muted-foreground));
-            background: hsl(var(--muted));
-        }
-
-        .day-cell.today {
-            background: hsl(var(--primary));
-            color: white;
-        }
-
-        .day-number {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-
-        .activity-indicators {
-            display: flex;
-            gap: 2px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .activity-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-        }
-
-        .activity-dot.planting { background: hsl(var(--success)); }
-        .activity-dot.harvest { background: hsl(var(--warning)); }
-        .activity-dot.irrigation { background: hsl(var(--primary)); }
-        .activity-dot.maintenance { background: hsl(var(--error)); }
-
-        /* Form Styles */
         .form-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
         }
 
         .form-group {
@@ -633,234 +413,356 @@
         }
 
         .form-group.full-width {
-            grid-column: span 2;
+            grid-column: 1 / -1;
         }
 
         .form-label {
-            font-weight: 600;
-            color: hsl(var(--primary-glow));
+            font-weight: 500;
             margin-bottom: 0.5rem;
+            color: hsl(var(--foreground));
             font-size: 0.875rem;
         }
 
         .form-input, .form-select, .form-textarea {
-            padding: 1rem;
-            border: 2px solid hsl(var(--border));
+            padding: 0.75rem;
+            border: 1px solid hsl(var(--border));
             border-radius: 8px;
-            font-size: 1rem;
-            transition: var(--transition-all);
-            background: hsl(var(--surface));
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            background: hsl(var(--background));
             color: hsl(var(--foreground));
         }
 
         .form-input:focus, .form-select:focus, .form-textarea:focus {
             outline: none;
-            border-color: hsl(var(--primary));
-            box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
+            border-color: hsl(var(--ring));
+            box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
         }
 
         .form-textarea {
             resize: vertical;
-            min-height: 100px;
+            min-height: 80px;
         }
 
         .btn-primary {
-            grid-column: span 2;
-            background: var(--gradient-primary);
-            color: white;
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
             border: none;
-            padding: 1rem 2rem;
-            border-radius: 12px;
-            font-size: 1.1rem;
-            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
             cursor: pointer;
-            transition: var(--transition-all);
-            margin-top: 1rem;
-            box-shadow: var(--shadow-sm);
+            transition: all 0.2s;
+            grid-column: 1 / -1;
+            margin-top: 0.5rem;
+            position: relative;
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
+            background: hsl(var(--primary) / 0.9);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
         }
 
-        /* Activity Log */
-        .log-header {
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .calendar-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .nav-btn {
+            background: none;
+            border: 1px solid hsl(var(--border));
+            border-radius: 8px;
+            padding: 0.5rem;
+            cursor: pointer;
+            color: hsl(var(--foreground));
+            transition: all 0.2s;
             display: flex;
             align-items: center;
+            justify-content: center;
+        }
+
+        .nav-btn:hover {
+            background: hsl(var(--accent));
+            border-color: hsl(var(--ring));
+        }
+
+        .nav-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .month-year {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: hsl(var(--foreground));
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: hsl(var(--border));
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .day-header {
+            background: hsl(var(--muted));
+            padding: 0.75rem 0.25rem;
+            text-align: center;
+            font-weight: 500;
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground));
+        }
+
+        .calendar-day {
+            background: hsl(var(--background));
+            padding: 0.5rem;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+
+        .calendar-day:hover {
+            background: hsl(var(--accent));
+        }
+
+        .calendar-day.other-month {
+            color: hsl(var(--muted-foreground));
+            background: hsl(var(--muted) / 0.5);
+        }
+
+        .calendar-day.today {
+            background: hsl(var(--primary) / 0.1);
+            border: 2px solid hsl(var(--primary));
+        }
+
+        .day-number {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .day-activities {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .calendar-activity {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            padding: 0.125rem 0.25rem;
+            border-radius: 4px;
+            font-size: 0.625rem;
+            margin-bottom: 0.125rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .log-header {
+            display: flex;
             justify-content: space-between;
-            margin-bottom: 2rem;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
 
         .filter-tabs {
             display: flex;
-            gap: 0.5rem;
+            background: hsl(var(--muted));
+            border-radius: 8px;
+            padding: 0.25rem;
         }
 
         .filter-tab {
-            padding: 0.75rem 1.5rem;
-            border: 2px solid hsl(var(--border));
-            border-radius: 8px;
-            background: hsl(var(--surface));
-            color: hsl(var(--muted-foreground));
-            cursor: pointer;
-            transition: var(--transition-all);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
             font-size: 0.875rem;
-            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: hsl(var(--muted-foreground));
         }
 
         .filter-tab.active {
-            background: var(--gradient-primary);
-            color: white;
-            border-color: transparent;
-            box-shadow: var(--shadow-sm);
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
         }
 
-        .filter-tab:hover:not(.active) {
-            background: hsl(var(--surface-accent));
+        .filter-tab:not(.active):hover {
+            background: hsl(var(--accent));
+            color: hsl(var(--foreground));
         }
 
         .activity-list {
-            display: grid;
-            gap: 1rem;
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
         }
 
         .activity-item {
-            background: hsl(var(--surface));
-            border: 1px solid hsl(var(--border));
+            display: flex;
+            gap: 1rem;
+            padding: 1rem;
+            background: hsl(var(--muted));
             border-radius: 12px;
-            padding: 1.5rem;
-            transition: var(--transition-all);
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+            cursor: pointer;
+            border-left: 4px solid transparent;
         }
 
         .activity-item:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
+            background: hsl(var(--accent));
+            transform: translateX(4px);
+        }
+
+        .activity-item.status-planned {
+            border-left-color: hsl(var(--warning));
+        }
+
+        .activity-item.status-in_progress {
+            border-left-color: hsl(var(--primary));
+        }
+
+        .activity-item.status-completed {
+            border-left-color: hsl(var(--success));
+        }
+
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .activity-details {
+            flex: 1;
         }
 
         .activity-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
         }
 
         .activity-title {
             font-weight: 600;
             color: hsl(var(--foreground));
-            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
         }
 
-        .activity-status {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
+        .activity-field {
+            color: hsl(var(--muted-foreground));
+            font-size: 0.875rem;
+        }
+
+        .activity-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground));
+            margin-bottom: 0.5rem;
+        }
+
+        .activity-description {
+            color: hsl(var(--muted-foreground));
+            font-size: 0.875rem;
+            line-height: 1.4;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
             font-size: 0.75rem;
             font-weight: 500;
-            text-transform: uppercase;
         }
 
-        .status-completed { background: hsl(var(--success)); color: white; }
-        .status-in_progress { background: hsl(var(--primary)); color: white; }
-        .status-planned { background: hsl(var(--warning)); color: white; }
-
-        .activity-details {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            color: hsl(var(--muted-foreground));
-            font-size: 0.9rem;
+        .status-planned {
+            background: hsl(var(--warning) / 0.1);
+            color: hsl(var(--warning));
         }
 
-        .activity-detail {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .detail-icon {
-            width: 16px;
-            height: 16px;
-            opacity: 0.7;
+        .status-in_progress {
+            background: hsl(var(--primary) / 0.1);
             color: hsl(var(--primary));
         }
 
-        /* Responsive Design */
-        @media (max-width: 1200px) {
-            .form-calendar-grid {
-                grid-template-columns: 1fr;
-            }
+        .status-completed {
+            background: hsl(var(--success) / 0.1);
+            color: hsl(var(--success));
         }
 
-        @media (max-width: 768px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .btn-primary {
-                grid-column: span 1;
-            }
-            
-            .header-text h1 {
-                font-size: 2rem;
-            }
-            
-            .log-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
-            }
-            
-            .filter-tabs {
-                width: 100%;
-                justify-content: space-between;
-            }
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+            position: relative;
         }
 
-        /* Scrollbar Styling */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid hsl(var(--primary));
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            z-index: 10;
         }
 
-        ::-webkit-scrollbar-track {
-            background: hsl(var(--surface));
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
-        ::-webkit-scrollbar-thumb {
-            background: hsl(var(--primary));
-            border-radius: 4px;
+        .error-message {
+            color: hsl(var(--error));
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
         }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: hsl(var(--primary-glow));
+        .success-message {
+            color: hsl(var(--success));
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
         }
 
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .card {
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        /* Notification */
         .notification {
             position: fixed;
-            top: 20px;
-            right: 20px;
+            top: 1rem;
+            right: 1rem;
             padding: 1rem 1.5rem;
-            border-radius: 12px;
-            box-shadow: var(--shadow-lg);
-            z-index: 1000;
-            opacity: 0;
-            transition: var(--transition-all);
+            border-radius: 8px;
             font-weight: 500;
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
         }
 
         .notification.success {
@@ -873,13 +775,47 @@
             color: white;
         }
 
-        .notification.info {
-            background: hsl(var(--primary));
+        .notification.warning {
+            background: hsl(var(--warning));
             color: white;
         }
 
-        .notification.show {
-            opacity: 1;
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-calendar-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .weather-metrics {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .forecast-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 0.25rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .weather-metrics {
+                grid-template-columns: 1fr;
+            }
+
+            .log-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-tabs {
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -968,6 +904,14 @@
                             <path d="m2 12 10 5 10-5"/>
                         </svg>
                         AI Recommendations
+                        <button id="refreshRecommendations" class="nav-btn" style="margin-left: auto;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                                <path d="M21 3v5h-5"/>
+                                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                                <path d="M3 21v-5h5"/>
+                            </svg>
+                        </button>
                     </div>
                     
                     <div id="recommendationsList">
@@ -1032,11 +976,8 @@
                             <label class="form-label" for="fieldSelect">Field</label>
                             <select id="fieldSelect" class="form-select" required>
                                 <option value="">Select Field</option>
-                                <option value="North Field A">North Field A</option>
-                                <option value="South Field B">South Field B</option>
-                                <option value="East Field C">East Field C</option>
-                                <option value="West Field D">West Field D</option>
                             </select>
+                            <div id="fieldSelectError" class="error-message" style="display: none;"></div>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="activityDate">Date</label>
@@ -1081,7 +1022,8 @@
                             <label class="form-label" for="description">Description</label>
                             <textarea id="description" class="form-textarea" placeholder="Detailed activity description..."></textarea>
                         </div>
-                        <button type="submit" class="btn-primary">Add Activity</button>
+                        <button type="submit" class="btn-primary" id="submitBtn">Add Activity</button>
+                        <div id="formMessage" class="full-width" style="display: none;"></div>
                     </form>
                 </div>
 
@@ -1149,197 +1091,271 @@
         // Application State
         let currentDate = new Date();
         let activities = [];
-        let weatherData = {
+        let userFields = [];
+        let currentWeather = {};
+        let recommendations = [];
+        let selectedFieldId = null;
+        let currentFilter = 'all';
+
+        // Sample data for demonstration
+        const mockFields = [
+            { id: 1, name: 'North Field', area: 12.5, coordinates: { lat: -1.2921, lng: 36.8219 } },
+            { id: 2, name: 'South Paddock', area: 8.3, coordinates: { lat: -1.2951, lng: 36.8189 } },
+            { id: 3, name: 'East Meadow', area: 15.7, coordinates: { lat: -1.2891, lng: 36.8249 } }
+        ];
+
+        const mockWeatherData = {
             current: {
                 temperature: 22,
                 humidity: 65,
                 precipitation: 2,
-                windSpeed: 12
+                windSpeed: 12,
+                condition: 'Partly Cloudy'
             },
             forecast: [
-                { date: '2025-08-22', tempMin: 18, tempMax: 25, condition: 'Partly Cloudy' },
-                { date: '2025-08-23', tempMin: 20, tempMax: 27, condition: 'Sunny' },
-                { date: '2025-08-24', tempMin: 19, tempMax: 24, condition: 'Light Rain' },
-                { date: '2025-08-25', tempMin: 17, tempMax: 22, condition: 'Cloudy' },
-                { date: '2025-08-26', tempMin: 21, tempMax: 28, condition: 'Sunny' },
-                { date: '2025-08-27', tempMin: 23, tempMax: 30, condition: 'Hot' },
-                { date: '2025-08-28', tempMin: 22, tempMax: 29, condition: 'Partly Cloudy' }
+                { day: 'Today', temp: 22, condition: 'Sunny' },
+                { day: 'Tomorrow', temp: 24, condition: 'Cloudy' },
+                { day: 'Sun', temp: 19, condition: 'Rain' },
+                { day: 'Mon', temp: 21, condition: 'Sunny' },
+                { day: 'Tue', temp: 23, condition: 'Partly Cloudy' },
+                { day: 'Wed', temp: 20, condition: 'Overcast' },
+                { day: 'Thu', temp: 25, condition: 'Sunny' }
             ]
         };
 
-        let recommendations = [
+        const mockRecommendations = [
             {
                 id: 1,
-                type: 'irrigation',
-                title: 'Irrigation Recommended',
-                message: 'Low humidity (45%) detected in North Field A. Consider irrigating corn crops within the next 24 hours.',
-                urgency: 'medium',
-                confidence: 0.85,
-                validUntil: '2025-08-23',
-                recommendedDate: '2025-08-22'
+                title: 'Optimal Irrigation Window',
+                description: 'Weather conditions are ideal for irrigation in the North Field. Low wind and moderate humidity will ensure efficient water distribution.',
+                priority: 'high',
+                icon: '💧',
+                timeWindow: '6:00 AM - 10:00 AM'
             },
             {
                 id: 2,
-                type: 'weather_alert',
-                title: 'Perfect Planting Conditions',
-                message: 'Ideal temperature (22°C) and upcoming rain (15mm) forecast. Excellent time for planting new crops.',
-                urgency: 'high',
-                confidence: 0.92,
-                validUntil: '2025-08-24',
-                recommendedDate: '2025-08-23'
+                title: 'Harvest Timing',
+                description: 'Corn in South Paddock is reaching optimal moisture content. Consider harvesting within the next 3-5 days.',
+                priority: 'medium',
+                icon: '🌾',
+                timeWindow: 'Next 3-5 days'
             },
             {
                 id: 3,
-                type: 'pest_warning',
-                title: 'Pest Control Opportunity',
-                message: 'Current weather conditions favor pest activity. Consider preventive pest control measures.',
-                urgency: 'low',
-                confidence: 0.68,
-                validUntil: '2025-08-25',
-                recommendedDate: '2025-08-24'
+                title: 'Pest Control Application',
+                description: 'Recent weather patterns suggest increased pest activity. Monitor East Meadow closely for early signs.',
+                priority: 'low',
+                icon: '🦗',
+                timeWindow: 'This week'
             }
         ];
 
+        const activityIcons = {
+            planting: '🌱',
+            harvest: '🌾',
+            irrigation: '💧',
+            maintenance: '🔧',
+            fertilizing: '🌿',
+            pest_control: '🦗',
+            soil_preparation: '🚜',
+            weeding: '🌱'
+        };
+
         // Initialize Application
         document.addEventListener('DOMContentLoaded', function() {
-            initializeCalendar();
-            loadWeatherData();
-            loadRecommendations();
-            loadActivities();
-            generateOptimalTiming();
-            setupEventListeners();
-            setDefaultDateTime();
+            initializeApp();
         });
 
-        // Weather Functions
-        function loadWeatherData() {
-            document.getElementById('currentTemp').textContent = `${weatherData.current.temperature}°C`;
-            document.getElementById('currentHumidity').textContent = `${weatherData.current.humidity}%`;
-            document.getElementById('currentPrecipitation').textContent = `${weatherData.current.precipitation}mm`;
-            document.getElementById('currentWindSpeed').textContent = `${weatherData.current.windSpeed}km/h`;
-            
-            const forecastContainer = document.getElementById('weatherForecast');
-            forecastContainer.innerHTML = '';
-            
-            weatherData.forecast.forEach(forecast => {
-                const forecastDay = document.createElement('div');
-                forecastDay.className = 'forecast-day';
+        async function initializeApp() {
+            try {
+                // Load sample data
+                userFields = mockFields;
+                currentWeather = mockWeatherData;
+                recommendations = mockRecommendations;
                 
-                const date = new Date(forecast.date);
-                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                // Initialize components
+                loadUserFields();
+                updateWeatherDisplay();
+                updateRecommendationsList();
+                initializeCalendar();
+                loadSampleActivities();
+                generateActivityTimeline();
+                setupEventListeners();
+                setDefaultDateTime();
                 
-                forecastDay.innerHTML = `
-                    <div style="font-size: 0.75rem; color: hsl(var(--muted-foreground)); margin-bottom: 0.5rem;">${dayName}</div>
-                    <div style="font-weight: 600; color: hsl(var(--primary-glow)); margin-bottom: 0.25rem;">${forecast.tempMin}°-${forecast.tempMax}°</div>
-                    <div style="font-size: 0.75rem; color: hsl(var(--muted-foreground));">${forecast.condition}</div>
+            } catch (error) {
+                console.error('Failed to initialize app:', error);
+                showNotification('Failed to load application data', 'error');
+            }
+        }
+
+        function loadUserFields() {
+            const fieldSelect = document.getElementById('fieldSelect');
+            fieldSelect.innerHTML = '<option value="">Select Field</option>';
+            
+            userFields.forEach(field => {
+                const option = document.createElement('option');
+                option.value = field.id;
+                option.textContent = `${field.name} (${field.area.toFixed(1)} ha)`;
+                fieldSelect.appendChild(option);
+            });
+            
+            if (userFields.length > 0) {
+                selectedFieldId = userFields[0].id;
+                fieldSelect.value = selectedFieldId;
+            }
+        }
+
+        function updateWeatherDisplay() {
+            if (!currentWeather.current) return;
+            
+            const { current, forecast } = currentWeather;
+            
+            document.getElementById('currentTemp').textContent = `${current.temperature}°C`;
+            document.getElementById('currentHumidity').textContent = `${current.humidity}%`;
+            document.getElementById('currentPrecipitation').textContent = `${current.precipitation}mm`;
+            document.getElementById('currentWindSpeed').textContent = `${current.windSpeed}km/h`;
+            
+            const forecastGrid = document.getElementById('weatherForecast');
+            forecastGrid.innerHTML = '';
+            
+            forecast.forEach(day => {
+                const forecastItem = document.createElement('div');
+                forecastItem.className = 'forecast-item';
+                forecastItem.innerHTML = `
+                    <div class="forecast-day">${day.day}</div>
+                    <div class="forecast-temp">${day.temp}°C</div>
+                    <div class="forecast-desc">${day.condition}</div>
                 `;
-                
-                forecastContainer.appendChild(forecastDay);
+                forecastGrid.appendChild(forecastItem);
             });
         }
 
-        // Recommendations Functions
-        function loadRecommendations() {
-            const container = document.getElementById('recommendationsList');
-            container.innerHTML = '';
-            
-            if (recommendations.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; color: hsl(var(--muted-foreground)); padding: 2rem;">
-                        <p>No active recommendations</p>
-                        <p style="font-size: 0.9rem; margin-top: 0.5rem;">AI recommendations will appear here based on weather conditions and field data.</p>
-                    </div>
-                `;
-                return;
-            }
+        function updateRecommendationsList() {
+            const recommendationsList = document.getElementById('recommendationsList');
+            recommendationsList.innerHTML = '';
             
             recommendations.forEach(rec => {
-                const card = document.createElement('div');
-                card.className = `recommendation ${rec.urgency}`;
-                
-                card.innerHTML = `
-                    <div class="rec-header">
-                        <div class="rec-title">${rec.title}</div>
-                        <span class="urgency-badge urgency-${rec.urgency}">${rec.urgency}</span>
-                    </div>
-                    <div class="rec-message">${rec.message}</div>
-                    <div class="rec-meta">
-                        <div class="confidence-display">
-                            Confidence: ${Math.round(rec.confidence * 100)}%
-                            <div class="confidence-bar">
-                                <div class="confidence-fill" style="width: ${rec.confidence * 100}%"></div>
-                            </div>
-                        </div>
-                        <div>Valid until ${new Date(rec.validUntil).toLocaleDateString()}</div>
+                const recItem = document.createElement('div');
+                recItem.className = 'recommendation-item';
+                recItem.innerHTML = `
+                    <div class="recommendation-icon">${rec.icon}</div>
+                    <div class="recommendation-content">
+                        <div class="recommendation-title">${rec.title}</div>
+                        <div class="recommendation-desc">${rec.description}</div>
+                        <div class="recommendation-priority priority-${rec.priority}">${rec.priority.toUpperCase()}</div>
                     </div>
                 `;
-                
-                card.addEventListener('click', () => {
-                    markRecommendationRead(rec.id);
-                });
-                
-                container.appendChild(card);
+                recommendationsList.appendChild(recItem);
             });
         }
 
-        function markRecommendationRead(id) {
-            const index = recommendations.findIndex(r => r.id === id);
-            if (index !== -1) {
-                recommendations.splice(index, 1);
-                loadRecommendations();
-                showNotification('Recommendation marked as read', 'info');
-            }
-        }
-
-        // Activity Timeline Functions
-        function generateOptimalTiming() {
-            const container = document.getElementById('activityTimeline');
-            const labelsContainer = document.getElementById('timelineLabels');
-            container.innerHTML = '';
-            labelsContainer.innerHTML = '';
+        function generateActivityTimeline() {
+            const timeline = document.getElementById('activityTimeline');
+            const labels = document.getElementById('timelineLabels');
             
-            const today = new Date();
-            const activities = ['irrigation', 'planting', 'harvest', 'maintenance', 'fertilizing'];
-            const scores = [0.92, 0.78, 0.45, 0.88, 0.65, 0.73, 0.89, 0.94, 0.67, 0.81, 0.58, 0.72, 0.85, 0.91]; // Extended for more items
+            timeline.innerHTML = '';
+            labels.innerHTML = '';
             
-            for (let i = 0; i < 14; i++) { // Generate 14 days for scrolling
-                const date = new Date(today);
-                date.setDate(today.getDate() + i);
-                
-                const score = scores[i];
-                const item = document.createElement('div');
-                item.className = 'timeline-bar';
-                
-                if (score >= 0.8) item.classList.add('optimal');
-                else if (score >= 0.6) item.classList.add('good');
-                else item.classList.add('poor');
-                
-                const activity = activities[Math.floor(Math.random() * activities.length)];
-                const height = Math.max(40, score * 180);
-                
-                item.style.height = `${height}px`;
-                
-                const scoreColor = score >= 0.8 ? 'hsl(var(--success))' : score >= 0.6 ? 'hsl(var(--primary))' : 'hsl(var(--warning))';
-                
-                item.innerHTML = `
-                    <div class="timeline-score" style="color: ${scoreColor}">${Math.round(score * 100)}%</div>
-                    <div class="timeline-activity">${activity.slice(0, 4)}</div>
-                `;
-                
-                container.appendChild(item);
-                
-                // Add label
+            // Generate time labels (24 hours)
+            for (let hour = 0; hour < 24; hour += 4) {
                 const label = document.createElement('div');
                 label.className = 'timeline-label';
-                label.innerHTML = `
-                    <div style="font-weight: 600;">${date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                    <div style="font-size: 0.75rem;">${date.getDate()}</div>
-                `;
-                labelsContainer.appendChild(label);
+                label.textContent = `${hour.toString().padStart(2, '0')}:00`;
+                labels.appendChild(label);
             }
+            
+            // Sample timeline activities
+            const timelineActivities = [
+                { name: 'Irrigation', start: 6, duration: 3, priority: 'optimal' },
+                { name: 'Harvesting', start: 8, duration: 4, priority: 'good' },
+                { name: 'Maintenance', start: 14, duration: 2, priority: 'fair' },
+                { name: 'Fertilizing', start: 17, duration: 2, priority: 'good' }
+            ];
+            
+            timelineActivities.forEach((activity, index) => {
+                const activityEl = document.createElement('div');
+                activityEl.className = 'timeline-activity';
+                activityEl.style.left = `${(activity.start / 24) * 100}%`;
+                activityEl.style.width = `${(activity.duration / 24) * 100}%`;
+                activityEl.style.top = `${20 + (index * 40)}px`;
+                activityEl.style.height = '30px';
+                
+                const priorityColors = {
+                    optimal: 'hsl(var(--success))',
+                    good: 'hsl(var(--primary))',
+                    fair: 'hsl(var(--warning))'
+                };
+                
+                activityEl.style.background = priorityColors[activity.priority];
+                activityEl.textContent = activity.name;
+                activityEl.title = `${activity.name}: ${activity.start}:00 - ${activity.start + activity.duration}:00`;
+                
+                timeline.appendChild(activityEl);
+            });
         }
 
-        // Calendar Functions
+        function loadSampleActivities() {
+            const sampleActivities = [
+                {
+                    id: 1,
+                    field: 'North Field',
+                    fieldId: 1,
+                    type: 'irrigation',
+                    crop: 'Corn',
+                    date: new Date(2025, 7, 25, 7, 30),
+                    duration: 3,
+                    cost: 150.00,
+                    priority: 'high',
+                    status: 'planned',
+                    description: 'Morning irrigation for optimal water absorption'
+                },
+                {
+                    id: 2,
+                    field: 'South Paddock',
+                    fieldId: 2,
+                    type: 'harvest',
+                    crop: 'Wheat',
+                    date: new Date(2025, 7, 24, 9, 0),
+                    duration: 6,
+                    cost: 800.00,
+                    priority: 'high',
+                    status: 'in_progress',
+                    description: 'Harvesting wheat at optimal moisture content'
+                },
+                {
+                    id: 3,
+                    field: 'East Meadow',
+                    fieldId: 3,
+                    type: 'fertilizing',
+                    crop: 'Soybeans',
+                    date: new Date(2025, 7, 22, 15, 0),
+                    duration: 2.5,
+                    cost: 300.00,
+                    priority: 'medium',
+                    status: 'completed',
+                    description: 'Applied nitrogen fertilizer for enhanced growth'
+                },
+                {
+                    id: 4,
+                    field: 'North Field',
+                    fieldId: 1,
+                    type: 'pest_control',
+                    crop: 'Corn',
+                    date: new Date(2025, 7, 26, 8, 0),
+                    duration: 2,
+                    cost: 200.00,
+                    priority: 'medium',
+                    status: 'planned',
+                    description: 'Preventive pest control application'
+                }
+            ];
+            
+            activities = sampleActivities;
+            updateActivitiesList();
+            updateCalendarDisplay();
+        }
+
         function initializeCalendar() {
             updateCalendarDisplay();
         }
@@ -1348,147 +1364,144 @@
             const monthYear = document.getElementById('monthYear');
             const calendarGrid = document.getElementById('calendarGrid');
             
-            const monthNames = [
-                'January', 'February', 'March', 'April', 'May', 'June',
-                'July', 'August', 'September', 'October', 'November', 'December'
-            ];
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                              'July', 'August', 'September', 'October', 'November', 'December'];
             
             monthYear.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
             
-            // Clear existing calendar days
-            const existingDays = calendarGrid.querySelectorAll('.day-cell');
+            // Remove existing day cells
+            const existingDays = calendarGrid.querySelectorAll('.calendar-day');
             existingDays.forEach(day => day.remove());
             
-            // Get first day of month and number of days
+            // Calculate first day of month and days in month
             const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
             const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
             const startDate = new Date(firstDay);
             startDate.setDate(startDate.getDate() - firstDay.getDay());
             
-            // Generate calendar days
+            // Generate 42 day cells (6 weeks)
             for (let i = 0; i < 42; i++) {
-                const day = new Date(startDate);
-                day.setDate(startDate.getDate() + i);
+                const cellDate = new Date(startDate);
+                cellDate.setDate(startDate.getDate() + i);
                 
                 const dayCell = document.createElement('div');
-                dayCell.className = 'day-cell';
+                dayCell.className = 'calendar-day';
                 
-                if (day.getMonth() !== currentDate.getMonth()) {
+                if (cellDate.getMonth() !== currentDate.getMonth()) {
                     dayCell.classList.add('other-month');
                 }
                 
-                if (day.toDateString() === new Date().toDateString()) {
+                if (cellDate.toDateString() === new Date().toDateString()) {
                     dayCell.classList.add('today');
                 }
                 
-                const dayNumber = document.createElement('div');
-                dayNumber.className = 'day-number';
-                dayNumber.textContent = day.getDate();
-                dayCell.appendChild(dayNumber);
+                dayCell.innerHTML = `
+                    <div class="day-number">${cellDate.getDate()}</div>
+                    <div class="day-activities"></div>
+                `;
                 
-                const indicators = document.createElement('div');
-                indicators.className = 'activity-indicators';
-                
-                // Add activity indicators
+                // Add activities for this day
                 const dayActivities = activities.filter(activity => {
                     const activityDate = new Date(activity.date);
-                    return activityDate.toDateString() === day.toDateString();
+                    return activityDate.toDateString() === cellDate.toDateString();
                 });
                 
-                dayActivities.forEach(activity => {
-                    const dot = document.createElement('span');
-                    dot.className = `activity-dot ${activity.type}`;
-                    indicators.appendChild(dot);
+                const activitiesContainer = dayCell.querySelector('.day-activities');
+                dayActivities.slice(0, 3).forEach(activity => {
+                    const activityEl = document.createElement('div');
+                    activityEl.className = 'calendar-activity';
+                    activityEl.textContent = `${activityIcons[activity.type] || '📋'} ${activity.type}`;
+                    activityEl.title = `${activity.field} - ${activity.crop}`;
+                    activitiesContainer.appendChild(activityEl);
                 });
                 
-                dayCell.appendChild(indicators);
+                if (dayActivities.length > 3) {
+                    const moreEl = document.createElement('div');
+                    moreEl.className = 'calendar-activity';
+                    moreEl.textContent = `+${dayActivities.length - 3} more`;
+                    moreEl.style.background = 'hsl(var(--muted-foreground))';
+                    activitiesContainer.appendChild(moreEl);
+                }
+                
                 calendarGrid.appendChild(dayCell);
-                
-                dayCell.addEventListener('click', () => {
-                    const dateInput = document.getElementById('activityDate');
-                    const dateString = day.toISOString().slice(0, 16);
-                    dateInput.value = dateString;
-                });
             }
         }
 
-        // Activity Functions
-        function loadActivities() {
-            const container = document.getElementById('activitiesList');
+        function updateActivitiesList() {
+            const activitiesList = document.getElementById('activitiesList');
             
-            if (activities.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; color: hsl(var(--muted-foreground)); padding: 3rem;">
-                        <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">No activities recorded yet</p>
-                        <p>Start by adding your first field activity above.</p>
+            let filteredActivities = activities;
+            if (currentFilter !== 'all') {
+                filteredActivities = activities.filter(activity => activity.status === currentFilter);
+            }
+            
+            // Sort by date (newest first)
+            filteredActivities.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            activitiesList.innerHTML = '';
+            
+            if (filteredActivities.length === 0) {
+                activitiesList.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: hsl(var(--muted-foreground));">
+                        No activities found for the selected filter.
                     </div>
                 `;
                 return;
             }
             
-            container.innerHTML = '';
-            activities.forEach(activity => {
-                const item = document.createElement('div');
-                item.className = 'activity-item';
+            filteredActivities.forEach(activity => {
+                const activityItem = document.createElement('div');
+                activityItem.className = `activity-item status-${activity.status}`;
                 
-                const date = new Date(activity.date);
-                item.innerHTML = `
-                    <div class="activity-header">
-                        <div class="activity-title">${activity.title}</div>
-                        <div class="activity-status status-${activity.status}">${activity.status.replace('_', ' ')}</div>
+                const formattedDate = new Date(activity.date).toLocaleDateString();
+                const formattedTime = new Date(activity.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                activityItem.innerHTML = `
+                    <div class="activity-icon" style="background: ${getStatusColor(activity.status)};">
+                        ${activityIcons[activity.type] || '📋'}
                     </div>
                     <div class="activity-details">
-                        <div class="activity-detail">
-                            <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect width="18" height="18" x="3" y="4" rx="2"/>
-                                <path d="M16 2v4M8 2v4m-5 4h18"/>
-                            </svg>
-                            ${date.toLocaleDateString()}
+                        <div class="activity-header">
+                            <div>
+                                <div class="activity-title">${activity.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                                <div class="activity-field">${activity.field} - ${activity.crop}</div>
+                            </div>
+                            <div class="status-badge status-${activity.status}">
+                                ${activity.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </div>
                         </div>
-                        <div class="activity-detail">
-                            <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                                <circle cx="12" cy="10" r="3"/>
-                            </svg>
-                            ${activity.field}
+                        <div class="activity-meta">
+                            <span>📅 ${formattedDate} at ${formattedTime}</span>
+                            <span>⏱️ ${activity.duration}h</span>
+                            <span>💰 ${activity.cost.toFixed(2)}</span>
+                            <span>🔥 ${activity.priority}</span>
                         </div>
-                        <div class="activity-detail">
-                            <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polyline points="12,6 12,12 16,14"/>
-                            </svg>
-                            ${activity.duration}h
-                        </div>
-                        ${activity.cost ? `
-                        <div class="activity-detail">
-                            <svg class="detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="12" y1="1" x2="12" y2="23"/>
-                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                            </svg>
-                            $${activity.cost}
-                        </div>
-                        ` : ''}
+                        <div class="activity-description">${activity.description}</div>
                     </div>
                 `;
                 
-                container.appendChild(item);
+                activitiesList.appendChild(activityItem);
             });
         }
 
-        function filterActivities(filter) {
-            const items = document.querySelectorAll('.activity-item');
-            items.forEach(item => {
-                if (filter === 'all') {
-                    item.style.display = 'block';
-                } else {
-                    const status = item.querySelector('.activity-status').textContent.toLowerCase().replace(' ', '_');
-                    item.style.display = status === filter ? 'block' : 'none';
-                }
-            });
+        function getStatusColor(status) {
+            const colors = {
+                planned: 'hsl(var(--warning))',
+                in_progress: 'hsl(var(--primary))',
+                completed: 'hsl(var(--success))'
+            };
+            return colors[status] || 'hsl(var(--muted-foreground))';
         }
 
-        // Event Handlers
         function setupEventListeners() {
+            // Form submission
+            const activityForm = document.getElementById('activityForm');
+            activityForm.addEventListener('submit', handleFormSubmit);
+            
+            // Field selection change
+            const fieldSelect = document.getElementById('fieldSelect');
+            fieldSelect.addEventListener('change', handleFieldChange);
+            
             // Calendar navigation
             document.getElementById('prevMonth').addEventListener('click', () => {
                 currentDate.setMonth(currentDate.getMonth() - 1);
@@ -1500,95 +1513,112 @@
                 updateCalendarDisplay();
             });
             
-            // Activity form submission
-            document.getElementById('activityForm').addEventListener('submit', handleActivitySubmit);
-            
             // Filter tabs
             document.querySelectorAll('.filter-tab').forEach(tab => {
-                tab.addEventListener('click', () => {
-                    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
-                    filterActivities(tab.dataset.filter);
-                });
+                tab.addEventListener('click', handleFilterChange);
             });
+            
+            // Refresh recommendations
+            document.getElementById('refreshRecommendations').addEventListener('click', handleRefreshRecommendations);
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const formMessage = document.getElementById('formMessage');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            // Get form values
+            const activity = {
+                id: Date.now(),
+                fieldId: parseInt(document.getElementById('fieldSelect').value),
+                field: userFields.find(f => f.id == document.getElementById('fieldSelect').value)?.name || '',
+                type: document.getElementById('activityType').value,
+                crop: document.getElementById('cropType').value,
+                date: new Date(document.getElementById('activityDate').value),
+                duration: parseFloat(document.getElementById('duration').value) || 0,
+                cost: parseFloat(document.getElementById('cost').value) || 0,
+                priority: document.getElementById('priority').value,
+                status: 'planned',
+                description: document.getElementById('description').value
+            };
+            
+            // Validation
+            if (!activity.fieldId || !activity.type || !activity.crop || !activity.date) {
+                showFormMessage('Please fill in all required fields.', 'error');
+                return;
+            }
+            
+            // Add activity
+            activities.unshift(activity);
+            updateActivitiesList();
+            updateCalendarDisplay();
+            
+            // Reset form
+            e.target.reset();
+            setDefaultDateTime();
+            
+            showFormMessage('Activity added successfully!', 'success');
+            showNotification('Activity added successfully!', 'success');
+        }
+
+        function handleFieldChange(e) {
+            selectedFieldId = parseInt(e.target.value) || null;
+            // In a real app, this would trigger weather data refresh for the selected field
+        }
+
+        function handleFilterChange(e) {
+            document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+            e.target.classList.add('active');
+            currentFilter = e.target.dataset.filter;
+            updateActivitiesList();
+        }
+
+        function handleRefreshRecommendations() {
+            const button = document.getElementById('refreshRecommendations');
+            button.classList.add('loading');
+            
+            // Simulate API call delay
+            setTimeout(() => {
+                button.classList.remove('loading');
+                showNotification('Recommendations refreshed!', 'success');
+            }, 1000);
         }
 
         function setDefaultDateTime() {
             const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            document.getElementById('activityDate').value = now.toISOString().slice(0, 16);
+            now.setMinutes(0, 0, 0); // Round to nearest hour
+            const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            document.getElementById('activityDate').value = localDateTime;
         }
 
-        function handleActivitySubmit(e) {
-            e.preventDefault();
+        function showFormMessage(message, type) {
+            const formMessage = document.getElementById('formMessage');
+            formMessage.textContent = message;
+            formMessage.className = `${type}-message`;
+            formMessage.style.display = 'block';
             
-            const formData = {
-                field: document.getElementById('fieldSelect').value,
-                date: document.getElementById('activityDate').value,
-                type: document.getElementById('activityType').value,
-                crop: document.getElementById('cropType').value,
-                duration: parseFloat(document.getElementById('duration').value) || 0,
-                cost: parseFloat(document.getElementById('cost').value) || 0,
-                priority: document.getElementById('priority').value,
-                description: document.getElementById('description').value
-            };
-            
-            if (!formData.field || !formData.type || !formData.crop) {
-                showNotification('Please fill in all required fields', 'error');
-                return;
-            }
-            
-            const activity = {
-                id: activities.length + 1,
-                title: `${formData.type.charAt(0).toUpperCase() + formData.type.slice(1)} - ${formData.crop}`,
-                date: formData.date,
-                type: formData.type,
-                field: formData.field,
-                crop: formData.crop,
-                duration: formData.duration,
-                cost: formData.cost,
-                priority: formData.priority,
-                description: formData.description,
-                status: 'planned'
-            };
-            
-            activities.unshift(activity);
-            
-            // Reset form
-            document.getElementById('activityForm').reset();
-            setDefaultDateTime();
-            
-            // Refresh displays
-            updateCalendarDisplay();
-            loadActivities();
-            
-            // Show success message
-            showNotification('Activity added successfully!', 'success');
+            setTimeout(() => {
+                formMessage.style.display = 'none';
+            }, 3000);
         }
 
-        // Utility Functions
-        function showNotification(message, type = 'info') {
+        function showNotification(message, type) {
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             notification.textContent = message;
-            
             document.body.appendChild(notification);
             
+            // Trigger animation
             setTimeout(() => notification.classList.add('show'), 100);
+            
+            // Remove notification
             setTimeout(() => {
                 notification.classList.remove('show');
                 setTimeout(() => document.body.removeChild(notification), 300);
             }, 3000);
         }
-
-        // Real-time updates simulation
-        setInterval(() => {
-            if (Math.random() < 0.1) { // 10% chance every interval
-                weatherData.current.humidity = Math.max(30, Math.min(90, weatherData.current.humidity + (Math.random() - 0.5) * 5)).toFixed(2);
-                weatherData.current.windSpeed = Math.max(5, Math.min(30, weatherData.current.windSpeed + (Math.random() - 0.5) * 3)).toFixed(2);
-                loadWeatherData();
-            }
-        }, 15000); // Update every 15 seconds
     </script>
 </body>
 </html>
