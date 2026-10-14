@@ -206,7 +206,7 @@ def analyze_field_view(request, id):
         result = analyzer.analyze_combined_data(id, huggingface_token)
         field = Field.objects.get(id=id)
         area = field.area
-        data = analyzer.analyze_combined_data(soil_data=id, climate_data=None)
+        data = analyzer.analyze_combined_data(soil_data=id, climate_data=id)
 
         # Ensure 'analysis' exists
         if "analysis" not in result:

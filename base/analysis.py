@@ -34,16 +34,25 @@ class IntegratedSoilAnalyzer:
     def get_field_center(self, field_id: int) -> Dict[str, Any]:
         try:
             field = Field.objects.get(pk=field_id)
-            transformer = Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True)
+
+            # Get the centroid of the geometry
             center = field.geometry.centroid
-            lon, lat = transformer.transform(center.x, center.y)
-            
+
+            # Ensure we are working in EPSG:4326 (WGS84 lat/lon)
+            if field.geometry.srid != 4326:
+                transformer = Transformer.from_crs(field.geometry.srid, 4326, always_xy=True)
+                lon, lat = transformer.transform(center.x, center.y)
+            else:
+                lon, lat = center.x, center.y
+
             print(f"DEBUG: Field center - Lat: {lat}, Lon: {lon}")
+
             return {
-                "lat": lat,
-                "lon": lon,
+                "lat": lat,  # Latitude in WGS84
+                "lon": lon,  # Longitude in WGS84
                 "name": field.name
             }
+
         except Field.DoesNotExist:
             raise ValueError(f"Field with ID {field_id} not found")
         except Exception as e:
