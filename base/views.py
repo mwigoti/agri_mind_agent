@@ -623,3 +623,199 @@ def vra_page(request, field_id=None):
         logger.error(f"Error in vra_page: {str(e)}")
         messages.error(request, 'An error occurred loading the VRA analysis page')
         return redirect('map')
+    
+from django.http import HttpResponse
+
+from django.views.decorators.http import require_POST
+
+from django.views import View
+from django.utils.timezone import now
+
+
+
+import re
+from .models import USSDSession
+
+@method_decorator(csrf_exempt, name='dispatch')
+class USSDView(View):
+    
+    def post(self, request):
+        try:
+            session_id = request.POST.get('sessionId', '')
+            phone_number = request.POST.get('phoneNumber', '')
+            text = request.POST.get('text', '')
+            
+            logger.info(f"USSD Request - Session: {session_id}, Phone: {phone_number}, Text: '{text}'")
+            
+            if not session_id or not phone_number:
+                return HttpResponse("END Invalid request", content_type='text/plain')
+            
+            phone_number = self.clean_phone_number(phone_number)
+            
+            session, created = USSDSession.objects.get_or_create(
+                session_id=session_id,
+                defaults={
+                    'phone_number': phone_number,
+                    'current_step': 'start',
+                    'data': {}
+                }
+            )
+            
+            response_text = self.process_menu(session, text)
+            return HttpResponse(response_text, content_type='text/plain')
+            
+        except Exception as e:
+            logger.error(f"USSD Error: {str(e)}")
+            return HttpResponse("END Service unavailable", content_type='text/plain')
+    
+    def clean_phone_number(self, phone_number):
+        cleaned = phone_number.strip()
+        if cleaned.startswith('0'):
+            cleaned = '+254' + cleaned[1:]
+        elif not cleaned.startswith('+254'):
+            cleaned = '+254' + cleaned.lstrip('+')
+        return cleaned
+    
+    def process_menu(self, session, user_input):
+        current_input = user_input.split('*')[-1] if user_input else ''
+        
+        if session.current_step == 'start':
+            return self.start_menu(session)
+        elif session.current_step == 'main_menu':
+            return self.handle_main_menu(session, current_input)
+        elif session.current_step == 'register_first_name':
+            return self.handle_first_name(session, current_input)
+        elif session.current_step == 'register_last_name':
+            return self.handle_last_name(session, current_input)
+        elif session.current_step == 'confirm_registration':
+            return self.handle_confirmation(session, current_input)
+        else:
+            session.current_step = 'start'
+            session.save()
+            return self.start_menu(session)
+    
+    def start_menu(self, session):
+        existing_user = CustomUser.objects.filter(phone_number=session.phone_number).first()
+        
+        if existing_user:
+            field_count = existing_user.field_set.count()
+            return (f"END Welcome back, {existing_user.first_name}! 🌱\n"
+                   f"Phone: {existing_user.phone_number}\n"
+                   f"Fields: {field_count}\n"
+                   f"Email: {existing_user.email}")
+        
+        session.current_step = 'main_menu'
+        session.save()
+        
+        return ("CON Welcome to Agrivision! 🌱\n"
+                "Your Smart Farming Partner\n\n"
+                "1. Register New Account\n"
+                "2. About Agrivision\n"
+                "0. Exit")
+    
+    def handle_main_menu(self, session, choice):
+        if choice == '1':
+            session.current_step = 'register_first_name'
+            session.save()
+            return "CON Enter your FIRST NAME:\n\n0. Back"
+        elif choice == '2':
+            return ("END About Agrivision 🌱\n\n"
+                   "Smart farming platform for field management,\n"
+                   "crop advisory, and agricultural resources.\n\n"
+                   "Join thousands of farmers!")
+        elif choice == '0':
+            session.delete()
+            return "END Thank you! 🌾"
+        else:
+            return ("CON Invalid choice:\n\n"
+                   "1. Register New Account\n"
+                   "2. About Agrivision\n"
+                   "0. Exit")
+    
+    def handle_first_name(self, session, first_name):
+        if first_name == '0':
+            session.current_step = 'main_menu'
+            session.save()
+            return self.start_menu(session)
+        
+        if not first_name or len(first_name.strip()) < 2:
+            return "CON Invalid name! Enter at least 2 characters:\n\n0. Back"
+        
+        session.data['first_name'] = first_name.strip().title()
+        session.current_step = 'register_last_name'
+        session.save()
+        
+        return f"CON First Name: {session.data['first_name']} ✓\n\nEnter your LAST NAME:\n\n0. Back"
+    
+    def handle_last_name(self, session, last_name):
+        if last_name == '0':
+            session.current_step = 'main_menu'
+            session.save()
+            return self.start_menu(session)
+        
+        if not last_name or len(last_name.strip()) < 2:
+            return "CON Invalid name! Enter at least 2 characters:\n\n0. Back"
+        
+        session.data['last_name'] = last_name.strip().title()
+        session.current_step = 'confirm_registration'
+        session.save()
+        
+        return (f"CON CONFIRM DETAILS:\n\n"
+               f"📱 Phone: {session.phone_number}\n"
+               f"👤 Name: {session.data['first_name']} {session.data['last_name']}\n\n"
+               f"1. ✅ CONFIRM\n"
+               f"0. ❌ Cancel")
+    
+    def handle_confirmation(self, session, choice):
+        if choice == '1':
+            try:
+                # Generate unique email and username
+                phone_clean = re.sub(r'[^\d]', '', session.phone_number)
+                email = f"{session.data['first_name'].lower()}.{session.data['last_name'].lower()}.{phone_clean[-6:]}@agrivision.ussd"
+                username = f"{session.data['first_name'].lower()}{session.data['last_name'].lower()}{phone_clean[-4:]}"
+                
+                # Ensure uniqueness
+                counter = 1
+                base_email, base_username = email, username
+                while CustomUser.objects.filter(email=email).exists():
+                    email = f"{base_email.split('@')[0]}.{counter}@agrivision.ussd"
+                    counter += 1
+                
+                counter = 1
+                while CustomUser.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
+                
+                # Create user
+                user = CustomUser.objects.create_user(
+                    email=email,
+                    username=username,
+                    first_name=session.data['first_name'],
+                    last_name=session.data['last_name'],
+                    phone_number=session.phone_number,
+                    registered_via_ussd=True,
+                    ussd_registration_date=now(),
+                    password=None
+                )
+                
+                session.delete()
+                
+                return (f"END 🎉 SUCCESS! 🎉\n\n"
+                       f"Welcome {user.first_name}!\n\n"
+                       f"📱 Phone: {user.phone_number}\n"
+                       f"📧 Email: {user.email}\n\n"
+                       f"🌾 Happy farming!")
+                
+            except Exception as e:
+                logger.error(f"Registration error: {str(e)}")
+                return "END Registration failed. Try again later."
+        
+        elif choice == '0':
+            session.delete()
+            return "END Registration cancelled."
+        else:
+            return (f"CON Invalid choice:\n\n"
+                   f"📱 Phone: {session.phone_number}\n"
+                   f"👤 Name: {session.data['first_name']} {session.data['last_name']}\n\n"
+                   f"1. ✅ CONFIRM\n"
+                   f"0. ❌ Cancel")
