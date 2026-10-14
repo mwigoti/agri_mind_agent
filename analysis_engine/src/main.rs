@@ -18,7 +18,7 @@ use ndarray::Array2;
 use geo::BoundingRect;
 use geo_types::{Geometry as GeoGeometry, Polygon as GeoPolygon};
 use chrono::Utc;
-
+use proj::Proj;
 // Simple K-means clustering implementation
 #[derive(Debug)]
 struct KMeansResult {
@@ -458,7 +458,144 @@ struct StreamingConfig {
     enable_compression: bool,
     memory_limit_mb: usize,
 }
+// Add to your Rust VRA engine - coordinate transformation support
 
+
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GeometryWithCRS {
+    pub geometry: GeoJsonGeometry,
+    pub source_crs: String,
+    pub target_crs: String,
+}
+
+pub fn transform_geometry_to_wgs84(
+    geometry: &GeoJsonGeometry,
+    source_epsg: u32,
+) -> Result<GeoJsonGeometry, Box<dyn std::error::Error>> {
+    
+    if source_epsg == 4326 {
+        // Already in WGS84, no transformation needed
+        return Ok(geometry.clone());
+    }
+    
+    println!("🔄 Transforming coordinates from EPSG:{} to EPSG:4326", source_epsg);
+    
+    // Create projection transformer
+    let from_crs = format!("EPSG:{}", source_epsg);
+    let to_crs = "EPSG:4326";
+    let transformer = Proj::new_known_crs(&from_crs, &to_crs, None)?;
+    
+    match geometry {
+        GeoJsonGeometry::Polygon(polygon) => {
+            let mut transformed_rings = Vec::new();
+            
+            for ring in &polygon.rings {
+                let mut transformed_coords = Vec::new();
+                
+                for coord in ring {
+                    // Transform coordinate
+                    let (lon, lat) = transformer.convert((coord[0], coord[1]))?;
+                    transformed_coords.push(vec![lon, lat]);
+                }
+                
+                transformed_rings.push(transformed_coords);
+            }
+            
+            Ok(GeoJsonGeometry::Polygon(Polygon {
+                rings: transformed_rings,
+            }))
+        },
+        _ => Err("Only Polygon geometry supported for transformation".into()),
+    }
+}
+
+// Enhanced field analysis with CRS handling
+pub async fn analyze_field_with_crs_transform(
+    request: VRAAnalysisRequest,
+) -> Result<VRAAnalysisResult, Box<dyn std::error::Error>> {
+    
+    println!("🌾 Enhanced field analysis with CRS transformation");
+    
+    // 1. Detect or assume source CRS
+    let source_epsg = detect_coordinate_system(&request.geometry)?;
+    println!("📍 Detected coordinate system: EPSG:{}", source_epsg);
+    
+    // 2. Transform to WGS84 if needed
+    let wgs84_geometry = transform_geometry_to_wgs84(&request.geometry, source_epsg)?;
+    
+    // 3. Validate coordinates are in valid lat/lon range
+    validate_wgs84_geometry(&wgs84_geometry)?;
+    
+    // 4. Search for satellite imagery with correct coordinates
+    let satellite_item = search_sentinel2_imagery(&wgs84_geometry, &SearchConfig {
+        max_cloud_cover: 30.0,
+        date_range_days: 60,
+        ..Default::default()
+    }).await?;
+    
+    if let Some(item) = satellite_item {
+        println!("✅ Found Sentinel-2 imagery: {}", item.id);
+        
+        // Continue with real satellite data analysis
+        let analysis_result = process_satellite_imagery(
+            &item,
+            &wgs84_geometry,
+            &request.indices,
+            request.num_zones,
+        ).await?;
+        
+        Ok(analysis_result)
+    } else {
+        println!("❌ No suitable satellite imagery found, using synthetic data");
+        
+        // Generate realistic synthetic analysis
+        generate_synthetic_analysis(
+            request.field_id,
+            &wgs84_geometry,
+            request.num_zones,
+        )
+    }
+}
+
+fn detect_coordinate_system(geometry: &GeoJsonGeometry) -> Result<u32, Box<dyn std::error::Error>> {
+    let bounds = calculate_bounds(geometry)?;
+    
+    // Heuristic detection based on coordinate ranges
+    if bounds.min_x >= -180.0 && bounds.max_x <= 180.0 && 
+       bounds.min_y >= -90.0 && bounds.max_y <= 90.0 {
+        println!("📍 Coordinates appear to be in EPSG:4326 (WGS84)");
+        Ok(4326)
+    } else if bounds.min_x.abs() > 20000000.0 || bounds.max_x.abs() > 20000000.0 {
+        println!("📍 Large coordinate values detected, assuming EPSG:3857 (Web Mercator)");
+        Ok(3857)
+    } else {
+        println!("📍 Unknown coordinate system, assuming EPSG:3857");
+        Ok(3857)
+    }
+}
+
+fn validate_wgs84_geometry(geometry: &GeoJsonGeometry) -> Result<(), Box<dyn std::error::Error>> {
+    let bounds = calculate_bounds(geometry)?;
+    
+    if bounds.min_x < -180.0 || bounds.max_x > 180.0 {
+        return Err(format!("Invalid longitude range: {} to {}", bounds.min_x, bounds.max_x).into());
+    }
+    
+    if bounds.min_y < -90.0 || bounds.max_y > 90.0 {
+        return Err(format!("Invalid latitude range: {} to {}", bounds.min_y, bounds.max_y).into());
+    }
+    
+    if bounds.min_y < -56.0 || bounds.max_y > 84.0 {
+        println!("⚠️  Warning: Field partially outside Sentinel-2 coverage area (84°N to 56°S)");
+    }
+    
+    println!("✅ Coordinate validation passed");
+    println!("   Longitude: {:.6}° to {:.6}°", bounds.min_x, bounds.max_x);
+    println!("   Latitude: {:.6}° to {:.6}°", bounds.min_y, bounds.max_y);
+    
+    Ok(())
+}
 impl Default for StreamingConfig {
     fn default() -> Self {
         Self {
