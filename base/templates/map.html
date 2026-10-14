@@ -290,7 +290,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 var createdAtCell = document.createElement("td");
                 createdAtCell.textContent = field.properties.created_at;
                 var actionsCell = document.createElement("td");
-
+                var areaCell = document.createElement("td");
+                // Display area with 2 decimal places
+                areaCell.textContent = field.properties.area ? field.properties.area.toFixed(2) : 'N/A';
                 // analysis button
 
                 var analyzeButton = document.createElement("button");
@@ -334,6 +336,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 row.appendChild(idCell);
                 row.appendChild(nameCell);
+                row.appendChild(areaCell);
                 row.appendChild(createdAtCell);
                 row.appendChild(actionsCell);
 
@@ -440,6 +443,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         <tr>
                             <th>ID</th>
                             <th>Name</th>
+                            <th>Area (ha)</th>
                             <th>Created At</th>
                             <th>Actions</th>
                         </tr>
