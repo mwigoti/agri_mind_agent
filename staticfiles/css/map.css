@@ -1,125 +1,308 @@
-/* General Styles */
-body {
-    font-family: Arial, sans-serif;
+/* Base Reset */
+* {
     margin: 0;
     padding: 0;
-    background-color: #f4f4f4;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Sidebar */
-.sidebar {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 250px;
-    height: 100%;
-    background-color: #4a5d23;
-    color: white;
-    padding: 20px;
-    overflow-y: auto;
-}
-
-.sidebar h2 {
-    margin: 0 0 20px;
-    font-size: 20px;
-}
-
-.sidebar a {
-    display: block;
-    color: white;
-    text-decoration: none;
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 5px;
-    transition: background 0.3s;
-}
-
-.sidebar a:hover {
-    background: #627f39;
-}
-
-/* Info Panel */
-
-
-
-/* Map Container */
-.map-container {
-    margin-left: 260px;
+body {
+    background-color: #f0f2f5;
     height: 100vh;
     overflow: hidden;
 }
 
-.map-container iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
+/* Main Container Layout */
+.container {
+    display: flex;
+    height: 100vh;
 }
-.modal {
-    display: none; /* Hidden by default */
-    position: fixed;
+
+/* Sidebar Menu */
+.menu {
+    width: 250px;
+    background-color: #556b2f;
+    color: white;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.logo h3 {
+    color: #27ae60;
+    font-size: 1.8rem;
+    margin-bottom: 30px;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+nav ul li {
+    padding: 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+nav ul li:hover {
+    background-color: #34495e;
+}
+
+/* Map Container */
+.map-container {
+    flex-grow: 1;
+    position: relative;
+}
+
+#map {
+    height: 100vh;
+    width: 100%;
+}
+
+/* Map Controls */
+.map-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
     z-index: 1000;
-    left: 0;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.map-controls label {
+    color: #2c3e50;
+    font-weight: 500;
+}
+
+#layerSelect {
+    padding: 8px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    background: white;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+#layerSelect:focus {
+    outline: none;
+    border-color: #27ae60;
+}
+
+/* Info Panel */
+.info-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 300px;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 1000;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.info-panel h3 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.search-filter {
+    display: flex;
+    gap: 10px;
+    margin: 15px 0;
+    width: 100%;
+}
+
+.search-filter input {
+    flex: 1 1 auto;
+    min-width: 0; /* Allow input to shrink */
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.search-filter button {
+    flex: 0 0 auto; /* Prevent button from growing */
+    padding: 10px 20px;
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    white-space: nowrap; /* Prevent text wrapping */
+}
+
+.search-filter button:hover {
+    background-color: #219a52;
+}
+
+.add-fields {
+    margin-top: 20px;
+    border-top: 2px solid #eee;
+    padding-top: 20px;
+}
+
+/* Buttons */
+button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#myFieldsButton {
+    background-color: #2980b9;
+    color: white;
+    margin-bottom: 20px;
+    font-weight: 500;
+}
+
+#myFieldsButton:hover {
+    background-color: #3498db;
+}
+
+.add-field-button {
+    background-color: #27ae60;
+    color: white;
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.add-field-button:hover {
+    background-color: #219a52;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
     top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    overflow: auto;
-    background-color: rgba(0, 0, 0, 0.4);
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
 }
 
 .modal-content {
-    background-color: #fefefe;
-    margin: 15% auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow: auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
 }
 
 .close {
-    color: #aaa;
     float: right;
-    font-size: 28px;
-    font-weight: bold;
-}
-
-.close:hover,
-.close:focus {
-    color: black;
-    text-decoration: none;
+    font-size: 24px;
     cursor: pointer;
+    color: #666;
+    transition: color 0.3s;
 }
 
-table {
+.close:hover {
+    color: #333;
+}
+
+/* Enhanced Table Styles */
+#fieldsTable {
     width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.1);
+}
+
+#fieldsTable th {
+    background-color: #2c3e50;
+    color: white;
+    padding: 14px;
     text-align: left;
+    font-weight: 600;
 }
 
-th, td {
-    padding: 10px;
+#fieldsTable td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    background-color: white;
 }
 
-button {
-    margin-right: 5px;
-    height: auto;
-    width: auto;
-    border-radius: 30px;
+#fieldsTable tr:nth-child(even) td {
+    background-color: #f8f9fa;
 }
-.map-controls {
-        right: 20px;
-        left: 1050px;
-      
-        
-        color: black;
-        padding: 15px;
-        border-radius: 6px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        
+
+#fieldsTable tr:hover td {
+    background-color: #f1f4f7;
 }
-.info-panel {
-    top: 200px;
-    width: 200px;
-    overflow: hidden;
+
+#fieldsTable button {
+    padding: 8px 16px;
+    margin: 0 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: 4px;
+    transition: transform 0.2s;
 }
-.search-filter {
-    width: 100px;
-    overflow: hidden;
+
+#fieldsTable button:active {
+    transform: scale(0.96);
+}
+
+#fieldsTable button:first-child {
+    background-color: #2980b9;
+    color: white;
+}
+
+#fieldsTable button:last-child {
+    background-color: #e74c3c;
+    color: white;
+}
+
+#fieldsTable button:hover {
+    filter: brightness(1.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .menu {
+        width: 200px;
+    }
+    
+    .info-panel {
+        width: 250px;
+        right: 10px;
+    }
+    
+    .modal-content {
+        width: 90%;
+        padding: 20px;
+    }
+
+    .map-controls {
+        bottom: 10px;
+        left: 10px;
+        padding: 10px;
+    }
 }
