@@ -723,6 +723,15 @@
             display: block;
         }
 
+        .weather-location {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin-top: -10px;
+            color: #a3e635;
+        }
+
+
         .control-btn {
             padding: 8px 16px;
             margin: 5px;
@@ -987,6 +996,8 @@
                 <!-- Current Weather Card -->
                 <div class="current-weather" id="currentWeather">
                     <div class="weather-icon">🌤️</div>
+                    <div class="weather-location" id="weatherLocation">--</div>
+
                     <div class="weather-temp">--°C</div>
                     <div class="weather-desc">Loading weather data...</div>
                     <div class="weather-details">
@@ -1132,7 +1143,7 @@
 };
 
        
-        const WeatherAPI = {
+       const WeatherAPI = {
             async getCurrentWeather() {
                 try {
                     const response = await fetch(
@@ -1181,6 +1192,7 @@
                 document.getElementById('windSpeed').textContent = `${data.wind.speed} m/s`;
                 document.getElementById('pressure').textContent = `${data.main.pressure} hPa`;
                 document.getElementById('uvIndex').textContent = data.uvi || Math.floor(Math.random() * 11);
+                document.getElementById('weatherLocation').textContent = `${data.name}, ${data.sys.country}`;
 
                 if (data.main.temp > 35 || data.wind.speed > 15) {
                     Utils.showAlert('Extreme weather conditions detected!', 'warning');
