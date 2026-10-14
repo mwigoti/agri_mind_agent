@@ -47,7 +47,8 @@ class Field(models.Model):
     owner=models.ForeignKey(CustomUser, on_delete=models.CASCADE, default=True)
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
-    geometry = models.PolygonField(srid=3857, geography=False)  
+    geometry = models.PolygonField(srid=4326, geography=True)
+ 
     created_at = models.DateTimeField(default=now)
     area = models.FloatField(default=0.0)
 
