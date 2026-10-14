@@ -1960,7 +1960,7 @@
         const hasCrop = !!field.crop;
         const isActive = field.crop?.status === 'active';
         const isEnded = field.crop?.status === 'harvested' || field.crop?.status === 'failed';
-        const isSelected = selectedFieldId === field.id;
+        const isSelected = selectedFieldId === field.name;
         const stage = isActive ? getGrowthStage(field.crop.plantingDate) : null;
 
         return `
