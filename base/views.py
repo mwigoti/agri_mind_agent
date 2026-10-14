@@ -157,9 +157,10 @@ class SaveFieldView(APIView):
             if not coordinates or len(coordinates) < 3:
                 return Response({"error": "At least 3 points are required"}, status=status.HTTP_400_BAD_REQUEST)
 
-            
+            # ✅ Convert from [lat, lng] → (lng, lat) for PostGIS
             coords_lnglat = [(lng, lat) for lat, lng in coordinates]
 
+            # ✅ Ensure polygon is closed
             if coords_lnglat[0] != coords_lnglat[-1]:
                 coords_lnglat.append(coords_lnglat[0])
 
@@ -178,6 +179,7 @@ class SaveFieldView(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
            
 # Retrieve fields as geojson from db
