@@ -1,158 +1,180 @@
-// Map and Field Management
-        const MapManager = {
-            initialize() {
-                require([
-                    "esri/map",
-                    "esri/layers/WebTiledLayer",
-                    "esri/graphic",
-                    "esri/geometry/Point",
-                    "esri/geometry/Polygon",
-                    "esri/symbols/SimpleMarkerSymbol",
-                    "esri/symbols/SimpleFillSymbol",
-                    "esri/symbols/PictureMarkerSymbol",
-                    "esri/InfoTemplate",
-                    "esri/Color",
-                    "dojo/domReady!"
-                ], (Map, WebTiledLayer, Graphic, Point, Polygon, SimpleMarkerSymbol, SimpleFillSymbol, PictureMarkerSymbol, InfoTemplate, Color) => {
-                    
-                    APP_STATE.map = new Map("map", {
-                        basemap: "hybrid",
-                        center: [APP_STATE.currentLocation.lon, APP_STATE.currentLocation.lat],
-                        zoom: 10
-                    });
+<!DOCTYPE html>
+<html>
 
-                    APP_STATE.map.on("load", () => {
-                        this.setupWeatherOverlays(WebTiledLayer);
-                        WeatherAPI.updateWeatherForLocation();
-                        this.addWeatherStations(Graphic, Point, PictureMarkerSymbol, InfoTemplate);
-                    });
+<script>
+const MapManager = {
+    initialize() {
+        require([
+            "esri/map",
+            "esri/layers/WebTiledLayer",
+            "esri/graphic",
+            "esri/geometry/Point",
+            "esri/geometry/Polygon",
+            "esri/symbols/SimpleMarkerSymbol",
+            "esri/symbols/SimpleFillSymbol",
+            "esri/symbols/PictureMarkerSymbol",
+            "esri/InfoTemplate",
+            "esri/Color",
+            "dojo/domReady!"
+        ], (Map, WebTiledLayer, Graphic, Point, Polygon, SimpleMarkerSymbol, SimpleFillSymbol, PictureMarkerSymbol, InfoTemplate, Color) => {
+            APP_STATE.map = new Map("map", {
+                basemap: "hybrid",
+                center: [APP_STATE.currentLocation.lon, APP_STATE.currentLocation.lat],
+                zoom: 10
+            });
 
-                    APP_STATE.map.on("click", (event) => {
-                        if (APP_STATE.isDrawingMode) {
-                            this.handleFieldDrawing(event, Graphic, Point, Polygon, SimpleMarkerSymbol, SimpleFillSymbol, Color);
-                        } else {
-                            const mapPoint = event.mapPoint;
-                            APP_STATE.currentLocation = {
-                                lat: mapPoint.getLatitude(),
-                                lon: mapPoint.getLongitude()
-                            };
-                            WeatherAPI.updateWeatherForLocation();
-                            Utils.showAlert(`Weather updated for coordinates: ${APP_STATE.currentLocation.lat.toFixed(4)}, ${APP_STATE.currentLocation.lon.toFixed(4)}`);
-                        }
-                    });
+            APP_STATE.map.on("load", () => {
+                this.setupWeatherOverlays(WebTiledLayer);
+                WeatherAPI.updateWeatherForLocation();
+                // Add additional overlays or features here
+            });
 
-                    this.setupControls();
-                });
-            },
-
-            setupWeatherOverlays(WebTiledLayer) {
-                APP_STATE.weatherOverlays = {
-                    temp: new WebTiledLayer(
-                        `https://tile.openweathermap.org/map/temp_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`,
-                        { id: "temperature", copyright: "OpenWeatherMap", opacity: 0.7 }
-                    ),
-                    precipitation: new WebTiledLayer(
-                        `https://tile.openweathermap.org/map/precipitation_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`,
-                        { id: "precipitation", copyright: "OpenWeatherMap", opacity: 0.7 }
-                    ),
-                    wind: new WebTiledLayer(
-                        `https://tile.openweathermap.org/map/wind_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`,
-                        { id: "wind", copyright: "OpenWeatherMap", opacity: 0.7 }
-                    ),
-                    clouds: new WebTiledLayer(
-                        `https://tile.openweathermap.org/map/clouds_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`,
-                        { id: "clouds", copyright: "OpenWeatherMap", opacity: 0.7 }
-                    )
-                };
-            },
-
-            setupControls() {
-                // Layer control
-                document.getElementById("layerSelect").addEventListener("change", (e) => {
-                    APP_STATE.map.setBasemap(e.target.value);
-                });
-
-                // Weather overlay controls
-                document.getElementById("tempOverlay").addEventListener("click", () => {
-                    this.toggleWeatherOverlay("temp", document.getElementById("tempOverlay"));
-                    this.showLegend("temperature");
-                });
-
-                document.getElementById("precipOverlay").addEventListener("click", () => {
-                    this.toggleWeatherOverlay("precipitation", document.getElementById("precipOverlay"));
-                    this.showLegend("precipitation");
-                });
-
-                document.getElementById("windOverlay").addEventListener("click", () => {
-                    this.toggleWeatherOverlay("wind", document.getElementById("windOverlay"));
-                    this.showLegend("wind");
-                });
-
-                document.getElementById("cloudsOverlay").addEventListener("click", () => {
-                    this.toggleWeatherOverlay("clouds", document.getElementById("cloudsOverlay"));
-                    this.showLegend("clouds");
-                });
-
-                document.getElementById("clearOverlay").addEventListener("click", () => {
-                    this.clearAllOverlays();
-                });
-
-                // Field drawing controls
-                document.getElementById("addField").addEventListener("click", () => {
-                    this.startDrawingMode();
-                });
-
-                document.getElementById("saveField").addEventListener("click", () => {
-                    this.saveCurrentField();
-                });
-
-                document.getElementById("clearField").addEventListener("click", () => {
-                    this.clearCurrentField();
-                });
-
-                document.getElementById("cancelField").addEventListener("click", () => {
-                    this.cancelDrawingMode();
-                });
-            },
-
-            toggleWeatherOverlay(type, button) {
-                const layer = APP_STATE.weatherOverlays[type];
-                if (APP_STATE.map.getLayer(layer.id)) {
-                    APP_STATE.map.removeLayer(layer);
-                    button.classList.remove("active");
+            APP_STATE.map.on("click", (event) => {
+                if (APP_STATE.isDrawingMode) {
+                    this.handleFieldDrawing(event, Graphic, Point, Polygon, SimpleMarkerSymbol, SimpleFillSymbol, Color);
                 } else {
-                    APP_STATE.map.addLayer(layer);
-                    button.classList.add("active");
+                    const mapPoint = event.mapPoint;
+                    APP_STATE.currentLocation = {
+                        lat: mapPoint.getLatitude(),
+                        lon: mapPoint.getLongitude()
+                    };
+                    WeatherAPI.updateWeatherForLocation();
+                    Utils.showAlert(`Weather updated for coordinates: ${APP_STATE.currentLocation.lat.toFixed(4)}, ${APP_STATE.currentLocation.lon.toFixed(4)}`);
                 }
-            },
+            });
 
-            clearAllOverlays() {
-                Object.keys(APP_STATE.weatherOverlays).forEach(key => {
-                    const layer = APP_STATE.weatherOverlays[key];
-                    if (APP_STATE.map.getLayer(layer.id)) {
-                        APP_STATE.map.removeLayer(layer);
-                    }
+            this.setupControls();
+        });
+    },
+
+    setupWeatherOverlays(WebTiledLayer) {
+        APP_STATE.weatherOverlays = {
+            temp: new WebTiledLayer(`https://tile.openweathermap.org/map/temp_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`, {
+                id: "temperature",
+                opacity: 0.7
+            }),
+            precipitation: new WebTiledLayer(`https://tile.openweathermap.org/map/precipitation_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`, {
+                id: "precipitation",
+                opacity: 0.7
+            }),
+            wind: new WebTiledLayer(`https://tile.openweathermap.org/map/wind_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`, {
+                id: "wind",
+                opacity: 0.7
+            }),
+            clouds: new WebTiledLayer(`https://tile.openweathermap.org/map/clouds_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`, {
+                id: "clouds",
+                opacity: 0.7
+            })
+        };
+    },
+
+    setupControls() {
+        document.getElementById("layerSelect").addEventListener("change", (e) => {
+            APP_STATE.map.setBasemap(e.target.value);
+        });
+
+        ["temp", "precipitation", "wind", "clouds"].forEach(type => {
+            const btn = document.getElementById(`${type}Overlay`);
+            if (btn) {
+                btn.addEventListener("click", () => {
+                    this.toggleWeatherOverlay(type, btn);
+                    this.showLegend(type);
                 });
-                document.querySelectorAll(".weather-btn").forEach(btn => {
-                    btn.classList.remove("active");
-                });
-                document.getElementById("weatherLegend").style.display = "none";
-            },
+            }
+        });
 
-            showLegend(type) {
-                const legend = document.getElementById("weatherLegend");
-                const content = document.getElementById("legendContent");
-                legend.style.display = "block";
+        document.getElementById("clearOverlay").addEventListener("click", () => {
+            this.clearAllOverlays();
+        });
 
-                const legends = {
-                    temperature: [
-                        { color: "#800080", label: "Very Cold (-40°C)" },
-                        { color: "#0000FF", label: "Cold (0°C)" },
-                        { color: "#00FFFF", label: "Cool (10°C)" },
-                        { color: "#00FF00", label: "Moderate (20°C)" },
-                        {<!DOCTYPE html>
-<html lang="en">
-<head>
+        document.getElementById("addField").addEventListener("click", () => {
+            this.startDrawingMode();
+        });
+
+        document.getElementById("saveField").addEventListener("click", () => {
+            this.saveCurrentField();
+        });
+
+        document.getElementById("clearField").addEventListener("click", () => {
+            this.clearCurrentField();
+        });
+
+        document.getElementById("cancelField").addEventListener("click", () => {
+            this.cancelDrawingMode();
+        });
+    },
+
+    toggleWeatherOverlay(type, button) {
+        const layer = APP_STATE.weatherOverlays[type];
+        if (APP_STATE.map.getLayer(layer.id)) {
+            APP_STATE.map.removeLayer(layer);
+            button.classList.remove("active");
+        } else {
+            APP_STATE.map.addLayer(layer);
+            button.classList.add("active");
+        }
+    },
+
+    clearAllOverlays() {
+        Object.keys(APP_STATE.weatherOverlays).forEach(key => {
+            const layer = APP_STATE.weatherOverlays[key];
+            if (APP_STATE.map.getLayer(layer.id)) {
+                APP_STATE.map.removeLayer(layer);
+            }
+        });
+        document.querySelectorAll(".weather-btn").forEach(btn => {
+            btn.classList.remove("active");
+        });
+        document.getElementById("weatherLegend").style.display = "none";
+    },
+
+    showLegend(type) {
+        const legend = document.getElementById("weatherLegend");
+        const content = document.getElementById("legendContent");
+        legend.style.display = "block";
+
+        const legends = {
+            temperature: [
+                { color: "#800080", label: "Very Cold (-40°C)" },
+                { color: "#0000FF", label: "Cold (0°C)" },
+                { color: "#00FFFF", label: "Cool (10°C)" },
+                { color: "#00FF00", label: "Moderate (20°C)" },
+                { color: "#FFFF00", label: "Warm (30°C)" },
+                { color: "#FFA500", label: "Hot (35°C)" },
+                { color: "#FF0000", label: "Very Hot (40°C+)" }
+            ],
+            precipitation: [
+                { color: "#f0f9e8", label: "0 mm" },
+                { color: "#bae4bc", label: "1–2 mm" },
+                { color: "#7bccc4", label: "3–5 mm" },
+                { color: "#43a2ca", label: "6–10 mm" },
+                { color: "#0868ac", label: ">10 mm" }
+            ],
+            wind: [
+                { color: "#ccece6", label: "Calm (0–1 m/s)" },
+                { color: "#99d8c9", label: "Light (2–3 m/s)" },
+                { color: "#66c2a4", label: "Moderate (4–6 m/s)" },
+                { color: "#2ca25f", label: "Strong (7–9 m/s)" },
+                { color: "#006d2c", label: "Very Strong (10+ m/s)" }
+            ],
+            clouds: [
+                { color: "#ffffff", label: "Clear (0%)" },
+                { color: "#d9d9d9", label: "Few Clouds (25%)" },
+                { color: "#bdbdbd", label: "Scattered (50%)" },
+                { color: "#969696", label: "Broken (75%)" },
+                { color: "#636363", label: "Overcast (100%)" }
+            ]
+        };
+
+        content.innerHTML = legends[type].map(item => `
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: ${item.color}"></div>
+                <span>${item.label}</span>
+            </div>
+        `).join("");
+    }
+};
+</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>AgriVision - Weather Enhanced Map</title>
