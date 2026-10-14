@@ -1,354 +1,321 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    {% load static %}
-    {% csrf_token %}
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
-    <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>AgriVision - map</title>
+    <title>AgriVision - Weather Enhanced Map</title>
     
     <!-- ArcGIS CSS and JavaScript API -->
     <link rel="stylesheet" href="https://js.arcgis.com/3.46/dijit/themes/claro/claro.css">
     <link rel="stylesheet" href="https://js.arcgis.com/3.46/esri/css/esri.css">
-    <link rel="stylesheet" href="{% static 'css/map.css' %}">
-
-    <script>
-      var dojoConfig = { parseOnLoad: true };
-    </script>
-    <script src="https://js.arcgis.com/3.46/"></script>
-
-    <script type="text/javascript">
-    require([
-        "esri/map",
-        "esri/layers/ArcGISTiledMapServiceLayer",
-        "esri/graphic",
-        "esri/geometry/Polygon",
-        "esri/geometry/Point",
-        "esri/symbols/SimpleMarkerSymbol",
-        "esri/symbols/SimpleFillSymbol",
-        "esri/Color",
-        "dojo/domReady!"
-    ], function(Map, ArcGISTiledMapServiceLayer, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
-        var map = new Map("map", {
-            basemap: "hybrid",
-            center: [0, 37.8283],
-            zoom: 4
-        });
-
-        var boundariesURL = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer";
-        var boundariesLayer = new ArcGISTiledMapServiceLayer(boundariesURL);
-
-        var layerSelect = document.getElementById("layerSelect");
-        layerSelect.addEventListener("change", function(e) {
-            map.removeAllLayers();
-            if (e.target.value === "osm") {
-                map.setBasemap("streets");
-            } else if (e.target.value === "satellite") {
-                map.setBasemap("hybrid");
-            } else if (e.target.value === "satelliteBoundaries") {
-                map.setBasemap("hybrid");
-                map.addLayer(boundariesLayer);
-            }
-        });
-
-        setupInfoPanelToggle();
-        setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color);
-    });
-
-    function setupInfoPanelToggle() {
-        const infoPanel = document.querySelector(".info-panel");
-        const toggleButton = document.querySelector(".menu ul li:first-child");
-        if (!infoPanel || !toggleButton) return;
-        infoPanel.style.display = "block";
-        toggleButton.addEventListener("click", function() {
-            const isVisible = infoPanel.style.display === "block";
-            infoPanel.style.display = isVisible ? "none" : "block";
-            toggleButton.textContent = isVisible ? "Show Info Panel" : "Hide Info Panel";
-        });
-    }
-
-    function calculatePolygonArea(coordinates) {
-        if (coordinates.length < 3) return 0;
-        let area = 0;
-        const n = coordinates.length;
-        for (let i = 0; i < n; i++) {
-            const j = (i + 1) % n;
-            area += coordinates[i][0] * coordinates[j][1];
-            area -= coordinates[j][0] * coordinates[i][1];
+    
+    <!-- Chart.js for weather charts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f7fa;
         }
-        return Math.abs(area) / 2;
-    }
-
-    function convertToHectares(areaInMapUnits) {
-        return areaInMapUnits / 10000;
-    }
-
-    function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
-        let isDrawingMode = false;
-        let markerCoordinates = [];
-        const markers = [];
-        let mapClickHandle = null;
-        let currentPolygonGraphic = null;
-
-        function handleMapClick(event) {
-            if (!isDrawingMode) return;
-            const point = new Point(event.mapPoint.x, event.mapPoint.y, map.spatialReference);
-            const markerSymbol = new SimpleMarkerSymbol().setColor(new Color([255, 0, 0])).setSize(10);
-            const markerGraphic = new Graphic(point, markerSymbol);
-            map.graphics.add(markerGraphic);
-            markerCoordinates.push([point.x, point.y]);
-            markers.push(markerGraphic);
-            if (markerCoordinates.length >= 3) {
-                drawPolygonWithArea(markerCoordinates, map, Polygon, SimpleFillSymbol, Color);
-            }
+        
+        .container {
+            display: flex;
+            height: 100vh;
         }
-
-        function drawPolygonWithArea(coords, map, Polygon, SimpleFillSymbol, Color) {
-            if (currentPolygonGraphic) map.graphics.remove(currentPolygonGraphic);
-            const polygon = new Polygon(map.spatialReference);
-            polygon.addRing(coords);
-            const fillSymbol = new SimpleFillSymbol().setColor(new Color([0, 255, 0, 0.25]));
-            currentPolygonGraphic = new Graphic(polygon, fillSymbol);
-            map.graphics.add(currentPolygonGraphic);
-            const areaInMapUnits = calculatePolygonArea(coords);
-            updateInfoPanel({ area: convertToHectares(areaInMapUnits) });
+        
+        .menu {
+            width: 250px;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px 0;
+            overflow-y: auto;
         }
-
-        function sendCoordinatesToDjango(coordinates) {
-            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-            const fieldName = prompt("Enter a name for this field:");
-            if (!fieldName) return;
-            const areaInMapUnits = calculatePolygonArea(coordinates);
-            const areaInHectares = convertToHectares(areaInMapUnits);
-            const fieldData = { name: fieldName, coordinates: coordinates, area: areaInHectares, area_units: 'hectares' };
-            const addFieldButton = document.querySelector(".add-field-button");
-            const originalText = addFieldButton.textContent;
-            addFieldButton.textContent = "Saving...";
-            addFieldButton.disabled = true;
-            fetch('/save-field/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-                body: JSON.stringify(fieldData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) alert('Error saving field: ' + data.error);
-                else {
-                    alert(`Field saved successfully! Area: ${areaInHectares.toFixed(2)} hectares`);
-                    map.graphics.clear();
-                    markerCoordinates = [];
-                    markers.length = 0;
-                    updateInfoPanel({ area: 0 });
-                }
-            })
-            .catch(() => alert('Error sending coordinates to server'))
-            .finally(() => {
-                addFieldButton.textContent = originalText;
-                addFieldButton.disabled = false;
-            });
+        
+        .logo h3 {
+            text-align: center;
+            margin: 0 0 30px 0;
+            font-size: 1.8rem;
+            color: #ecf0f1;
         }
-
-        function updateInfoPanel(data) {
-            const infoPanel = document.querySelector('.info-panel');
-            if (infoPanel && data.area !== undefined) {
-                const areaElement = infoPanel.querySelector('h3 + p');
-                if (areaElement) areaElement.textContent = `${data.area.toFixed(2)} ha`;
-            }
+        
+        .menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
-
-        const addFieldButton = document.querySelector(".add-field-button");
-        addFieldButton.addEventListener("click", function() {
-            isDrawingMode = !isDrawingMode;
-            if (isDrawingMode) {
-                addFieldButton.textContent = "Finish Field";
-                addFieldButton.style.backgroundColor = "#ff4444";
-                mapClickHandle = map.on("click", handleMapClick);
-                updateInfoPanel({ area: 0 });
-            } else {
-                addFieldButton.textContent = "Add Field";
-                addFieldButton.style.backgroundColor = "";
-                if (mapClickHandle) mapClickHandle.remove();
-                if (markerCoordinates.length < 3) {
-                    alert("At least three points are required to create a polygon.");
-                    resetDrawing(map, markers);
-                } else {
-                    sendCoordinatesToDjango(markerCoordinates);
-                }
-            }
-        });
-
-        function resetDrawing(map, markers) {
-            markers.forEach(marker => map.graphics.remove(marker));
-            markers.length = 0;
-            if (currentPolygonGraphic) {
-                map.graphics.remove(currentPolygonGraphic);
-                currentPolygonGraphic = null;
-            }
-            markerCoordinates = [];
-            updateInfoPanel({ area: 0 });
+        
+        .menu li {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
         }
-    }
-
-    document.addEventListener("DOMContentLoaded", function() {
-        const myFieldsButton = document.getElementById("FieldsButton");
-        const vraMapsMenuItem = document.getElementById("VRA-maps");
-        const myFieldsModal = document.getElementById("myFieldsModal");
-        const closeModal = document.getElementById("closeModal");
-        const fieldsTableBody = document.querySelector("#fieldsTable tbody");
-
-        function loadFields() {
-            fetch('/api/myfields/')
-            .then(response => response.json())
-            .then(data => {
-                fieldsTableBody.innerHTML = "";
-                data.features.forEach(field => {
-                    const row = document.createElement("tr");
-                    row.innerHTML = `
-                        <td>${field.id}</td>
-                        <td>${field.properties.name}</td>
-                        <td>${field.properties.area ? field.properties.area.toFixed(2) : 'N/A'}</td>
-                        <td>${field.properties.created_at}</td>
-                        <td>
-                            <button class="analyze-btn" data-id="${field.id}">Analyze</button>
-                            <button class="delete-btn" data-id="${field.id}" data-name="${field.properties.name}">Delete</button>
-                        </td>`;
-                    fieldsTableBody.appendChild(row);
-                });
-                myFieldsModal.style.display = "block";
-            });
+        
+        .menu li:hover {
+            background: rgba(52, 152, 219, 0.2);
+            border-left-color: #3498db;
         }
-
-        myFieldsButton.addEventListener("click", loadFields);
-        closeModal.addEventListener("click", () => myFieldsModal.style.display = "none");
-
-        // VRA modal
-        const vraModal = document.getElementById("vraMapsModal");
-        const closeVraModal = document.getElementById("closeVraModal");
-        const vraTableBody = document.querySelector("#vraTable tbody");
-
-        function loadVraMaps() {
-            fetch('/api/myfields/')
-            .then(response => response.json())
-            .then(data => {
-                vraTableBody.innerHTML = "";
-                data.features.forEach(field => {
-                    const row = document.createElement("tr");
-                    row.innerHTML = `
-                        <td>${field.id}</td>
-                        <td>${field.properties.name}</td>
-                        <td>${field.properties.area ? field.properties.area.toFixed(2) : 'N/A'}</td>
-                        <td>${field.properties.created_at}</td>
-                        <td><button class="analyze-vra-btn" data-id="${field.id}">Analyze VRA</button></td>`;
-                    vraTableBody.appendChild(row);
-                });
-                vraModal.style.display = "block";
-            });
+        
+        .map-container {
+            flex: 1;
+            position: relative;
+            display: flex;
         }
-
-        vraMapsMenuItem.addEventListener("click", loadVraMaps);
-        closeVraModal.addEventListener("click", () => vraModal.style.display = "none");
-
-        function getCSRFToken() {
-            const csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
-            return csrfMetaTag ? csrfMetaTag.getAttribute('content') : null;
+        
+        #map {
+            flex: 1;
+            height: 100vh;
         }
-
-        fieldsTableBody.addEventListener('click', e => {
-            if (e.target.classList.contains('delete-btn')) {
-                const id = e.target.dataset.id;
-                const name = e.target.dataset.name;
-                if (confirm(`Are you sure you want to delete ${name}?`)) deleteField(id);
-            } else if (e.target.classList.contains('analyze-btn')) {
-                window.location.href = `/api/analyze-field/${e.target.dataset.id}`;
-            }
-        });
-
-        vraTableBody.addEventListener('click', e => {
-            if (e.target.classList.contains('analyze-vra-btn')) {
-                window.location.href = `/vra_pageanalysis/${e.target.dataset.id}/`;
-            }
-        });
-
-        function deleteField(id) {
-            const csrfToken = getCSRFToken();
-            if (!csrfToken) {
-                alert("CSRF token missing, cannot proceed with request");
-                return;
-            }
-            fetch(`/api/delete-field/${id}/`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
-            })
-            .then(response => {
-                if (response.ok) {
-                    alert("Field deleted successfully!");
-                    location.reload();
-                } else {
-                    return response.json().then(data => { throw new Error(data.detail || "Failed to delete field!"); });
-                }
-            })
-            .catch(error => alert(error.message || "An unexpected error occurred."));
+        
+        .weather-panel {
+            width: 400px;
+            background: white;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
         }
-    });
-    </script>
-     <style>
-        /* Apply the same styling to the VRA table as fieldsTable */
-        #vraTable {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+        
+        .weather-controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
             border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 1px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        #vraTable th {
-            background-color: #2c3e50;
+        
+        .weather-overlay-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .weather-btn {
+            padding: 8px 12px;
+            background: #3498db;
             color: white;
-            padding: 14px;
-            text-align: left;
-            font-weight: 600;
-        }
-        #vraTable td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-            background-color: white;
-        }
-        #vraTable tr:nth-child(even) td {
-            background-color: #f8f9fa;
-        }
-        #vraTable tr:hover td {
-            background-color: #f1f4f7;
-        }
-        #vraTable button {
-            padding: 8px 16px;
-            margin: 0 4px;
-            font-size: 0.9rem;
-            font-weight: 500;
+            border: none;
             border-radius: 4px;
-            transition: transform 0.2s;
-            background-color: green;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .weather-btn:hover {
+            background: #2980b9;
+        }
+        
+        .weather-btn.active {
+            background: #27ae60;
+        }
+        
+        select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        
+        .current-weather {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
             color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
         }
-        #vraTable button:hover {
-            filter: brightness(1.1);
+        
+        .weather-icon {
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 10px;
         }
-        #vraTable button:active {
-            transform: scale(0.96);
+        
+        .weather-temp {
+            font-size: 2.5rem;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .weather-desc {
+            text-align: center;
+            text-transform: capitalize;
+            margin-top: 10px;
+        }
+        
+        .weather-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .weather-stat {
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .chart-container {
+            margin: 20px 0;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        #weatherChart {
+            max-height: 300px;
+        }
+        
+        .forecast-container {
+            margin: 20px 0;
+        }
+        
+        .forecast-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .forecast-date {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .forecast-temp {
+            color: #e74c3c;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            right: 420px;
+            width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .add-field-button {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 15px;
+        }
+        
+        .add-field-button:hover {
+            background: #229954;
+        }
+        
+        .weather-legend {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 3px;
+        }
+        
+        .alert-banner {
+            background: #e74c3c;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            position: absolute;
+            top: 0;
+            left: 250px;
+            right: 0;
+            z-index: 1001;
+            display: none;
         }
     </style>
+
+    <script>
+        var dojoConfig = { parseOnLoad: true };
+    </script>
+    <script src="https://js.arcgis.com/3.46/"></script>
 </head>
+
 <body class="claro">
+    <div class="alert-banner" id="alertBanner">
+        ⚠️ Weather Alert: Severe weather conditions expected in your area
+    </div>
+
     <div class="container">
         <div class="menu">
             <div class="logo"><h3>AgriVision</h3></div>
             <nav>
                 <ul>
-                    <li>Hide Field Panel</li>
+                    <li id="hidePanel">Hide Weather Panel</li>
                     <li>Season 2024</li>
                     <li>Get Started</li>
                     <li>Monitoring</li>
-                    <li>Weather</li>
+                    <li id="weatherMenuItem">Weather</li>
                     <li>Overview</li>
                     <li id="VRA-maps">VRA Maps</li>
                     <li>Field Activity Log</li>
@@ -360,62 +327,825 @@
                 </ul>
             </nav>
         </div>
-        <div id="myFieldsModal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="close" id="closeModal">&times;</span>
-                <h2>My Fields</h2>
-                <table id="fieldsTable" border="1">
-                    <thead>
-                        <tr><th>ID</th><th>Name</th><th>Area (ha)</th><th>Created At</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-        <div id="vraMapsModal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <span class="close" id="closeVraModal">&times;</span>
-                <h2>VRA Maps</h2>
-                <table id="vraTable" border="1">
-                    <thead>
-                        <tr><th>ID</th><th>Name</th><th>Area (ha)</th><th>Created At</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
+
         <div class="map-container">
-            <div id="map"></div>
-            <div class="map-controls">
-                <label for="layerSelect">Map Layer:</label>
-                <select id="layerSelect">
-                    <option value="osm">OSM</option>
-                    <option value="satellite">Satellite</option>
-                    <option value="satelliteBoundaries">Satellite with Boundaries</option>
-                </select>
+            <div class="weather-controls">
+                <h4 style="margin: 0 0 10px 0;">Weather Overlays</h4>
+                <div class="weather-overlay-controls">
+                    <button class="weather-btn" id="tempOverlay">Temperature</button>
+                    <button class="weather-btn" id="precipOverlay">Precipitation</button>
+                    <button class="weather-btn" id="windOverlay">Wind</button>
+                    <button class="weather-btn" id="cloudsOverlay">Clouds</button>
+                    <button class="weather-btn" id="clearOverlay">Clear All</button>
+                </div>
+                <div>
+                    <select id="layerSelect">
+                        <option value="streets">Street Map</option>
+                        <option value="hybrid" selected>Satellite</option>
+                        <option value="terrain">Terrain</option>
+                    </select>
+                </div>
+                <div class="weather-legend" id="weatherLegend" style="display: none;">
+                    <h5 style="margin: 0 0 10px 0;">Legend</h5>
+                    <div id="legendContent"></div>
+                </div>
             </div>
+
             <div class="info-panel">
-                <h3>Global View</h3>
-                <p>0 ha</p>
+                <h3>Field Information</h3>
+                <p id="fieldArea">0 ha</p>
                 <div class="search-filter">
-                    <input type="text" placeholder="Search">
+                    <input type="text" placeholder="Search fields">
                     <button>Filter</button>
                 </div>
-                <div class="no-fields-message">
-                    <p>No fields in this season. <a href="#">Update Season</a></p>
-                </div>
-                <div class="add-fields" id="addFields">
+                <div class="add-fields">
                     <h4>Add Your Fields</h4>
                     <button class="add-field-button" id="addField">ADD FIELD</button>
                 </div>
             </div>
-            <div id="save-panel" style="display: none;">
-                <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-                <input type="text" id="fieldName" placeholder="Enter field name">
-                <button id="saveField">Save Field</button>
-                <button id="cancelField">Cancel</button>
+
+            <div id="map"></div>
+
+            <div class="weather-panel" id="weatherPanel">
+                <h2>Weather Dashboard</h2>
+                
+                <div class="current-weather" id="currentWeather">
+                    <div class="weather-icon">🌤️</div>
+                    <div class="weather-temp">--°C</div>
+                    <div class="weather-desc">Loading...</div>
+                    <div class="weather-details">
+                        <div class="weather-stat">
+                            <div>Humidity</div>
+                            <div id="humidity">--%</div>
+                        </div>
+                        <div class="weather-stat">
+                            <div>Wind Speed</div>
+                            <div id="windSpeed">-- m/s</div>
+                        </div>
+                        <div class="weather-stat">
+                            <div>Pressure</div>
+                            <div id="pressure">-- hPa</div>
+                        </div>
+                        <div class="weather-stat">
+                            <div>UV Index</div>
+                            <div id="uvIndex">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">7-Day Temperature Forecast</div>
+                    <canvas id="weatherChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Precipitation Forecast</div>
+                    <canvas id="precipChart"></canvas>
+                </div>
+
+                <div class="forecast-container">
+                    <h3>5-Day Forecast</h3>
+                    <div id="forecast"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Historical Weather (Last 30 Days)</div>
+                    <canvas id="historicalChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Weather Details Modal -->
+    <div id="weatherModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeWeatherModal">&times;</span>
+            <h2>Detailed Weather Analysis</h2>
+            <div id="detailedWeatherContent">
+                <canvas id="detailedChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Weather API Configuration
+        const WEATHER_API_KEY = '109f222b11c58e432329752f9f07bae1'; // Replace with your API key
+        let map;
+        let weatherOverlays = {};
+        let currentLocation = { lat: 37.8283, lon: 0 };
+        let weatherChart, precipChart, historicalChart;
+
+        require([
+            "esri/map",
+            "esri/layers/ArcGISTiledMapServiceLayer",
+            "esri/layers/WebTiledLayer",
+            "esri/graphic",
+            "esri/geometry/Point",
+            "esri/symbols/SimpleMarkerSymbol",
+            "esri/symbols/PictureMarkerSymbol",
+            "esri/InfoTemplate",
+            "esri/Color",
+            "dojo/domReady!"
+        ], function(Map, ArcGISTiledMapServiceLayer, WebTiledLayer, Graphic, Point, SimpleMarkerSymbol, PictureMarkerSymbol, InfoTemplate, Color) {
+            
+            // Initialize map
+            map = new Map("map", {
+                basemap: "hybrid",
+                center: [currentLocation.lon, currentLocation.lat],
+                zoom: 6
+            });
+
+            map.on("load", function() {
+                setupWeatherOverlays();
+                getCurrentWeather();
+                getWeatherForecast();
+                getHistoricalWeather();
+            });
+
+            map.on("click", function(event) {
+                const mapPoint = event.mapPoint;
+                currentLocation = {
+                    lat: mapPoint.getLatitude(),
+                    lon: mapPoint.getLongitude()
+                };
+                updateWeatherForLocation();
+            });
+
+            // Setup weather overlay layers
+            function setupWeatherOverlays() {
+                // Temperature overlay
+                weatherOverlays.temp = new WebTiledLayer(
+                    `https://tile.openweathermap.org/map/temp_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`,
+                    {
+                        id: "temperature",
+                        copyright: "OpenWeatherMap",
+                        opacity: 0.6
+                    }
+                );
+
+                // Precipitation overlay
+                weatherOverlays.precipitation = new WebTiledLayer(
+                    `https://tile.openweathermap.org/map/precipitation_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`,
+                    {
+                        id: "precipitation",
+                        copyright: "OpenWeatherMap",
+                        opacity: 0.6
+                    }
+                );
+
+                // Wind overlay
+                weatherOverlays.wind = new WebTiledLayer(
+                    `https://tile.openweathermap.org/map/wind_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`,
+                    {
+                        id: "wind",
+                        copyright: "OpenWeatherMap",
+                        opacity: 0.6
+                    }
+                );
+
+                // Clouds overlay
+                weatherOverlays.clouds = new WebTiledLayer(
+                    `https://tile.openweathermap.org/map/clouds_new/{level}/{col}/{row}.png?appid=${WEATHER_API_KEY}`,
+                    {
+                        id: "clouds",
+                        copyright: "OpenWeatherMap",
+                        opacity: 0.6
+                    }
+                );
+            }
+
+            // Layer control
+            document.getElementById("layerSelect").addEventListener("change", function(e) {
+                map.setBasemap(e.target.value);
+            });
+
+            // Weather overlay controls
+            document.getElementById("tempOverlay").addEventListener("click", function() {
+                toggleWeatherOverlay("temp", this);
+                showLegend("temperature");
+            });
+
+            document.getElementById("precipOverlay").addEventListener("click", function() {
+                toggleWeatherOverlay("precipitation", this);
+                showLegend("precipitation");
+            });
+
+            document.getElementById("windOverlay").addEventListener("click", function() {
+                toggleWeatherOverlay("wind", this);
+                showLegend("wind");
+            });
+
+            document.getElementById("cloudsOverlay").addEventListener("click", function() {
+                toggleWeatherOverlay("clouds", this);
+                showLegend("clouds");
+            });
+
+            document.getElementById("clearOverlay").addEventListener("click", function() {
+                clearAllOverlays();
+            });
+
+            function toggleWeatherOverlay(type, button) {
+                const layer = weatherOverlays[type];
+                if (map.getLayer(layer.id)) {
+                    map.removeLayer(layer);
+                    button.classList.remove("active");
+                } else {
+                    map.addLayer(layer);
+                    button.classList.add("active");
+                }
+            }
+
+            function clearAllOverlays() {
+                Object.keys(weatherOverlays).forEach(key => {
+                    const layer = weatherOverlays[key];
+                    if (map.getLayer(layer.id)) {
+                        map.removeLayer(layer);
+                    }
+                });
+                document.querySelectorAll(".weather-btn").forEach(btn => {
+                    btn.classList.remove("active");
+                });
+                document.getElementById("weatherLegend").style.display = "none";
+            }
+
+            function showLegend(type) {
+                const legend = document.getElementById("weatherLegend");
+                const content = document.getElementById("legendContent");
+                legend.style.display = "block";
+
+                const legends = {
+                    temperature: [
+                        { color: "#800080", label: "Very Cold (-40°C)" },
+                        { color: "#0000FF", label: "Cold (0°C)" },
+                        { color: "#00FFFF", label: "Cool (10°C)" },
+                        { color: "#00FF00", label: "Moderate (20°C)" },
+                        { color: "#FFFF00", label: "Warm (30°C)" },
+                        { color: "#FF8000", label: "Hot (40°C)" },
+                        { color: "#FF0000", label: "Very Hot (50°C)" }
+                    ],
+                    precipitation: [
+                        { color: "#FFFFFF", label: "No precipitation" },
+                        { color: "#C6E2FF", label: "Light rain (0.1-0.5 mm/h)" },
+                        { color: "#87CEEB", label: "Moderate rain (0.5-4 mm/h)" },
+                        { color: "#0000FF", label: "Heavy rain (4-16 mm/h)" },
+                        { color: "#000080", label: "Very heavy rain (>16 mm/h)" }
+                    ],
+                    wind: [
+                        { color: "#FFFFFF", label: "Calm (0-2 m/s)" },
+                        { color: "#87CEEB", label: "Light breeze (2-6 m/s)" },
+                        { color: "#00BFFF", label: "Moderate breeze (6-11 m/s)" },
+                        { color: "#0000FF", label: "Strong breeze (11-17 m/s)" },
+                        { color: "#000080", label: "Gale (17+ m/s)" }
+                    ],
+                    clouds: [
+                        { color: "#FFFFFF", label: "Clear sky (0-10%)" },
+                        { color: "#E0E0E0", label: "Few clouds (11-25%)" },
+                        { color: "#C0C0C0", label: "Scattered clouds (25-50%)" },
+                        { color: "#808080", label: "Broken clouds (51-84%)" },
+                        { color: "#404040", label: "Overcast (85-100%)" }
+                    ]
+                };
+
+                content.innerHTML = legends[type].map(item => 
+                    `<div class="legend-item">
+                        <div class="legend-color" style="background-color: ${item.color}"></div>
+                        <span>${item.label}</span>
+                    </div>`
+                ).join("");
+            }
+
+            setupPolygonDrawing();
+        });
+
+        // Weather API Functions
+        async function getCurrentWeather() {
+            try {
+                const response = await fetch(
+                    `https://api.openweathermap.org/data/2.5/weather?lat=${currentLocation.lat}&lon=${currentLocation.lon}&appid=${WEATHER_API_KEY}&units=metric`
+                );
+                const data = await response.json();
+                updateCurrentWeatherDisplay(data);
+            } catch (error) {
+                console.error('Error fetching current weather:', error);
+                showWeatherError();
+            }
+        }
+
+        async function getWeatherForecast() {
+            try {
+                const response = await fetch(
+                    `https://api.openweathermap.org/data/2.5/forecast?lat=${currentLocation.lat}&lon=${currentLocation.lon}&appid=${WEATHER_API_KEY}&units=metric`
+                );
+                const data = await response.json();
+                updateForecastDisplay(data);
+                createWeatherCharts(data);
+            } catch (error) {
+                console.error('Error fetching forecast:', error);
+            }
+        }
+
+        async function getHistoricalWeather() {
+            try {
+                const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+                const response = await fetch(
+                    `https://api.openweathermap.org/data/3.0/onecall/timemachine?lat=${currentLocation.lat}&lon=${currentLocation.lon}&dt=${thirtyDaysAgo}&appid=${WEATHER_API_KEY}&units=metric`
+                );
+                const data = await response.json();
+                createHistoricalChart(data);
+            } catch (error) {
+                console.error('Error fetching historical weather:', error);
+            }
+        }
+
+        function updateCurrentWeatherDisplay(data) {
+            const iconMap = {
+                "01d": "☀️", "01n": "🌙", "02d": "⛅", "02n": "☁️",
+                "03d": "☁️", "03n": "☁️", "04d": "☁️", "04n": "☁️",
+                "09d": "🌦️", "09n": "🌦️", "10d": "🌧️", "10n": "🌧️",
+                "11d": "⛈️", "11n": "⛈️", "13d": "🌨️", "13n": "🌨️",
+                "50d": "🌫️", "50n": "🌫️"
+            };
+
+            document.querySelector(".weather-icon").textContent = iconMap[data.weather[0].icon] || "🌤️";
+            document.querySelector(".weather-temp").textContent = `${Math.round(data.main.temp)}°C`;
+            document.querySelector(".weather-desc").textContent = data.weather[0].description;
+            document.getElementById("humidity").textContent = `${data.main.humidity}%`;
+            document.getElementById("windSpeed").textContent = `${data.wind.speed} m/s`;
+            document.getElementById("pressure").textContent = `${data.main.pressure} hPa`;
+
+            // Check for weather alerts
+            if (data.main.temp > 35 || data.wind.speed > 15) {
+                showWeatherAlert("Extreme weather conditions detected!");
+            }
+        }
+
+        function updateForecastDisplay(data) {
+            const forecastContainer = document.getElementById("forecast");
+            const dailyForecasts = {};
+
+            data.list.forEach(item => {
+                const date = new Date(item.dt * 1000);
+                const dateStr = date.toLocaleDateString();
+                
+                if (!dailyForecasts[dateStr]) {
+                    dailyForecasts[dateStr] = {
+                        date: dateStr,
+                        temps: [item.main.temp],
+                        desc: item.weather[0].description,
+                        icon: item.weather[0].icon
+                    };
+                } else {
+                    dailyForecasts[dateStr].temps.push(item.main.temp);
+                }
+            });
+
+            const forecastHtml = Object.values(dailyForecasts).slice(0, 5).map(day => {
+                const avgTemp = Math.round(day.temps.reduce((a, b) => a + b) / day.temps.length);
+                const maxTemp = Math.round(Math.max(...day.temps));
+                const minTemp = Math.round(Math.min(...day.temps));
+                
+                return `
+                    <div class="forecast-item">
+                        <div class="forecast-date">${day.date}</div>
+                        <div class="forecast-desc">${day.desc}</div>
+                        <div class="forecast-temp">${maxTemp}°/${minTemp}°</div>
+                    </div>
+                `;
+            }).join("");
+
+            forecastContainer.innerHTML = forecastHtml;
+        }
+
+        function createWeatherCharts(data) {
+            // Temperature Chart
+            const tempCtx = document.getElementById('weatherChart').getContext('2d');
+            const labels = data.list.slice(0, 24).map(item => {
+                return new Date(item.dt * 1000).toLocaleDateString();
+            });
+            const temps = data.list.slice(0, 24).map(item => item.main.temp);
+
+            if (weatherChart) weatherChart.destroy();
+            weatherChart = new Chart(tempCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: temps,
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Temperature (°C)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Precipitation Chart
+            const precipCtx = document.getElementById('precipChart').getContext('2d');
+            const precipitation = data.list.slice(0, 24).map(item => 
+                item.rain ? item.rain['3h'] || 0 : 0
+            );
+
+            if (precipChart) precipChart.destroy();
+            precipChart = new Chart(precipCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Precipitation (mm)',
+                        data: precipitation,
+                        backgroundColor: '#3498db',
+                        borderColor: '#2980b9'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Precipitation (mm)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createHistoricalChart(data) {
+            if (!data.data) return;
+
+            const histCtx = document.getElementById('historicalChart').getContext('2d');
+            const labels = data.data.map(item => new Date(item.dt * 1000).toLocaleDateString());
+            const temps = data.data.map(item => item.temp);
+            const humidity = data.data.map(item => item.humidity);
+
+            if (historicalChart) historicalChart.destroy();
+            historicalChart = new Chart(histCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: temps,
+                        borderColor: '#e74c3c',
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Humidity (%)',
+                        data: humidity,
+                        borderColor: '#3498db',
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Temperature (°C)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Humidity (%)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateWeatherForLocation() {
+            getCurrentWeather();
+            getWeatherForecast();
+            getHistoricalWeather();
+        }
+
+        function showWeatherAlert(message) {
+            const alertBanner = document.getElementById("alertBanner");
+            alertBanner.textContent = `⚠️ ${message}`;
+            alertBanner.style.display = "block";
+            setTimeout(() => {
+                alertBanner.style.display = "none";
+            }, 5000);
+        }
+
+        function showWeatherError() {
+            document.querySelector(".weather-desc").textContent = "Weather data unavailable";
+            document.querySelector(".weather-temp").textContent = "--°C";
+        }
+
+        // Panel toggle functionality
+        document.getElementById("hidePanel").addEventListener("click", function() {
+            const panel = document.getElementById("weatherPanel");
+            const isVisible = panel.style.display !== "none";
+            panel.style.display = isVisible ? "none" : "block";
+            this.textContent = isVisible ? "Show Weather Panel" : "Hide Weather Panel";
+        });
+
+        // Field drawing functionality
+        function setupPolygonDrawing() {
+            let isDrawingMode = false;
+            let markerCoordinates = [];
+            const markers = [];
+            let mapClickHandle = null;
+            let currentPolygonGraphic = null;
+
+            function handleMapClick(event) {
+                if (!isDrawingMode) return;
+                
+                require([
+                    "esri/graphic",
+                    "esri/geometry/Point",
+                    "esri/geometry/Polygon",
+                    "esri/symbols/SimpleMarkerSymbol",
+                    "esri/symbols/SimpleFillSymbol",
+                    "esri/Color"
+                ], function(Graphic, Point, Polygon, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
+                    const point = new Point(event.mapPoint.x, event.mapPoint.y, map.spatialReference);
+                    const markerSymbol = new SimpleMarkerSymbol().setColor(new Color([255, 0, 0])).setSize(10);
+                    const markerGraphic = new Graphic(point, markerSymbol);
+                    map.graphics.add(markerGraphic);
+                    markerCoordinates.push([point.x, point.y]);
+                    markers.push(markerGraphic);
+
+                    if (markerCoordinates.length >= 3) {
+                        drawPolygonWithArea(markerCoordinates, Polygon, SimpleFillSymbol, Color);
+                    }
+                });
+            }
+
+            function drawPolygonWithArea(coords, Polygon, SimpleFillSymbol, Color) {
+                require(["esri/graphic"], function(Graphic) {
+                    if (currentPolygonGraphic) map.graphics.remove(currentPolygonGraphic);
+                    const polygon = new Polygon(map.spatialReference);
+                    polygon.addRing(coords);
+                    const fillSymbol = new SimpleFillSymbol().setColor(new Color([0, 255, 0, 0.25]));
+                    currentPolygonGraphic = new Graphic(polygon, fillSymbol);
+                    map.graphics.add(currentPolygonGraphic);
+                    
+                    const areaInMapUnits = calculatePolygonArea(coords);
+                    const areaInHectares = convertToHectares(areaInMapUnits);
+                    document.getElementById("fieldArea").textContent = `${areaInHectares.toFixed(2)} ha`;
+                });
+            }
+
+            function calculatePolygonArea(coordinates) {
+                if (coordinates.length < 3) return 0;
+                let area = 0;
+                const n = coordinates.length;
+                for (let i = 0; i < n; i++) {
+                    const j = (i + 1) % n;
+                    area += coordinates[i][0] * coordinates[j][1];
+                    area -= coordinates[j][0] * coordinates[i][1];
+                }
+                return Math.abs(area) / 2;
+            }
+
+            function convertToHectares(areaInMapUnits) {
+                return areaInMapUnits / 10000;
+            }
+
+            const addFieldButton = document.getElementById("addField");
+            addFieldButton.addEventListener("click", function() {
+                isDrawingMode = !isDrawingMode;
+                if (isDrawingMode) {
+                    addFieldButton.textContent = "Finish Field";
+                    addFieldButton.style.backgroundColor = "#e74c3c";
+                    mapClickHandle = map.on("click", handleMapClick);
+                } else {
+                    addFieldButton.textContent = "ADD FIELD";
+                    addFieldButton.style.backgroundColor = "#27ae60";
+                    if (mapClickHandle) mapClickHandle.remove();
+                    
+                    if (markerCoordinates.length >= 3) {
+                        const fieldName = prompt("Enter a name for this field:");
+                        if (fieldName) {
+                            const areaInMapUnits = calculatePolygonArea(markerCoordinates);
+                            const areaInHectares = convertToHectares(areaInMapUnits);
+                            alert(`Field "${fieldName}" saved! Area: ${areaInHectares.toFixed(2)} hectares`);
+                            
+                            // Reset drawing
+                            markers.forEach(marker => map.graphics.remove(marker));
+                            markers.length = 0;
+                            markerCoordinates = [];
+                            if (currentPolygonGraphic) {
+                                map.graphics.remove(currentPolygonGraphic);
+                                currentPolygonGraphic = null;
+                            }
+                            document.getElementById("fieldArea").textContent = "0 ha";
+                        }
+                    } else {
+                        alert("At least three points are required to create a field polygon.");
+                    }
+                }
+            });
+        }
+
+        // Initialize weather data on page load
+        document.addEventListener("DOMContentLoaded", function() {
+            // Set up geolocation if available
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    currentLocation.lat = position.coords.latitude;
+                    currentLocation.lon = position.coords.longitude;
+                    if (map) {
+                        map.centerAt([currentLocation.lon, currentLocation.lat]);
+                        updateWeatherForLocation();
+                    }
+                }, function(error) {
+                    console.log("Geolocation error:", error);
+                    // Use default location
+                    updateWeatherForLocation();
+                });
+            } else {
+                updateWeatherForLocation();
+            }
+
+            // Weather modal functionality
+            const weatherModal = document.getElementById("weatherModal");
+            const closeWeatherModal = document.getElementById("closeWeatherModal");
+            
+            closeWeatherModal.addEventListener("click", function() {
+                weatherModal.style.display = "none";
+            });
+
+            // Weather menu item click
+            document.getElementById("weatherMenuItem").addEventListener("click", function() {
+                weatherModal.style.display = "block";
+                createDetailedWeatherChart();
+            });
+
+            function createDetailedWeatherChart() {
+                const ctx = document.getElementById('detailedChart').getContext('2d');
+                
+                // Sample detailed weather data
+                const detailedData = {
+                    labels: ['6 AM', '9 AM', '12 PM', '3 PM', '6 PM', '9 PM'],
+                    datasets: [
+                        {
+                            label: 'Temperature (°C)',
+                            data: [18, 22, 28, 32, 29, 24],
+                            borderColor: '#e74c3c',
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Humidity (%)',
+                            data: [85, 75, 60, 45, 55, 70],
+                            borderColor: '#3498db',
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: 'Wind Speed (m/s)',
+                            data: [3, 5, 8, 12, 10, 6],
+                            borderColor: '#2ecc71',
+                            yAxisID: 'y2'
+                        }
+                    ]
+                };
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: detailedData,
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Today\'s Hourly Weather Details'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Temperature (°C)'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Humidity (%)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false,
+                                },
+                                max: 100
+                            },
+                            y2: {
+                                type: 'linear',
+                                display: false,
+                                max: 20
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Add weather station markers (sample locations)
+            setTimeout(() => {
+                addWeatherStations();
+            }, 2000);
+        });
+
+        function addWeatherStations() {
+            const weatherStations = [
+                { lat: 37.7749, lon: -122.4194, name: "San Francisco Station", temp: 18 },
+                { lat: 40.7128, lon: -74.0060, name: "New York Station", temp: 15 },
+                { lat: 34.0522, lon: -118.2437, name: "Los Angeles Station", temp: 24 },
+                { lat: 41.8781, lon: -87.6298, name: "Chicago Station", temp: 12 }
+            ];
+
+            require([
+                "esri/graphic",
+                "esri/geometry/Point",
+                "esri/symbols/PictureMarkerSymbol",
+                "esri/InfoTemplate"
+            ], function(Graphic, Point, PictureMarkerSymbol, InfoTemplate) {
+                weatherStations.forEach(station => {
+                    const point = new Point(station.lon, station.lat);
+                    const symbol = new PictureMarkerSymbol({
+                        url: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiNmMzliMWYiLz4KPHN2ZyB4PSI4IiB5PSI4IiB3aWR0aD0iOCIgaGVpZ2h0PSI4Ij4KICA8dGV4dCB4PSI0IiB5PSI2IiBmb250LXNpemU9IjZweCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+MpTwvdGV4dD4KPC9zdmc+Cjwvc3ZnPg==",
+                        width: 32,
+                        height: 32
+                    });
+                    
+                    const infoTemplate = new InfoTemplate(
+                        "Weather Station",
+                        `<strong>${station.name}</strong><br/>
+                         Current Temperature: ${station.temp}°C<br/>
+                         <button onclick="updateLocationWeather(${station.lat}, ${station.lon})">Get Weather for This Location</button>`
+                    );
+                    
+                    const graphic = new Graphic(point, symbol, null, infoTemplate);
+                    map.graphics.add(graphic);
+                });
+            });
+        }
+
+        // Global function to update weather for clicked station
+        window.updateLocationWeather = function(lat, lon) {
+            currentLocation = { lat, lon };
+            updateWeatherForLocation();
+            map.centerAt([lon, lat]);
+        };
+
+        // Auto-refresh weather data every 10 minutes
+        setInterval(() => {
+            updateWeatherForLocation();
+        }, 600000);
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey) {
+                switch(e.key) {
+                    case 'w':
+                        e.preventDefault();
+                        document.getElementById("weatherMenuItem").click();
+                        break;
+                    case 't':
+                        e.preventDefault();
+                        document.getElementById("tempOverlay").click();
+                        break;
+                    case 'p':
+                        e.preventDefault();
+                        document.getElementById("precipOverlay").click();
+                        break;
+                }
+            }
+        });
+    </script>
 </body>
 </html>
