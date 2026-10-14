@@ -173,7 +173,7 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
             addFieldButton.style.backgroundColor = "#ff4444";
             mapClickHandle = map.on("click", handleMapClick);
         } else {
-            addFieldButton.textContent = "+ Add Field";
+            addFieldButton.textContent = " Add Field";
             addFieldButton.style.backgroundColor = "";
             if (mapClickHandle) {
                 mapClickHandle.remove();
@@ -373,7 +373,7 @@ document.addEventListener("DOMContentLoaded", function() {
             <div class="modal-content">
                 <span class="close" id="closeModal">&times;</span>
                 <h2>My Fields</h2>
-                <table id="fieldsTable" border="1">
+                <table id="fieldsTable" ,border ="1">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -440,6 +440,24 @@ document.addEventListener("DOMContentLoaded", function() {
                 width: auto;
                 border-radius: 30px;
             }
+            .map-controls {
+                    right: 20px;
+                    left: 1050px;
+                  
+                    
+                    color: black;
+                    padding: 15px;
+                    border-radius: 6px;
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                    
+            }
+            .info-panel {
+                top: 200px;
+                width: 200px;
+            }
+            .search-filter {
+                width: 180px;
+            }
         </style>
         <div class="map-container">
             <div id="map"></div>
@@ -463,8 +481,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 </div>
                 <div class="add-fields" id="addFields">
                     <h4>Add Your Fields</h4>
-                    <p>Browse satellite images, vegetation indices, weather data, and more</p>
-                    <button class="add-field-button" id="addField">+ ADD FIELD</button>
+                    
+                    <button class="add-field-button" id="addField">ADD FIELD</button>
                 </div>
             </div>
             <div id="save-panel" style="display: none;">
