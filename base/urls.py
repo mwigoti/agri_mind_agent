@@ -24,7 +24,7 @@ urlpatterns = [
     path('api/myfields/', get_fields_geojson, name='api-myfields'),
     path('api/delete-field/<int:id>/', DeleteFieldView.as_view(), name='delete-field'),
     path('api/analyze-field/<int:id>/', analyze_field_view, name="analyze-field"),
-    path('api/get-active-crops/', views.get_active_crops, name='get_active_crops'),
+    path('api/get-active-crops/', get_active_crops, name='get_active_crops'),
     
     # VRA (Variable Rate Application)
     path('res/', res, name='res'),
