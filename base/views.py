@@ -1406,3 +1406,444 @@ def register_crop_monitoring(request):
           
 def seasons(request):
     return render(request, 'seasons.html')
+
+
+"""
+Agrivision Django Views
+Handles API requests and report generation
+"""
+
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.core.files.base import ContentFile
+import json
+from datetime import datetime
+import traceback
+
+from .agrivision_gee_analysis import AgrivisionGEEAnalyzer, run_complete_analysis
+from .report_generator import AgrivisionReportGenerator
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def analyze_field(request):
+    """
+    Main endpoint for field analysis
+    
+    Request Body:
+    {
+        "field_coordinates": [[[lon, lat], [lon, lat], ...]],
+        "field_name": "Field A",
+        "crop_type": "wheat",
+        "growth_stage": "flowering",
+        "soil_data": {
+            "ph": 6.5,
+            "moisture": 0.25,
+            "field_capacity": 0.35,
+            "nitrogen": 45,
+            "phosphorus": 25,
+            "potassium": 180,
+            "organic_matter": 2.8
+        },
+        "weather_data": {
+            "temperature": 24,
+            "rainfall_7day": 15,
+            "humidity": 65
+        },
+        "start_date": "2024-01-01",
+        "end_date": "2024-01-31"
+    }
+    
+    Returns:
+        JSON response with complete analysis
+    """
+    try:
+        # Parse request data
+        data = json.loads(request.body)
+        
+        # Validate required fields
+        required_fields = ['field_coordinates', 'field_name', 'crop_type', 
+                          'growth_stage', 'soil_data', 'weather_data']
+        for field in required_fields:
+            if field not in data:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Missing required field: {field}'
+                }, status=400)
+        
+        # Run analysis
+        results = run_complete_analysis(
+            field_coordinates=data['field_coordinates'],
+            field_name=data['field_name'],
+            crop_type=data['crop_type'],
+            growth_stage=data['growth_stage'],
+            soil_data=data['soil_data'],
+            weather_data=data['weather_data'],
+            start_date=data.get('start_date'),
+            end_date=data.get('end_date')
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'data': results
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def generate_report(request):
+    """
+    Generate downloadable PDF report
+    
+    Request Body:
+    {
+        "analysis_data": { ... },  # Results from analyze_field
+        "report_format": "pdf",     # pdf, docx, or json
+        "include_maps": true,
+        "include_charts": true
+    }
+    
+    Returns:
+        PDF/DOCX file download or JSON response
+    """
+    try:
+        data = json.loads(request.body)
+        
+        if 'analysis_data' not in data:
+            return JsonResponse({
+                'success': False,
+                'error': 'Missing analysis_data'
+            }, status=400)
+        
+        analysis_data = data['analysis_data']
+        report_format = data.get('report_format', 'pdf')
+        include_maps = data.get('include_maps', True)
+        include_charts = data.get('include_charts', True)
+        
+        # Generate report
+        report_generator = AgrivisionReportGenerator()
+        
+        if report_format == 'pdf':
+            pdf_buffer = report_generator.generate_pdf_report(
+                analysis_data,
+                include_maps=include_maps,
+                include_charts=include_charts
+            )
+            
+            response = HttpResponse(pdf_buffer, content_type='application/pdf')
+            filename = f"agrivision_report_{analysis_data['field_information']['name']}_{datetime.now().strftime('%Y%m%d')}.pdf"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+            
+        elif report_format == 'docx':
+            docx_buffer = report_generator.generate_docx_report(
+                analysis_data,
+                include_maps=include_maps,
+                include_charts=include_charts
+            )
+            
+            response = HttpResponse(
+                docx_buffer,
+                content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            )
+            filename = f"agrivision_report_{analysis_data['field_information']['name']}_{datetime.now().strftime('%Y%m%d')}.docx"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+            
+        elif report_format == 'json':
+            response = JsonResponse({
+                'success': True,
+                'data': analysis_data
+            })
+            filename = f"agrivision_report_{analysis_data['field_information']['name']}_{datetime.now().strftime('%Y%m%d')}.json"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+            
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': f'Unsupported format: {report_format}'
+            }, status=400)
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def get_vegetation_indices(request):
+    """
+    Get vegetation indices only for quick analysis
+    
+    Request Body:
+    {
+        "field_coordinates": [[[lon, lat], ...]],
+        "date": "2024-01-15"
+    }
+    
+    Returns:
+        JSON with vegetation indices
+    """
+    try:
+        data = json.loads(request.body)
+        
+        analyzer = AgrivisionGEEAnalyzer()
+        aoi = analyzer.define_aoi(data['field_coordinates'])
+        
+        target_date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
+        start_date = target_date
+        end_date = target_date
+        
+        # Get Sentinel-2 data
+        s2_collection = analyzer.get_sentinel2_data(aoi, start_date, end_date)
+        s2_image = s2_collection.first()
+        
+        if not s2_image:
+            return JsonResponse({
+                'success': False,
+                'error': 'No satellite imagery available for this date'
+            }, status=404)
+        
+        # Calculate indices
+        s2_with_indices = analyzer.calculate_vegetation_indices(s2_image)
+        
+        # Extract values
+        indices = s2_with_indices.reduceRegion(
+            reducer=ee.Reducer.mean(),
+            geometry=aoi,
+            scale=10,
+            maxPixels=1e9
+        ).getInfo()
+        
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'date': target_date,
+                'indices': indices
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def get_yield_prediction(request):
+    """
+    Get yield prediction only
+    
+    Request Body:
+    {
+        "indices": { ... },
+        "soil_data": { ... },
+        "weather_data": { ... },
+        "crop_type": "wheat",
+        "growth_stage": "flowering"
+    }
+    
+    Returns:
+        JSON with yield prediction
+    """
+    try:
+        data = json.loads(request.body)
+        
+        analyzer = AgrivisionGEEAnalyzer()
+        
+        yield_prediction = analyzer.predict_yield(
+            indices=data['indices'],
+            soil_data=data['soil_data'],
+            weather_data=data['weather_data'],
+            crop_type=data['crop_type'],
+            growth_stage=data['growth_stage']
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'data': yield_prediction
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def get_health_score(request):
+    """
+    Get crop health score only
+    
+    Request Body:
+    {
+        "indices": { ... },
+        "soil_data": { ... },
+        "weather_data": { ... }
+    }
+    
+    Returns:
+        JSON with health score and recommendations
+    """
+    try:
+        data = json.loads(request.body)
+        
+        analyzer = AgrivisionGEEAnalyzer()
+        
+        health_score = analyzer.calculate_crop_health_score(
+            indices=data['indices'],
+            soil_data=data['soil_data'],
+            weather_data=data['weather_data']
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'data': health_score
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def analyze_temporal_trends(request):
+    """
+    Analyze temporal trends in vegetation indices
+    
+    Request Body:
+    {
+        "field_coordinates": [[[lon, lat], ...]],
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "index": "NDVI"
+    }
+    
+    Returns:
+        JSON with time series data and trend analysis
+    """
+    try:
+        data = json.loads(request.body)
+        
+        analyzer = AgrivisionGEEAnalyzer()
+        aoi = analyzer.define_aoi(data['field_coordinates'])
+        
+        # Get image collection
+        s2_collection = analyzer.get_sentinel2_data(
+            aoi,
+            data['start_date'],
+            data['end_date']
+        )
+        
+        # Calculate indices for all images
+        def add_indices(image):
+            return analyzer.calculate_vegetation_indices(image)
+        
+        s2_with_indices = s2_collection.map(add_indices)
+        
+        # Analyze trend
+        index = data.get('index', 'NDVI')
+        trends = analyzer.analyze_temporal_trend(s2_with_indices, aoi, index)
+        
+        return JsonResponse({
+            'success': True,
+            'data': trends
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def create_management_zones(request):
+    """
+    Create field management zones
+    
+    Request Body:
+    {
+        "field_coordinates": [[[lon, lat], ...]],
+        "date": "2024-01-15",
+        "num_zones": 5
+    }
+    
+    Returns:
+        JSON with zone information and statistics
+    """
+    try:
+        data = json.loads(request.body)
+        
+        analyzer = AgrivisionGEEAnalyzer()
+        aoi = analyzer.define_aoi(data['field_coordinates'])
+        
+        target_date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
+        
+        # Get image
+        s2_collection = analyzer.get_sentinel2_data(aoi, target_date, target_date)
+        s2_image = s2_collection.first()
+        
+        # Calculate indices
+        s2_with_indices = analyzer.calculate_vegetation_indices(s2_image)
+        
+        # Create zones
+        num_zones = data.get('num_zones', 5)
+        zones = analyzer.generate_field_zones(aoi, s2_with_indices, num_zones)
+        
+        return JsonResponse({
+            'success': True,
+            'data': zones
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# Health check endpoint
+@require_http_methods(["GET"])
+def health_check(request):
+    """
+    Check if GEE is properly initialized
+    """
+    try:
+        analyzer = AgrivisionGEEAnalyzer()
+        # Simple test
+        test_point = ee.Geometry.Point([0, 0])
+        test_point.getInfo()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Agrivision API is operational',
+            'gee_status': 'connected'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'gee_status': 'disconnected'
+        }, status=500)

@@ -50,5 +50,19 @@ urlpatterns = [
     
     # USSD integration
     path('ussd/callback/', USSDView.as_view(), name='ussd_callback'),
-    path('seasons/', seasons, name = 'seasons')
+    path('seasons/', seasons, name = 'seasons'),
+      path('api/analyze/', analyze_field, name='analyze_field'),
+    
+    # Report generation
+    path('api/report/', generate_report, name='generate_report'),
+    
+    # Individual analysis endpoints
+    path('api/indices/', get_vegetation_indices, name='get_indices'),
+    path('api/yield/', get_yield_prediction, name='get_yield'),
+    path('api/health/', get_health_score, name='get_health'),
+    path('api/trends/', analyze_temporal_trends, name='analyze_trends'),
+    path('api/zones/', create_management_zones, name='create_zones'),
+    
+    # Health check
+    path('api/health-check/', health_check, name='health_check'),
 ]
