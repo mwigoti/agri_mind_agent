@@ -22,6 +22,8 @@ urlpatterns = [
     path('api/analyze-field/<int:id>/', analyze_field_view, name="analyze-field"),
     
     path('res/', res, name='res'),
-    path('check-analysis-engine/', check_analysis_engine, name='check_analysis_engine'),
+    path('api/vra-analysis/<int:field_id>/', VRAAnalysisView.as_view(), name='vra_analysis_api'),
+    path('vra-analysis/<int:field_id>/', vra_analysis_page, name='vra_analysis_page'),
+    path('api/vra-engine-status/', check_vra_engine_status, name='vra_engine_status'),
    
 ]
