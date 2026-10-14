@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VRA Analysis - {{ field_name }}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+        .zone-card {
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+        .zone-card:hover {
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-satellite-dish text-2xl"></i>
+                    <div>
+                        <h1 class="text-2xl font-bold">VRA Analysis</h1>
+                        <p class="text-sm opacity-90">Variable Rate Application Analysis</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <h2 class="text-xl font-semibold">{{ field_name }}</h2>
+                    <p class="text-sm opacity-90">Area: {{ field_area|floatformat:2 }} hectares</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-6 py-8">
+        <!-- Analysis Controls -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">Analysis Controls</h3>
+                <div class="flex space-x-4">
+                    <button id="engineStatusBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                        <i class="fas fa-heartbeat mr-2"></i>Check Engine Status
+                    </button>
+                    <button id="startAnalysisBtn" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors font-semibold">
+                        <i class="fas fa-play mr-2"></i>Start VRA Analysis
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Engine Status -->
+            <div id="engineStatus" class="mb-4 p-4 rounded-lg hidden">
+                <div class="flex items-center">
+                    <div id="statusIndicator" class="w-3 h-3 rounded-full mr-3"></div>
+                    <span id="statusText" class="font-medium"></span>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div id="progressContainer" class="hidden mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm font-medium text-gray-700">Analysis Progress</span>
+                    <span id="progressText" class="text-sm text-gray-600">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="progressBar" class="bg-green-500 h-2 rounded-full progress-bar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="hidden text-center py-12">
+            <div class="loading-spinner mx-auto mb-4"></div>
+            <h3 class="text-xl font-semibold text-gray-700 mb-2">Analyzing Satellite Data</h3>
+            <p class="text-gray-600">Processing Sentinel-2 imagery and generating VRA maps...</p>
+            <p class="text-sm text-gray-500 mt-2">This may take a few minutes</p>
+        </div>
+
+        <!-- Results Container -->
+        <div id="resultsContainer" class="hidden">
+            <!-- Analysis Summary -->
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-green-100 text-green-600 mr-4">
+                            <i class="fas fa-leaf text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Health Score</p>
+                            <p id="healthScore" class="text-2xl font-bold text-gray-900">--</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-blue-100 text-blue-600 mr-4">
+                            <i class="fas fa-chart-line text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Productivity Index</p>
+                            <p id="productivityIndex" class="text-2xl font-bold text-gray-900">--</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-yellow-100 text-yellow-600 mr-4">
+                            <i class="fas fa-seedling text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Yield Improvement</p>
+                            <p id="yieldImprovement" class="text-2xl font-bold text-gray-900">--</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 card-hover">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-purple-100 text-purple-600 mr-4">
+                            <i class="fas fa-dollar-sign text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-600">Cost Savings</p>
+                            <p id="costSavings" class="text-2xl font-bold text-gray-900">--</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NDVI Map and Statistics -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- NDVI Map -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-satellite mr-2 text-green-600"></i>NDVI Analysis Map
+                    </h3>
+                    <div id="ndviMapContainer" class="bg-gray-100 rounded-lg h-64 flex items-center justify-center">
+                        <p class="text-gray-500">NDVI map will appear here</p>
+                    </div>
+                    <div class="mt-4 text-sm text-gray-600">
+                        <p><strong>Data Source:</strong> <span id="dataSource">--</span></p>
+                        <p><strong>Acquisition Date:</strong> <span id="acquisitionDate">--</span></p>
+                        <p><strong>Cloud Coverage:</strong> <span id="cloudCoverage">--</span>%</p>
+                    </div>
+                </div>
+
+                <!-- NDVI Statistics -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-chart-bar mr-2 text-blue-600"></i>Vegetation Statistics
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Average NDVI</span>
+                            <span id="avgNDVI" class="font-semibold">--</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Healthy Areas</span>
+                            <span id="healthyPercentage" class="font-semibold text-green-600">--</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Stressed Areas</span>
+                            <span id="stressedPercentage" class="font-semibold text-red-600">--</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Moderate Areas</span>
+                            <span id="moderatePercentage" class="font-semibold text-yellow-600">--</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Standard Deviation</span>
+                            <span id="stdDev" class="font-semibold">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VRA Zones -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-6">
+                    <i class="fas fa-map-marked-alt mr-2 text-purple-600"></i>Variable Rate Application Zones
+                </h3>
+                <div id="vraZones" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- VRA zones will be populated here -->
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                <!-- Fertilizer Recommendations -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-flask mr-2 text-green-600"></i>Fertilizer Recommendations
+                    </h3>
+                    <div id="fertilizerRecommendations" class="space-y-3">
+                        <!-- Fertilizer recommendations will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Irrigation Recommendations -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-tint mr-2 text-blue-600"></i>Irrigation Recommendations
+                    </h3>
+                    <div id="irrigationRecommendations" class="space-y-3">
+                        <!-- Irrigation recommendations will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Environmental Impact -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-leaf mr-2 text-green-500"></i>Environmental Impact
+                    </h3>
+                    <div id="environmentalImpact" class="space-y-3">
+                        <!-- Environmental impact will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Priority Actions -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                    <i class="fas fa-exclamation-triangle mr-2 text-orange-600"></i>Priority Actions
+                </h3>
+                <div id="priorityActions" class="space-y-2">
+                    <!-- Priority actions will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <i class="fas fa-exclamation-circle text-red-500 text-3xl mb-4"></i>
+            <h3 class="text-lg font-semibold text-red-800 mb-2">Analysis Failed</h3>
+            <p id="errorMessage" class="text-red-600 mb-4">An error occurred during analysis.</p>
+            <button id="retryBtn" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-colors">
+                <i class="fas fa-redo mr-2"></i>Retry Analysis
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // VRA Analysis JavaScript
+        const fieldId = {{ field_id }};
+        let analysisData = null;
+
+        // DOM Elements
+        const engineStatusBtn = document.getElementById('engineStatusBtn');
+        const startAnalysisBtn = document.getElementById('startAnalysisBtn');
+        const engineStatus = document.getElementById('engineStatus');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const loadingState = document.getElementById('loadingState');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const errorState = document.getElementById('errorState');
+        const errorMessage = document.getElementById('errorMessage');
+        const retryBtn = document.getElementById('retryBtn');
+
+        // Event Listeners
+        engineStatusBtn.addEventListener('click', checkEngineStatus);
+        startAnalysisBtn.addEventListener('click', startAnalysis);
+        retryBtn.addEventListener('click', startAnalysis);
+
+        // Check Engine Status
+        async function checkEngineStatus() {
+            try {
+                const response = await fetch('/api/vra-engine-status/');
+                const data = await response.json();
+                
+                engineStatus.classList.remove('hidden');
+                
+                if (data.status === 'online') {
+                    statusIndicator.className = 'w-3 h-3 rounded-full mr-3 bg-green-500';
+                    statusText.textContent = 'VRA Analysis Engine is online and ready';
+                    startAnalysisBtn.disabled = false;
+                } else {
+                    statusIndicator.className = 'w-3 h-3 rounded-full mr-3 bg-red-500';
+                    statusText.textContent = data.message || 'VRA Analysis Engine is offline';
+                    startAnalysisBtn.disabled = true;
+                }
+            } catch (error) {
+                engineStatus.classList.remove('hidden');
+                statusIndicator.className = 'w-3 h-3 rounded-full mr-3 bg-red-500';
+                statusText.textContent = 'Error checking engine status';
+                startAnalysisBtn.disabled = true;
+            }
+        }
+
+        // Start VRA Analysis
+        async function startAnalysis() {
+            hideAllStates();
+            loadingState.classList.remove('hidden');
+            progressContainer.classList.remove('hidden');
+            
+            // Simulate progress
+            updateProgress(10, 'Initializing analysis...');
+            
+            try {
+                updateProgress(30, 'Accessing field geometry...');
+                
+                const response = await fetch(`/api/vra-analysis/${fieldId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                updateProgress(60, 'Processing satellite imagery...');
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateProgress(90, 'Generating recommendations...');
+                    analysisData = data.analysis_data;
+                    
+                    setTimeout(() => {
+                        updateProgress(100, 'Analysis complete!');
+                        displayResults(data);
+                    }, 1000);
+                } else {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+                
+            } catch (error) {
+                console.error('Analysis error:', error);
+                showError(error.message);
+            }
+        }
+
+        // Display Results
+        function displayResults(data) {
+            hideAllStates();
+            resultsContainer.classList.remove('hidden');
+            
+            if (data.analysis_data && data.analysis_data.fields && data.analysis_data.fields.length > 0) {
+                const fieldData = data.analysis_data.fields[0];
+                populateResults(fieldData);
+            }
+        }
+
+        // Populate Results
+        function populateResults(fieldData) {
+            // Summary statistics
+            document.getElementById('healthScore').textContent = 
+                fieldData.analysis_summary.overall_health_score.toFixed(1) + '%';
+            document.getElementById('productivityIndex').textContent = 
+                fieldData.analysis_summary.productivity_index.toFixed(1);
+            document.getElementById('yieldImprovement').textContent = 
+                '+' + fieldData.analysis_summary.estimated_yield_improvement.toFixed(1) + '%';
+            document.getElementById('costSavings').textContent = 
+                ' + fieldData.recommendations.cost_savings_estimate.toFixed(0);
+
+            // NDVI Map
+            if (fieldData.ndvi_map && fieldData.ndvi_map !== '') {
+                const mapContainer = document.getElementById('ndviMapContainer');
+                mapContainer.innerHTML = `<img src="${fieldData.ndvi_map}" alt="NDVI Map" class="w-full h-full object-cover rounded-lg">`;
+            }
+
+            // Map metadata
+            document.getElementById('dataSource').textContent = fieldData.map_metadata.data_source;
+            document.getElementById('acquisitionDate').textContent = fieldData.map_metadata.acquisition_date;
+            document.getElementById('cloudCoverage').textContent = fieldData.map_metadata.cloud_coverage.toFixed(1);
+
+            // NDVI Statistics
+            document.getElementById('avgNDVI').textContent = fieldData.ndvi_stats.avg_ndvi.toFixed(3);
+            document.getElementById('healthyPercentage').textContent = fieldData.ndvi_stats.healthy_percentage.toFixed(1) + '%';
+            document.getElementById('stressedPercentage').textContent = fieldData.ndvi_stats.stressed_percentage.toFixed(1) + '%';
+            document.getElementById('moderatePercentage').textContent = fieldData.ndvi_stats.moderate_percentage.toFixed(1) + '%';
+            document.getElementById('stdDev').textContent = fieldData.ndvi_stats.std_dev.toFixed(3);
+
+            // VRA Zones
+            populateVRAZones(fieldData.vra_zones);
+
+            // Recommendations
+            populateFertilizerRecommendations(fieldData.recommendations.fertilizer_zones);
+            populateIrrigationRecommendations(fieldData.recommendations.irrigation_zones);
+            populateEnvironmentalImpact(fieldData.recommendations.environmental_impact);
+
+            // Priority Actions
+            populatePriorityActions(fieldData.analysis_summary.priority_actions);
+        }
+
+        // Populate VRA Zones
+        function populateVRAZones(zones) {
+            const container = document.getElementById('vraZones');
+            container.innerHTML = '';
+
+            zones.forEach(zone => {
+                const zoneCard = document.createElement('div');
+                zoneCard.className = 'zone-card bg-white rounded-lg p-4 border-l-4';
+                zoneCard.style.borderLeftColor = zone.zone_color;
+
+                zoneCard.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-semibold text-gray-800">${zone.zone_name}</h4>
+                        <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">${zone.priority}</span>
+                    </div>
+                    <div class="space-y-1 text-sm text-gray-600">
+                        <p><strong>Area:</strong> ${zone.area_percentage.toFixed(1)}% (${zone.area_hectares.toFixed(2)} ha)</p>
+                        <p><strong>NDVI Range:</strong> ${zone.ndvi_range[0].toFixed(2)} - ${zone.ndvi_range[1].toFixed(2)}</p>
+                        <p><strong>Fertilizer Rate:</strong> ${zone.recommended_rate.toFixed(0)} kg/ha</p>
+                    </div>
+                `;
+
+                container.appendChild(zoneCard);
+            });
+        }
+
+        // Populate Fertilizer Recommendations
+        function populateFertilizerRecommendations(fertilizerZones) {
+            const container = document.getElementById('fertilizerRecommendations');
+            container.innerHTML = '';
+
+            fertilizerZones.forEach(zone => {
+                const zoneDiv = document.createElement('div');
+                zoneDiv.className = 'bg-gray-50 rounded-lg p-3';
+                zoneDiv.innerHTML = `
+                    <h5 class="font-medium text-gray-800 mb-2">Zone ${zone.zone_id}</h5>
+                    <div class="text-sm text-gray-600 space-y-1">
+                        <p><i class="fas fa-leaf text-green-500 w-4"></i> Nitrogen: ${zone.nitrogen_rate.toFixed(1)} kg/ha</p>
+                        <p><i class="fas fa-seedling text-orange-500 w-4"></i> Phosphorus: ${zone.phosphorus_rate.toFixed(1)} kg/ha</p>
+                        <p><i class="fas fa-cube text-purple-500 w-4"></i> Potassium: ${zone.potassium_rate.toFixed(1)} kg/ha</p>
+                        <p><i class="fas fa-dollar-sign text-green-600 w-4"></i> Cost: ${zone.cost_per_hectare.toFixed(0)}/ha</p>
+                    </div>
+                `;
+                container.appendChild(zoneDiv);
+            });
+        }
+
+        // Populate Irrigation Recommendations
+        function populateIrrigationRecommendations(irrigationZones) {
+            const container = document.getElementById('irrigationRecommendations');
+            container.innerHTML = '';
+
+            irrigationZones.forEach(zone => {
+                const priorityColor = zone.priority === 'Critical' ? 'text-red-600' : 
+                                   zone.priority === 'High' ? 'text-orange-600' : 
+                                   zone.priority === 'Medium' ? 'text-yellow-600' : 'text-green-600';
+
+                const zoneDiv = document.createElement('div');
+                zoneDiv.className = 'bg-gray-50 rounded-lg p-3';
+                zoneDiv.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h5 class="font-medium text-gray-800">Zone ${zone.zone_id}</h5>
+                        <span class="text-sm font-medium ${priorityColor}">${zone.priority}</span>
+                    </div>
+                    <div class="text-sm text-gray-600 space-y-1">
+                        <p><i class="fas fa-tint text-blue-500 w-4"></i> Water: ${zone.water_requirement.toFixed(0)} mm/week</p>
+                        <p><i class="fas fa-clock text-gray-500 w-4"></i> Frequency: ${zone.irrigation_frequency}</p>
+                        <p><i class="fas fa-dollar-sign text-green-600 w-4"></i> Cost: ${zone.estimated_cost.toFixed(0)}/ha</p>
+                    </div>
+                `;
+                container.appendChild(zoneDiv);
+            });
+        }
+
+        // Populate Environmental Impact
+        function populateEnvironmentalImpact(impact) {
+            const container = document.getElementById('environmentalImpact');
+            container.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600 text-sm">Nitrogen Reduction</span>
+                        <span class="font-semibold text-green-600">${impact.nitrogen_reduction_kg.toFixed(0)} kg</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600 text-sm">Water Savings</span>
+                        <span class="font-semibold text-blue-600">${(impact.water_savings_liters/1000).toFixed(1)} m³</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600 text-sm">Carbon Reduction</span>
+                        <span class="font-semibold text-green-600">${impact.carbon_footprint_reduction_kg.toFixed(0)} kg CO₂</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600 text-sm">Biodiversity Score</span>
+                        <span class="font-semibold text-purple-600">${impact.biodiversity_score.toFixed(1)}/100</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Populate Priority Actions
+        function populatePriorityActions(actions) {
+            const container = document.getElementById('priorityActions');
+            container.innerHTML = '';
+
+            if (actions.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">No priority actions required</p>';
+                return;
+            }
+
+            actions.forEach((action, index) => {
+                const actionDiv = document.createElement('div');
+                actionDiv.className = 'flex items-start space-x-3 p-3 bg-orange-50 rounded-lg';
+                actionDiv.innerHTML = `
+                    <div class="flex-shrink-0">
+                        <span class="flex items-center justify-center w-6 h-6 bg-orange-500 text-white text-xs font-bold rounded-full">
+                            ${index + 1}
+                        </span>
+                    </div>
+                    <p class="text-gray-700">${action}</p>
+                `;
+                container.appendChild(actionDiv);
+            });
+        }
+
+        // Utility Functions
+        function updateProgress(percentage, message) {
+            progressBar.style.width = percentage + '%';
+            progressText.textContent = percentage + '%';
+            if (message) {
+                // You could add a message element if needed
+                console.log(message);
+            }
+        }
+
+        function hideAllStates() {
+            loadingState.classList.add('hidden');
+            resultsContainer.classList.add('hidden');
+            errorState.classList.add('hidden');
+            progressContainer.classList.add('hidden');
+        }
+
+        function showError(message) {
+            hideAllStates();
+            errorMessage.textContent = message;
+            errorState.classList.remove('hidden');
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check engine status on page load
+            checkEngineStatus();
+        });
+    </script>
+</body>
+</html>
