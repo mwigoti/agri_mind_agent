@@ -1,0 +1,2358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CropWatch - Smart Field Monitoring</title>
+  <meta name="description" content="Monitor your agricultural fields with satellite imagery and NDVI analysis">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ========================================
+       CSS RESET & VARIABLES
+       ======================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      /* Colors - HSL */
+      --primary: 158 42% 22%;
+      --primary-foreground: 0 0% 100%;
+      --secondary: 150 15% 93%;
+      --secondary-foreground: 158 40% 18%;
+      --background: 45 30% 98%;
+      --foreground: 210 15% 12%;
+      --card: 0 0% 100%;
+      --card-foreground: 210 15% 12%;
+      --muted: 45 15% 94%;
+      --muted-foreground: 210 10% 46%;
+      --accent: 40 95% 54%;
+      --border: 45 20% 90%;
+      --success: 152 60% 38%;
+      --warning: 36 95% 52%;
+      --destructive: 4 72% 52%;
+      --radius: 0.75rem;
+
+      /* Typography */
+      --font-heading: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-body: 'Inter', system-ui, sans-serif;
+    }
+
+    /* ========================================
+       BASE STYLES
+       ======================================== */
+    html {
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      min-height: 100vh;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    /* ========================================
+       UTILITY CLASSES
+       ======================================== */
+    .hidden { display: none !important; }
+
+    /* ========================================
+       HEADER
+       ======================================== */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background-color: hsl(var(--card));
+      border-bottom: 1px solid hsl(var(--border));
+      box-shadow: 0 1px 3px hsl(210 15% 12% / 0.04);
+    }
+
+    .header-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      padding: 0 2rem;
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: hsl(var(--primary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px hsl(var(--primary) / 0.3);
+    }
+
+    .logo-icon svg {
+      width: 20px;
+      height: 20px;
+      color: white;
+    }
+
+    .logo-text h1 {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+    }
+
+    .logo-text span {
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: hsl(var(--muted-foreground));
+      letter-spacing: 0.05em;
+    }
+
+    /* ========================================
+       BUTTONS
+       ======================================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .btn-primary {
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      box-shadow: 0 2px 8px hsl(var(--primary) / 0.25);
+    }
+
+    .btn-primary:hover {
+      background: hsl(158 42% 18%);
+      box-shadow: 0 4px 12px hsl(var(--primary) / 0.35);
+    }
+
+    .btn-secondary {
+      background: hsl(var(--secondary));
+      color: hsl(var(--secondary-foreground));
+    }
+
+    .btn-secondary:hover {
+      background: hsl(150 15% 88%);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: hsl(var(--foreground));
+    }
+
+    .btn-ghost:hover {
+      background: hsl(var(--muted));
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid hsl(var(--border));
+      color: hsl(var(--foreground));
+    }
+
+    .btn-outline:hover {
+      background: hsl(var(--muted));
+    }
+
+    .btn-sm {
+      padding: 0.5rem 1rem;
+      font-size: 0.8125rem;
+    }
+
+    .btn-icon {
+      padding: 0.625rem;
+      width: 40px;
+      height: 40px;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ========================================
+       MAIN CONTENT
+       ======================================== */
+    .main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* ========================================
+       PAGE HEADER
+       ======================================== */
+    .page-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .page-title h2 {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+    }
+
+    .page-title p {
+      color: hsl(var(--muted-foreground));
+      margin-top: 0.375rem;
+      font-size: 0.875rem;
+    }
+
+    .stats-row {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .stat-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-icon svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .stat-icon.primary {
+      background: hsl(var(--primary) / 0.1);
+      color: hsl(var(--primary));
+    }
+
+    .stat-icon.success {
+      background: hsl(var(--success) / 0.1);
+      color: hsl(var(--success));
+    }
+
+    .stat-icon.accent {
+      background: hsl(var(--accent) / 0.1);
+      color: hsl(var(--accent));
+    }
+
+    .stat-text span {
+      display: block;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .stat-text strong {
+      font-family: var(--font-heading);
+      font-size: 1rem;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+    }
+
+    /* ========================================
+       GRID LAYOUT
+       ======================================== */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 2fr 3fr;
+      gap: 2rem;
+      min-height: 600px;
+    }
+
+    @media (max-width: 1024px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+      .map-container {
+        display: none;
+      }
+    }
+
+    /* ========================================
+       FIELD LIST
+       ======================================== */
+    .field-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .field-list-header {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 0.5rem;
+    }
+
+    /* ========================================
+       FIELD CARD
+       ======================================== */
+    .field-card {
+      background: hsl(var(--card));
+      border: 2px solid hsl(var(--border) / 0.6);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .field-card:hover {
+      box-shadow: 0 4px 12px hsl(210 15% 12% / 0.08);
+      border-color: hsl(var(--primary) / 0.4);
+    }
+
+    .field-card.selected {
+      border-color: hsl(var(--primary));
+      box-shadow: 0 4px 12px hsl(210 15% 12% / 0.08);
+      background: hsl(var(--primary) / 0.02);
+      outline: 2px solid hsl(var(--primary) / 0.2);
+      outline-offset: 2px;
+    }
+
+    .field-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .field-card-info h3 {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      line-height: 1.3;
+    }
+
+    .field-card-info p {
+      font-size: 0.875rem;
+      color: hsl(var(--muted-foreground));
+      font-weight: 500;
+      margin-top: 0.125rem;
+    }
+
+    /* ========================================
+       BADGES
+       ======================================== */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.625rem;
+      border-radius: 9999px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge-muted {
+      background: hsl(var(--muted));
+      color: hsl(var(--muted-foreground));
+    }
+
+    .badge-success {
+      background: hsl(var(--success) / 0.15);
+      color: hsl(var(--success));
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ========================================
+       CROP DETAIL BOX
+       ======================================== */
+    .crop-detail {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: hsl(var(--muted) / 0.5);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+
+    .crop-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: hsl(var(--card));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      border: 1px solid hsl(var(--border) / 0.5);
+      box-shadow: 0 1px 2px hsl(210 15% 12% / 0.04);
+    }
+
+    .crop-info {
+      flex: 1;
+    }
+
+    .crop-info strong {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: hsl(var(--foreground));
+    }
+
+    .crop-info span {
+      font-size: 0.75rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .crop-detail svg {
+      width: 16px;
+      height: 16px;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .previous-crop {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 1rem;
+      padding: 0.5rem 0;
+    }
+
+    .previous-crop span {
+      font-size: 1rem;
+    }
+
+    /* ========================================
+       MAP CONTAINER
+       ======================================== */
+    .map-container {
+      background: hsl(var(--card));
+      border: 2px solid hsl(var(--border) / 0.6);
+      border-radius: 1rem;
+      overflow: hidden;
+      position: relative;
+      min-height: 600px;
+    }
+
+    .map-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      background: linear-gradient(to bottom, hsl(var(--card)), hsl(var(--card) / 0.95), transparent);
+    }
+
+    .map-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .map-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: hsl(var(--success));
+      animation: pulse 2s infinite;
+    }
+
+    .map-status span {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: hsl(var(--muted-foreground));
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .map-bg {
+      position: absolute;
+      inset: 0;
+      background: 
+        radial-gradient(ellipse at 30% 40%, hsl(152 40% 85% / 0.6) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 60%, hsl(145 35% 82% / 0.5) 0%, transparent 45%),
+        radial-gradient(ellipse at 50% 80%, hsl(40 30% 88% / 0.4) 0%, transparent 40%),
+        linear-gradient(180deg, hsl(150 25% 94%) 0%, hsl(145 20% 90%) 100%);
+    }
+
+    .map-content {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-top: 2rem;
+    }
+
+    .map-svg {
+      filter: drop-shadow(0 2px 8px hsl(210 15% 12% / 0.1));
+    }
+
+    .map-polygon {
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .map-polygon.active {
+      fill: hsl(var(--success) / 0.25);
+      stroke: hsl(var(--success) / 0.7);
+      stroke-width: 2;
+    }
+
+    .map-polygon.active:hover {
+      fill: hsl(var(--success) / 0.35);
+      stroke: hsl(var(--success));
+    }
+
+    .map-polygon.inactive {
+      fill: hsl(var(--muted-foreground) / 0.15);
+      stroke: hsl(var(--muted-foreground) / 0.4);
+      stroke-width: 2;
+    }
+
+    .map-polygon.inactive:hover {
+      fill: hsl(var(--muted-foreground) / 0.25);
+      stroke: hsl(var(--muted-foreground) / 0.6);
+    }
+
+    .map-polygon.selected {
+      fill: hsl(var(--primary) / 0.5);
+      stroke: hsl(var(--primary));
+      stroke-width: 3;
+      filter: drop-shadow(0 4px 12px hsl(var(--primary) / 0.3));
+    }
+
+    .map-info-card {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      background: hsl(var(--card));
+      padding: 0.625rem 1rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px hsl(210 15% 12% / 0.12);
+      border: 1px solid hsl(var(--border));
+      animation: fadeIn 0.3s ease;
+      pointer-events: none;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .map-info-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: hsl(var(--primary) / 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .map-info-icon svg {
+      width: 16px;
+      height: 16px;
+      color: hsl(var(--primary));
+    }
+
+    .map-info-text strong {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      line-height: 1.2;
+    }
+
+    .map-info-text span {
+      font-size: 0.75rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .map-legend {
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: hsl(var(--card) / 0.9);
+      backdrop-filter: blur(4px);
+      padding: 0.625rem 1rem;
+      border-radius: 12px;
+      border: 1px solid hsl(var(--border) / 0.6);
+      box-shadow: 0 2px 8px hsl(210 15% 12% / 0.06);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+
+    .legend-color.active {
+      background: hsl(var(--success) / 0.4);
+      border: 1px solid hsl(var(--success) / 0.6);
+    }
+
+    .legend-color.inactive {
+      background: hsl(var(--muted-foreground) / 0.2);
+      border: 1px solid hsl(var(--muted-foreground) / 0.4);
+    }
+
+    .legend-item span {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .map-scale {
+      position: absolute;
+      bottom: 1rem;
+      right: 1rem;
+      background: hsl(var(--card) / 0.9);
+      backdrop-filter: blur(4px);
+      padding: 0.375rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid hsl(var(--border) / 0.6);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .scale-bar {
+      width: 48px;
+      height: 2px;
+      background: hsl(var(--foreground) / 0.4);
+      border-radius: 1px;
+    }
+
+    .map-scale span {
+      font-size: 0.625rem;
+      font-weight: 500;
+      color: hsl(var(--muted-foreground));
+    }
+
+    /* ========================================
+       MODAL
+       ======================================== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: hsl(210 15% 12% / 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      animation: fadeIn 0.2s ease;
+      padding: 1rem;
+    }
+
+    .modal {
+      background: hsl(var(--card));
+      border-radius: 1rem;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: 0 24px 48px hsl(210 15% 12% / 0.2);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid hsl(var(--border));
+      background: linear-gradient(to bottom, hsl(var(--muted) / 0.5), transparent);
+    }
+
+    .modal-header-content {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .modal-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: hsl(var(--primary) / 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-icon svg {
+      width: 24px;
+      height: 24px;
+      color: hsl(var(--primary));
+    }
+
+    .modal-title h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+    }
+
+    .modal-title p {
+      font-size: 0.875rem;
+      color: hsl(var(--muted-foreground));
+      margin-top: 0.125rem;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      max-height: calc(90vh - 200px);
+    }
+
+    .modal-footer {
+      padding: 1.25rem 1.5rem;
+      border-top: 1px solid hsl(var(--border));
+      background: hsl(var(--muted) / 0.3);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+
+    /* ========================================
+       FORM ELEMENTS
+       ======================================== */
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: hsl(var(--foreground));
+      margin-bottom: 0.625rem;
+    }
+
+    .form-label .required {
+      color: hsl(var(--destructive));
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      border: 2px solid hsl(var(--border) / 0.6);
+      border-radius: 12px;
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: hsl(var(--primary));
+      box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1);
+    }
+
+    .form-input::placeholder {
+      color: hsl(var(--muted-foreground));
+    }
+
+    .form-input-icon {
+      position: relative;
+    }
+
+    .form-input-icon svg {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .form-input-icon .form-input {
+      padding-left: 2.75rem;
+    }
+
+    .form-textarea {
+      resize: none;
+      min-height: 80px;
+    }
+
+    /* ========================================
+       CUSTOM SELECT
+       ======================================== */
+    .custom-select {
+      position: relative;
+    }
+
+    .select-trigger {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      border: 2px solid hsl(var(--border) / 0.6);
+      border-radius: 12px;
+      background: hsl(var(--card));
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .select-trigger:hover {
+      border-color: hsl(var(--primary) / 0.5);
+    }
+
+    .select-trigger.open {
+      border-color: hsl(var(--primary));
+      box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1);
+    }
+
+    .select-value {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .select-value .emoji {
+      font-size: 1.5rem;
+    }
+
+    .select-value strong {
+      font-weight: 600;
+      color: hsl(var(--foreground));
+    }
+
+    .select-placeholder {
+      color: hsl(var(--muted-foreground));
+    }
+
+    .select-arrow {
+      width: 20px;
+      height: 20px;
+      color: hsl(var(--muted-foreground));
+      transition: transform 0.2s ease;
+    }
+
+    .select-trigger.open .select-arrow {
+      transform: rotate(180deg);
+    }
+
+    .select-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      right: 0;
+      background: hsl(var(--card));
+      border: 2px solid hsl(var(--border) / 0.6);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px hsl(210 15% 12% / 0.12);
+      z-index: 50;
+      overflow: hidden;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .select-search {
+      padding: 0.75rem;
+      border-bottom: 1px solid hsl(var(--border));
+      background: hsl(var(--muted) / 0.3);
+    }
+
+    .select-options {
+      max-height: 220px;
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+
+    .select-option {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .select-option:hover {
+      background: hsl(var(--muted));
+    }
+
+    .select-option.selected {
+      background: hsl(var(--primary) / 0.1);
+    }
+
+    .select-option .emoji {
+      font-size: 1.25rem;
+    }
+
+    .select-option span {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .select-option svg {
+      width: 16px;
+      height: 16px;
+      color: hsl(var(--primary));
+    }
+
+    /* ========================================
+       IRRIGATION OPTIONS
+       ======================================== */
+    .irrigation-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+    }
+
+    .irrigation-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.75rem;
+      border: 2px solid hsl(var(--border) / 0.6);
+      border-radius: 12px;
+      background: hsl(var(--card));
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .irrigation-btn:hover {
+      border-color: hsl(var(--primary) / 0.3);
+      background: hsl(var(--muted));
+    }
+
+    .irrigation-btn.selected {
+      border-color: hsl(var(--primary));
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      box-shadow: 0 2px 8px hsl(var(--primary) / 0.25);
+    }
+
+    .irrigation-btn .emoji {
+      font-size: 1.125rem;
+    }
+
+    .irrigation-btn span {
+      font-size: 0.6875rem;
+      font-weight: 600;
+    }
+
+    /* ========================================
+       ADVANCED TOGGLE
+       ======================================== */
+    .advanced-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0;
+      border: none;
+      background: none;
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: hsl(var(--primary));
+      cursor: pointer;
+      transition: color 0.15s ease;
+    }
+
+    .advanced-toggle:hover {
+      color: hsl(158 42% 28%);
+    }
+
+    .advanced-toggle svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.2s ease;
+    }
+
+    .advanced-toggle.open svg {
+      transform: rotate(180deg);
+    }
+
+    .advanced-content {
+      margin-top: 1.25rem;
+      animation: fadeIn 0.2s ease;
+    }
+
+    /* ========================================
+       INFO BOX
+       ======================================== */
+    .info-box {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 1rem;
+      background: hsl(var(--muted) / 0.5);
+      border: 1px solid hsl(var(--border) / 0.4);
+      border-radius: 12px;
+      font-size: 0.875rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .info-box .emoji {
+      font-size: 1.125rem;
+    }
+
+    /* ========================================
+       MONITORING VIEW
+       ======================================== */
+    .monitoring-view {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .monitoring-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .monitoring-header-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .monitoring-header-info .emoji {
+      font-size: 1.75rem;
+    }
+
+    .monitoring-header-info h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .monitoring-header-info p {
+      font-size: 0.875rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .monitoring-hero {
+      height: 240px;
+      position: relative;
+      background: 
+        radial-gradient(ellipse at 40% 50%, hsl(var(--primary) / 0.25) 0%, transparent 60%),
+        radial-gradient(ellipse at 60% 40%, hsl(var(--success) / 0.2) 0%, transparent 50%),
+        linear-gradient(180deg, hsl(150 25% 92%) 0%, hsl(145 20% 88%) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .monitoring-hero svg {
+      filter: drop-shadow(0 4px 16px hsl(var(--primary) / 0.3));
+    }
+
+    .monitoring-status-badge {
+      position: absolute;
+      bottom: 1rem;
+      right: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      backdrop-filter: blur(4px);
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .monitoring-status-badge.healthy {
+      background: hsl(var(--success) / 0.1);
+      border: 1px solid hsl(var(--success) / 0.2);
+      color: hsl(var(--success));
+    }
+
+    .monitoring-status-badge svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .monitoring-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      width: 100%;
+    }
+
+    /* ========================================
+       PROGRESS CARD
+       ======================================== */
+    .progress-card {
+      background: hsl(var(--card));
+      border: 2px solid hsl(var(--border) / 0.6);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .progress-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .progress-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .progress-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: hsl(var(--primary) / 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .progress-icon svg {
+      width: 20px;
+      height: 20px;
+      color: hsl(var(--primary));
+    }
+
+    .progress-title h2 {
+      font-size: 1.125rem;
+      font-weight: 700;
+    }
+
+    .progress-title span {
+      font-size: 0.875rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .progress-days {
+      text-align: right;
+    }
+
+    .progress-days strong {
+      display: block;
+      font-family: var(--font-heading);
+      font-size: 1.75rem;
+      font-weight: 700;
+    }
+
+    .progress-days span {
+      font-size: 0.75rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .progress-bar {
+      height: 12px;
+      background: hsl(var(--muted));
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--success)));
+      border-radius: 6px;
+      transition: width 0.5s ease;
+    }
+
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.6875rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    /* ========================================
+       STATS GRID
+       ======================================== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .stat-card {
+      background: hsl(var(--card));
+      border: 2px solid hsl(var(--border) / 0.6);
+      border-radius: 1rem;
+      padding: 1.25rem;
+    }
+
+    .stat-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .stat-card-header svg {
+      width: 16px;
+      height: 16px;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .stat-card-header span {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: hsl(var(--muted-foreground));
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-card strong {
+      display: block;
+      font-family: var(--font-heading);
+      font-size: 1.125rem;
+      font-weight: 700;
+    }
+
+    /* ========================================
+       HEALTH CARD
+       ======================================== */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .section-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .section-icon.success {
+      background: hsl(var(--success) / 0.1);
+    }
+
+    .section-icon.primary {
+      background: hsl(var(--primary) / 0.1);
+    }
+
+    .section-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .section-icon.success svg {
+      color: hsl(var(--success));
+    }
+
+    .section-icon.primary svg {
+      color: hsl(var(--primary));
+    }
+
+    .section-header h2 {
+      font-size: 1.125rem;
+      font-weight: 700;
+    }
+
+    .health-card {
+      border-radius: 1rem;
+      padding: 1.5rem;
+      border: 2px solid;
+      margin-bottom: 2rem;
+    }
+
+    .health-card.healthy {
+      background: hsl(var(--success) / 0.1);
+      border-color: hsl(var(--success) / 0.2);
+    }
+
+    .health-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .health-card-label {
+      font-size: 0.875rem;
+      color: hsl(var(--muted-foreground));
+      font-weight: 500;
+    }
+
+    .health-card-value {
+      font-family: var(--font-heading);
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-top: 0.25rem;
+    }
+
+    .health-card.healthy .health-card-value {
+      color: hsl(var(--success));
+    }
+
+    .health-status-badge {
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+
+    .health-status-badge.healthy {
+      background: hsl(var(--success) / 0.2);
+      color: hsl(var(--success));
+    }
+
+    .health-card-footer {
+      font-size: 0.875rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .waiting-card {
+      border-radius: 1rem;
+      padding: 2rem;
+      border: 2px dashed hsl(var(--border));
+      background: hsl(var(--muted) / 0.3);
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .waiting-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 1rem;
+      background: hsl(var(--muted));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      font-size: 2rem;
+    }
+
+    .waiting-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .waiting-card p {
+      font-size: 0.875rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    /* ========================================
+       TREND CHART
+       ======================================== */
+    .trend-card {
+      background: hsl(var(--card));
+      border: 2px solid hsl(var(--border) / 0.6);
+      border-radius: 1rem;
+      padding: 1.5rem;
+    }
+
+    .trend-chart {
+      height: 160px;
+      display: flex;
+      align-items: flex-end;
+      gap: 0.75rem;
+    }
+
+    .trend-bar-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .trend-bar {
+      width: 100%;
+      border-radius: 6px 6px 0 0;
+      transition: height 0.5s ease;
+      min-height: 8px;
+    }
+
+    .trend-bar.healthy {
+      background: hsl(var(--success));
+    }
+
+    .trend-bar.watch {
+      background: hsl(var(--warning));
+    }
+
+    .trend-bar.stress {
+      background: hsl(var(--destructive));
+    }
+
+    .trend-label {
+      font-size: 0.625rem;
+      font-weight: 500;
+      color: hsl(var(--muted-foreground));
+    }
+  </style>
+</head>
+<body>
+  <!-- ========================================
+       FIELDS VIEW
+       ======================================== -->
+  <div id="fields-view">
+    <header class="header">
+      <div class="header-inner">
+        <div class="logo-section">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+              <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+            </svg>
+          </div>
+          <div class="logo-text">
+            <h1>CropWatch</h1>
+            <span>SMART FIELD MONITORING</span>
+          </div>
+        </div>
+        <button class="btn btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"/><path d="M12 5v14"/>
+          </svg>
+          Add Field
+        </button>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="page-header">
+        <div class="page-title">
+          <h2>My Fields</h2>
+          <p>Manage and monitor your agricultural fields</p>
+        </div>
+        <div class="stats-row">
+          <div class="stat-item">
+            <div class="stat-icon primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>
+              </svg>
+            </div>
+            <div class="stat-text">
+              <span>Total Fields</span>
+              <strong id="total-fields">3</strong>
+            </div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-icon success">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+            <div class="stat-text">
+              <span>Total Area</span>
+              <strong id="total-area">4.4 ha</strong>
+            </div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-icon accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+                <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+              </svg>
+            </div>
+            <div class="stat-text">
+              <span>Active Crops</span>
+              <strong id="active-crops">1</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content-grid">
+        <div>
+          <p class="field-list-header">3 fields</p>
+          <div class="field-list" id="field-list">
+            
+          </div>
+        </div>
+
+        <div class="map-container">
+          <div class="map-header">
+            <div class="map-status">
+              <div class="map-status-dot"></div>
+              <span>Live Satellite View</span>
+            </div>
+            <button class="btn btn-ghost btn-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>
+              </svg>
+            </button>
+          </div>
+          <div class="map-bg"></div>
+          <div class="map-content">
+            <div style="position: relative;">
+              <svg width="380" height="320" viewBox="0 0 380 320" class="map-svg">
+                <polygon id="map-field-1" class="map-polygon active" points="50,70 170,45 195,140 75,165" data-field="1"/>
+                <polygon id="map-field-2" class="map-polygon active" points="200,55 320,80 295,175 175,150" data-field="2"/>
+                <polygon id="map-field-3" class="map-polygon inactive" points="95,195 215,170 240,265 120,290" data-field="3"/>
+              </svg>
+              <div class="map-info-card hidden" id="map-info-card">
+                <div class="map-info-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
+                  </svg>
+                </div>
+                <div class="map-info-text">
+                  <strong id="map-info-name">Field Name</strong>
+                  <span>Selected</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="map-legend">
+            <div class="legend-item">
+              <div class="legend-color active"></div>
+              <span>Active</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color inactive"></div>
+              <span>Inactive</span>
+            </div>
+          </div>
+          <div class="map-scale">
+            <div class="scale-bar"></div>
+            <span>100m</span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ========================================
+       MONITORING VIEW
+       ======================================== -->
+  <div id="monitoring-view" class="monitoring-view hidden">
+    <header class="header">
+      <div class="header-inner">
+        <div class="monitoring-header">
+          <button class="btn btn-ghost btn-icon" id="back-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>
+            </svg>
+          </button>
+          <div class="monitoring-header-info">
+            <span class="emoji" id="monitoring-crop-icon">🌾</span>
+            <div>
+              <h1 id="monitoring-field-name">Wheat Plot B</h1>
+              <p id="monitoring-field-info">1.1 ha • Wheat</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="monitoring-hero">
+      <svg width="280" height="160" viewBox="0 0 280 160">
+        <polygon points="40,25 240,15 260,135 20,145" fill="hsl(158 42% 22% / 0.45)" stroke="hsl(158 42% 22%)" stroke-width="3"/>
+      </svg>
+      <div class="monitoring-status-badge healthy" id="monitoring-status-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+        <span id="monitoring-status-text">Healthy</span>
+      </div>
+    </div>
+
+    <div class="monitoring-content">
+      <!-- Growth Progress -->
+      <div class="progress-card">
+        <div class="progress-header">
+          <div class="progress-title">
+            <div class="progress-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/>
+              </svg>
+            </div>
+            <div>
+              <h2>Growth Progress</h2>
+              <span id="growth-stage">Maturation stage</span>
+            </div>
+          </div>
+          <div class="progress-days">
+            <strong id="days-since-planting">85</strong>
+            <span>days since planting</span>
+          </div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-fill" style="width: 90%;"></div>
+        </div>
+        <div class="progress-labels">
+          <span>Germination</span>
+          <span>Vegetative</span>
+          <span>Flowering</span>
+          <span>Maturation</span>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
+            </svg>
+            <span>Planting Date</span>
+          </div>
+          <strong id="planting-date">Oct 12, 2025</strong>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>
+            </svg>
+            <span>Irrigation</span>
+          </div>
+          <strong id="irrigation-type">Drip</strong>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+            </svg>
+            <span>Variety</span>
+          </div>
+          <strong id="variety">Standard</strong>
+        </div>
+      </div>
+
+      <!-- Vegetation Health -->
+      <div class="section-header">
+        <div class="section-icon success">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <h2>Vegetation Health</h2>
+      </div>
+
+      <div class="health-card healthy" id="health-card">
+        <div class="health-card-header">
+          <div>
+            <p class="health-card-label">Current NDVI</p>
+            <p class="health-card-value" id="ndvi-value">0.72</p>
+          </div>
+          <div class="health-status-badge healthy" id="health-status-badge">
+            <span id="health-status-text">healthy</span>
+          </div>
+        </div>
+        <p class="health-card-footer" id="last-capture">Last satellite capture: Sat, Jan 4</p>
+      </div>
+
+      <!-- Waiting Card (hidden by default) -->
+      <div class="waiting-card hidden" id="waiting-card">
+        <div class="waiting-icon">🛰️</div>
+        <h3>Monitoring will begin soon</h3>
+        <p>First satellite update expected in 5–7 days</p>
+      </div>
+
+      <!-- NDVI Trend -->
+      <div id="trend-section">
+        <div class="section-header">
+          <div class="section-icon primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+            </svg>
+          </div>
+          <h2>NDVI Trend</h2>
+        </div>
+
+        <div class="trend-card">
+          <div class="trend-chart" id="trend-chart">
+            <!-- Trend bars will be rendered here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================
+       REGISTRATION MODAL
+       ======================================== -->
+  <div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-header-content">
+          <div class="modal-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>
+            </svg>
+          </div>
+          <div class="modal-title">
+            <h3>Register New Crop</h3>
+            <p id="modal-field-info">Maize Plot A • 2.4 ha</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Crop Type <span class="required">*</span></label>
+          <div class="custom-select" id="crop-select">
+            <div class="select-trigger" id="select-trigger">
+              <span class="select-placeholder" id="select-display">Select a crop...</span>
+              <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </div>
+            <div class="select-dropdown hidden" id="select-dropdown">
+              <div class="select-search">
+                <div class="form-input-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+                  </svg>
+                  <input type="text" class="form-input" placeholder="Search crops..." id="crop-search">
+                </div>
+              </div>
+              <div class="select-options" id="crop-options">
+                <!-- Crop options will be rendered here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Planting Date <span class="required">*</span></label>
+          <div class="form-input-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
+            </svg>
+            <input type="date" class="form-input" id="planting-date-input">
+          </div>
+        </div>
+
+        <button class="advanced-toggle" id="advanced-toggle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m6 9 6 6 6-6"/>
+          </svg>
+          <span id="advanced-toggle-text">Show advanced options</span>
+        </button>
+
+        <div class="advanced-content hidden" id="advanced-content">
+          <div class="form-group">
+            <label class="form-label">Variety</label>
+            <input type="text" class="form-input" placeholder="e.g., Golden Harvest 4567" id="variety-input">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Irrigation Type</label>
+            <div class="irrigation-grid">
+              <button class="irrigation-btn" data-irrigation="rainfed">
+                <span class="emoji">🌧️</span>
+                <span>Rainfed</span>
+              </button>
+              <button class="irrigation-btn" data-irrigation="drip">
+                <span class="emoji">💧</span>
+                <span>Drip</span>
+              </button>
+              <button class="irrigation-btn" data-irrigation="sprinkler">
+                <span class="emoji">🌊</span>
+                <span>Sprinkler</span>
+              </button>
+              <button class="irrigation-btn" data-irrigation="flood">
+                <span class="emoji">🌊</span>
+                <span>Flood</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea class="form-input form-textarea" placeholder="Any additional notes about this crop..." id="notes-input"></textarea>
+          </div>
+        </div>
+
+        <div class="info-box">
+          <span class="emoji">🛰️</span>
+          <p>Satellite monitoring begins automatically ~7 days after the planting date you select.</p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="cancel-btn">Cancel</button>
+        <button class="btn btn-primary" id="submit-btn" disabled>Start Monitoring</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========================================
+    // DATA
+    // ========================================
+    const CROP_TYPES = [
+      { id: 'maize', name: 'Maize', icon: '🌽' },
+      { id: 'wheat', name: 'Wheat', icon: '🌾' },
+      { id: 'rice', name: 'Rice', icon: '🍚' },
+      { id: 'soybean', name: 'Soybean', icon: '🫘' },
+      { id: 'cotton', name: 'Cotton', icon: '☁️' },
+      { id: 'sugarcane', name: 'Sugarcane', icon: '🎋' },
+      { id: 'potato', name: 'Potato', icon: '🥔' },
+      { id: 'tomato', name: 'Tomato', icon: '🍅' },
+    ];
+
+    let fields = [];
+    let selectedFieldId = null;
+    let currentFieldForRegistration = null;
+    let selectedCrop = null;
+    let selectedIrrigation = '';
+    
+
+    // ========================================
+    // DOM ELEMENTS
+    // ========================================
+    const fieldsView = document.getElementById('fields-view');
+    const monitoringView = document.getElementById('monitoring-view');
+    const fieldList = document.getElementById('field-list');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const mapInfoCard = document.getElementById('map-info-card');
+    const selectTrigger = document.getElementById('select-trigger');
+    const selectDropdown = document.getElementById('select-dropdown');
+    const cropOptions = document.getElementById('crop-options');
+    const cropSearch = document.getElementById('crop-search');
+    const advancedToggle = document.getElementById('advanced-toggle');
+    const advancedContent = document.getElementById('advanced-content');
+    const submitBtn = document.getElementById('submit-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const backBtn = document.getElementById('back-btn');
+    const plantingDateInput = document.getElementById('planting-date-input');
+
+    // ========================================
+    // UTILITY FUNCTIONS
+    // ========================================
+    // Helper function to get CSRF token
+    function getCSRFToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+        }
+        }
+    }
+    return cookieValue;
+    }
+
+    // Helper function to transform NDVI data from backend
+    function transformNDVIData(ndviArray) {
+    if (!Array.isArray(ndviArray) || ndviArray.length === 0) {
+        return null;
+    }
+    
+    return ndviArray.map(reading => ({
+        date: new Date(reading.date || reading.capture_date),
+        value: parseFloat(reading.value || reading.ndvi_value),
+        status: reading.status || determineHealthStatus(reading.value || reading.ndvi_value)
+    }));
+    }
+
+    // Helper function to determine health status from NDVI value
+    function determineHealthStatus(ndviValue) {
+    const value = parseFloat(ndviValue);
+    if (value >= 0.6) return 'healthy';
+    if (value >= 0.4) return 'moderate';
+    return 'stressed';
+    }
+    function getGrowthStage(plantingDate) {
+      const days = Math.floor((Date.now() - plantingDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (days < 14) return { name: 'Germination', progress: 15, days };
+      if (days < 45) return { name: 'Vegetative', progress: 40, days };
+      if (days < 90) return { name: 'Flowering', progress: 70, days };
+      return { name: 'Maturation', progress: 90, days };
+    }
+
+    function formatDate(date) {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function formatShortDate(date) {
+      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+
+    // ========================================
+    // RENDER FUNCTIONS
+    // ========================================
+    function renderFields() {
+      fieldList.innerHTML = fields.map(field => {
+        const hasCrop = !!field.crop;
+        const isActive = field.crop?.status === 'active';
+        const isEnded = field.crop?.status === 'harvested' || field.crop?.status === 'failed';
+        const isSelected = selectedFieldId === field.id;
+        const stage = isActive ? getGrowthStage(field.crop.plantingDate) : null;
+
+        return `
+          <div class="field-card ${isSelected ? 'selected' : ''}" data-field-id="${field.id}">
+            <div class="field-card-header">
+              <div class="field-card-info">
+                <h3>${field.name}</h3>
+                <p>${field.area.toFixed(1)} hectares</p>
+              </div>
+              ${!hasCrop ? '<span class="badge badge-muted">No crop</span>' : ''}
+              ${isActive ? '<span class="badge badge-success"><span class="badge-dot"></span>Active</span>' : ''}
+              ${isEnded ? `<span class="badge badge-muted"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"/><path d="M14 13H10"/><path d="M5 7l3-4h8l3 4"/></svg>${field.crop?.status === 'harvested' ? 'Harvested' : 'Ended'}</span>` : ''}
+            </div>
+            ${isActive && field.crop ? `
+              <div class="crop-detail">
+                <div class="crop-icon">${field.crop.type.icon}</div>
+                <div class="crop-info">
+                  <strong>${field.crop.type.name}</strong>
+                  <span>${stage.name} stage</span>
+                </div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+              </div>
+            ` : ''}
+            ${isEnded && field.crop ? `
+              <div class="previous-crop">
+                <span>${field.crop.type.icon}</span>
+                Previous: ${field.crop.type.name}
+              </div>
+            ` : ''}
+            ${!hasCrop ? `
+              <button class="btn btn-primary btn-sm" style="width: 100%" data-action="register" data-field-id="${field.id}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                Register Crop
+              </button>
+            ` : ''}
+            ${isActive ? `
+              <button class="btn btn-secondary btn-sm" style="width: 100%" data-action="view" data-field-id="${field.id}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                View Monitoring
+              </button>
+            ` : ''}
+            ${isEnded ? `
+              <button class="btn btn-primary btn-sm" style="width: 100%" data-action="register" data-field-id="${field.id}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                Register New Crop
+              </button>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      updateStats();
+    }
+
+    function renderCropOptions(filter = '') {
+      const filtered = CROP_TYPES.filter(c => c.name.toLowerCase().includes(filter.toLowerCase()));
+      cropOptions.innerHTML = filtered.map(crop => `
+        <div class="select-option ${selectedCrop?.id === crop.id ? 'selected' : ''}" data-crop-id="${crop.id}">
+          <span class="emoji">${crop.icon}</span>
+          <span>${crop.name}</span>
+          ${selectedCrop?.id === crop.id ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+        </div>
+      `).join('') || '<p style="padding: 1.5rem; text-align: center; color: hsl(var(--muted-foreground));">No crops found</p>';
+    }
+
+    function renderTrendChart(ndviData) {
+      const trendChart = document.getElementById('trend-chart');
+      trendChart.innerHTML = ndviData.map(reading => `
+        <div class="trend-bar-wrapper">
+          <div class="trend-bar ${reading.status}" style="height: ${reading.value * 100}%"></div>
+          <span class="trend-label">${reading.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+        </div>
+      `).join('');
+    }
+
+    function updateStats() {
+      document.getElementById('total-fields').textContent = fields.length;
+      document.getElementById('total-area').textContent = fields.reduce((sum, f) => sum + f.area, 0).toFixed(1) + ' ha';
+      document.getElementById('active-crops').textContent = fields.filter(f => f.crop?.status === 'active').length;
+      document.querySelector('.field-list-header').textContent = `${fields.length} field${fields.length !== 1 ? 's' : ''}`;
+    }
+
+    function updateMapSelection() {
+      document.querySelectorAll('.map-polygon').forEach(polygon => {
+        const fieldId = polygon.dataset.field;
+        const field = fields.find(f => f.id === fieldId);
+        const isActive = field?.crop?.status === 'active';
+        
+        polygon.classList.remove('selected', 'active', 'inactive');
+        
+        if (selectedFieldId === fieldId) {
+          polygon.classList.add('selected');
+        } else if (isActive) {
+          polygon.classList.add('active');
+        } else {
+          polygon.classList.add('inactive');
+        }
+      });
+
+      if (selectedFieldId) {
+        const field = fields.find(f => f.id === selectedFieldId);
+        mapInfoCard.classList.remove('hidden');
+        document.getElementById('map-info-name').textContent = field.name;
+        
+        // Position the info card
+        const positions = {
+          '1': { top: '85px', left: '85px' },
+          '2': { top: '95px', left: '210px' },
+          '3': { top: '210px', left: '140px' }
+        };
+        const pos = positions[selectedFieldId] || { top: '50%', left: '50%' };
+        mapInfoCard.style.top = pos.top;
+        mapInfoCard.style.left = pos.left;
+      } else {
+        mapInfoCard.classList.add('hidden');
+      }
+    }
+
+    function showMonitoringView(field) {
+      fieldsView.classList.add('hidden');
+      monitoringView.classList.remove('hidden');
+
+      const crop = field.crop;
+      const stage = getGrowthStage(crop.plantingDate);
+      const latestNDVI = crop.ndviData?.[crop.ndviData.length - 1];
+      const hasNDVIData = crop.ndviData && crop.ndviData.length > 0;
+
+      document.getElementById('monitoring-crop-icon').textContent = crop.type.icon;
+      document.getElementById('monitoring-field-name').textContent = field.name;
+      document.getElementById('monitoring-field-info').textContent = `${field.area.toFixed(1)} ha • ${crop.type.name}`;
+      document.getElementById('growth-stage').textContent = `${stage.name} stage`;
+      document.getElementById('days-since-planting').textContent = stage.days;
+      document.getElementById('progress-fill').style.width = `${stage.progress}%`;
+      document.getElementById('planting-date').textContent = formatDate(crop.plantingDate);
+      document.getElementById('irrigation-type').textContent = crop.irrigationType ? crop.irrigationType.charAt(0).toUpperCase() + crop.irrigationType.slice(1) : 'Not specified';
+      document.getElementById('variety').textContent = crop.variety || 'Standard';
+
+      const healthCard = document.getElementById('health-card');
+      const waitingCard = document.getElementById('waiting-card');
+      const trendSection = document.getElementById('trend-section');
+      const statusBadge = document.getElementById('monitoring-status-badge');
+
+      if (hasNDVIData && latestNDVI) {
+        healthCard.classList.remove('hidden');
+        waitingCard.classList.add('hidden');
+        trendSection.classList.remove('hidden');
+        statusBadge.classList.remove('hidden');
+
+        document.getElementById('ndvi-value').textContent = latestNDVI.value.toFixed(2);
+        document.getElementById('health-status-text').textContent = latestNDVI.status;
+        document.getElementById('monitoring-status-text').textContent = latestNDVI.status.charAt(0).toUpperCase() + latestNDVI.status.slice(1);
+        document.getElementById('last-capture').textContent = `Last satellite capture: ${formatShortDate(latestNDVI.date)}`;
+
+        renderTrendChart(crop.ndviData);
+      } else {
+        healthCard.classList.add('hidden');
+        waitingCard.classList.remove('hidden');
+        trendSection.classList.add('hidden');
+        statusBadge.classList.add('hidden');
+      }
+    }
+
+    function hideMonitoringView() {
+      monitoringView.classList.add('hidden');
+      fieldsView.classList.remove('hidden');
+    }
+
+    function openModal(field) {
+      currentFieldForRegistration = field;
+      selectedCrop = null;
+      selectedIrrigation = '';
+      
+      document.getElementById('modal-field-info').textContent = `${field.name} • ${field.area.toFixed(1)} ha`;
+      document.getElementById('select-display').innerHTML = '<span class="select-placeholder">Select a crop...</span>';
+      plantingDateInput.value = '';
+      plantingDateInput.max = new Date().toISOString().split('T')[0];
+      document.getElementById('variety-input').value = '';
+      document.getElementById('notes-input').value = '';
+      
+      document.querySelectorAll('.irrigation-btn').forEach(btn => btn.classList.remove('selected'));
+      
+      advancedContent.classList.add('hidden');
+      advancedToggle.classList.remove('open');
+      document.getElementById('advanced-toggle-text').textContent = 'Show advanced options';
+      
+      submitBtn.disabled = true;
+      
+      renderCropOptions();
+      modalOverlay.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      modalOverlay.classList.add('hidden');
+      selectDropdown.classList.add('hidden');
+      selectTrigger.classList.remove('open');
+    }
+
+    function validateForm() {
+      submitBtn.disabled = !(selectedCrop && plantingDateInput.value);
+    }
+
+    // ========================================
+    // EVENT LISTENERS
+    // ========================================
+    fieldList.addEventListener('click', (e) => {
+      const card = e.target.closest('.field-card');
+      const actionBtn = e.target.closest('[data-action]');
+      
+      if (actionBtn) {
+        e.stopPropagation();
+        const fieldId = actionBtn.dataset.fieldId;
+        const action = actionBtn.dataset.action;
+        const field = fields.find(f => f.id === fieldId);
+        
+        if (action === 'register') {
+          openModal(field);
+        } else if (action === 'view') {
+          showMonitoringView(field);
+        }
+        return;
+      }
+      
+      if (card) {
+        selectedFieldId = card.dataset.fieldId;
+        renderFields();
+        updateMapSelection();
+      }
+    });
+
+    document.querySelectorAll('.map-polygon').forEach(polygon => {
+      polygon.addEventListener('click', () => {
+        selectedFieldId = polygon.dataset.field;
+        renderFields();
+        updateMapSelection();
+      });
+    });
+
+    selectTrigger.addEventListener('click', () => {
+      const isOpen = selectDropdown.classList.toggle('hidden');
+      selectTrigger.classList.toggle('open', !selectDropdown.classList.contains('hidden'));
+      if (!selectDropdown.classList.contains('hidden')) {
+        cropSearch.value = '';
+        renderCropOptions();
+        cropSearch.focus();
+      }
+    });
+
+    cropSearch.addEventListener('input', (e) => {
+      renderCropOptions(e.target.value);
+    });
+
+    cropOptions.addEventListener('click', (e) => {
+      const option = e.target.closest('.select-option');
+      if (option) {
+        const cropId = option.dataset.cropId;
+        selectedCrop = CROP_TYPES.find(c => c.id === cropId);
+        document.getElementById('select-display').innerHTML = `
+          <span class="select-value">
+            <span class="emoji">${selectedCrop.icon}</span>
+            <strong>${selectedCrop.name}</strong>
+          </span>
+        `;
+        selectDropdown.classList.add('hidden');
+        selectTrigger.classList.remove('open');
+        renderCropOptions();
+        validateForm();
+      }
+    });
+
+    plantingDateInput.addEventListener('change', validateForm);
+
+    advancedToggle.addEventListener('click', () => {
+      const isOpen = advancedContent.classList.toggle('hidden');
+      advancedToggle.classList.toggle('open', !isOpen);
+      document.getElementById('advanced-toggle-text').textContent = isOpen ? 'Show advanced options' : 'Hide advanced options';
+    });
+
+    document.querySelectorAll('.irrigation-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.irrigation-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedIrrigation = btn.dataset.irrigation;
+      });
+    });
+
+    cancelBtn.addEventListener('click', closeModal);
+
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) closeModal();
+    });
+
+    submitBtn.addEventListener('click', () => {
+      if (!currentFieldForRegistration || !selectedCrop || !plantingDateInput.value) return;
+
+      const fieldIndex = fields.findIndex(f => f.id === currentFieldForRegistration.id);
+      fields[fieldIndex].crop = {
+        type: selectedCrop,
+        plantingDate: new Date(plantingDateInput.value),
+        status: 'active',
+        variety: document.getElementById('variety-input').value || undefined,
+        irrigationType: selectedIrrigation || undefined,
+        notes: document.getElementById('notes-input').value || undefined,
+        ndviData: null
+      };
+
+      closeModal();
+      renderFields();
+      updateMapSelection();
+    });
+
+    backBtn.addEventListener('click', hideMonitoringView);
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.custom-select')) {
+        selectDropdown.classList.add('hidden');
+        selectTrigger.classList.remove('open');
+      }
+    });
+
+    // ========================================
+    // INITIALIZE
+    // ========================================
+    // ========================================
+// INITIALIZE
+// ========================================
+    async function initializeApp() {
+    try {
+        const response = await fetch("/api/myfields/", {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCSRFToken()
+        }
+        });
+
+        if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Fields data received:", data);
+
+        // Handle different possible response structures
+        let rawFields = [];
+        if (data.features) {
+        rawFields = data.features;
+        } else if (Array.isArray(data)) {
+        rawFields = data;
+        } else if (data.fields) {
+        rawFields = data.fields;
+        }
+
+        // Transform backend data to frontend format
+        fields = rawFields.map(field => {
+        // Find matching crop type from CROP_TYPES
+        const cropType = field.crop_type ? 
+            CROP_TYPES.find(c => c.id === field.crop_type || c.name.toLowerCase() === field.crop_type.toLowerCase()) 
+            : null;
+        
+        return {
+            id: field.id.toString(),
+            name: field.name || `Field ${field.id}`,
+            area: parseFloat(field.area) || 0,
+            geometry: field.geometry || field.geom,
+            crop: field.crop_id || field.has_active_crop ? {
+            type: cropType || CROP_TYPES[0],
+            plantingDate: field.planting_date ? new Date(field.planting_date) : new Date(),
+            status: field.crop_status || 'active',
+            variety: field.variety || undefined,
+            irrigationType: field.irrigation_type || undefined,
+            notes: field.notes || undefined,
+            ndviData: field.ndvi_data ? transformNDVIData(field.ndvi_data) : null
+            } : null
+        };
+        });
+
+        if (fields.length === 0) {
+        fieldList.innerHTML = '<div class="waiting-card"><div class="waiting-icon">🌾</div><h3>No fields yet</h3><p>Add your first field to start monitoring</p></div>';
+        return;
+        }
+
+        // Initialize the UI with fetched data
+        renderFields();
+        updateMapSelection();
+        
+    } catch (error) {
+        console.error("Error fetching fields:", error);
+        fieldList.innerHTML = '<div class="waiting-card"><div class="waiting-icon">⚠️</div><h3>Error loading fields</h3><p>Please refresh the page to try again</p></div>';
+    }
+    }
+
+    // Call initialization when page loads
+    initializeApp();
+  </script>
+</body>
+</html>

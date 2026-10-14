@@ -1130,7 +1130,7 @@
 
             showAlert: (message, type = 'info') => {
                 const alertBanner = document.getElementById('alertBanner');
-                alertBanner.innerHTML = `${type === 'error' ? '❌' : '✅'} ${message}`;
+                alertBanner.innerHTML = `${type === 'error' ? '' : ''} ${message}`;
                 alertBanner.style.display = 'block';
                 setTimeout(() => {
                     alertBanner.style.display = 'none';
@@ -1759,7 +1759,7 @@
     APP_STATE.fieldData.markers.push(marker);
 
     if (APP_STATE.fieldData.coordinates.length >= 3) {
-        this.fillPolygonIfReady();  // ✅ New function here
+        this.fillPolygonIfReady();  
         this.updateFieldArea();
     }
 },
@@ -1779,8 +1779,8 @@
 
         APP_STATE.fieldData.currentPolygon = L.polygon(APP_STATE.fieldData.coordinates, {
             color: '#4ade80',
-            fillColor: '#4ade80',   // ✅ Green fill
-            fillOpacity: 0.4,       // ✅ Slight transparency
+            fillColor: '#4ade80',   
+            fillOpacity: 0.4,      
             weight: 2
         }).addTo(APP_STATE.map);
     }
@@ -1801,7 +1801,7 @@
 
                 const coords = [...APP_STATE.fieldData.coordinates];
                 if (coords[0][0] !== coords[coords.length - 1][0] || coords[0][1] !== coords[coords.length - 1][1]) {
-                    coords.push(coords[0]); // ✅ Close polygon
+                    coords.push(coords[0]); //  Close polygon
                 }
 
                 fetch("/save-field/", {

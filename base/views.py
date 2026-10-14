@@ -173,10 +173,10 @@ class SaveFieldView(APIView):
             if not coordinates or len(coordinates) < 3:
                 return Response({"error": "At least 3 points are required"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # ✅ Convert from [lat, lng] → (lng, lat) for PostGIS
+            #  Convert from [lat, lng] → (lng, lat) for PostGIS
             coords_lnglat = [(lng, lat) for lat, lng in coordinates]
 
-            # ✅ Ensure polygon is closed
+            #  Ensure polygon is closed
             if coords_lnglat[0] != coords_lnglat[-1]:
                 coords_lnglat.append(coords_lnglat[0])
 
@@ -263,7 +263,7 @@ def analyze_field_view(request, id):
         # Merge original data with extracted data (extracted data takes precedence if available)
         merged_soil_data = {}
         
-        # ✅ FIX: Check if original_soil_data is a dict (not DataFrame)
+        # FIX: Check if original_soil_data is a dict (not DataFrame)
         if original_soil_data is not None and isinstance(original_soil_data, dict):
             merged_soil_data = original_soil_data.copy()
         
@@ -356,7 +356,7 @@ def get_field_data_view(request, id):
                 "area": field.area,
                 "center": field_center
             },
-            # ✅ FIX: soil_data is already a dict, no need to convert
+            #  FIX: soil_data is already a dict, no need to convert
             "soil_properties": soil_data if soil_data is not None else {},
             "climate_conditions": climate_data
         }
@@ -383,7 +383,7 @@ def activity(request):
 def res(request):
     return render(request, 'result.html')
 
-# views.py
+
 
 
 
