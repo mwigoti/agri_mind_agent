@@ -42,6 +42,7 @@ class Field(models.Model):
     name = models.CharField(max_length=255)
     geometry = models.PolygonField(srid=3857, geography=False)  
     created_at = models.DateTimeField(default=now)
+    area = models.FloatField(default=0.0)
 
     def __str__(self):
         return self.name

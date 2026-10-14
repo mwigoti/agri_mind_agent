@@ -82,11 +82,35 @@ function setupInfoPanelToggle() {
     });
 }
 
+// Fast area calculation using Shoelace formula (optimized for performance)
+function calculatePolygonArea(coordinates) {
+    if (coordinates.length < 3) return 0;
+    
+    let area = 0;
+    const n = coordinates.length;
+    
+    
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        area += coordinates[i][0] * coordinates[j][1];
+        area -= coordinates[j][0] * coordinates[i][1];
+    }
+    
+    return Math.abs(area) / 2;
+}
+
+function convertToHectares(areaInMapUnits) {
+   
+    return areaInMapUnits / 10000;
+}
+
+
 function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, SimpleFillSymbol, Color) {
     let isDrawingMode = false;
     let markerCoordinates = [];
     const markers = [];
     let mapClickHandle = null;
+    let currentPolygonGraphic = null;
 
     function handleMapClick(event) {
         if (!isDrawingMode) return;
@@ -100,25 +124,52 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
         markers.push(markerGraphic);
 
         if (markerCoordinates.length >= 3) {
-            drawPolygon(markerCoordinates, map, Polygon, SimpleFillSymbol, Color);
+            drawPolygonWithArea(markerCoordinates, map, Polygon, SimpleFillSymbol, Color);
         }
     }
 
-    function drawPolygon(coords, map, Polygon, SimpleFillSymbol, Color) {
-        map.graphics.clear();
+    function drawPolygonWithArea(coords, map, Polygon, SimpleFillSymbol, Color) {
+        // Remove previous polygon
+        if (currentPolygonGraphic) {
+            map.graphics.remove(currentPolygonGraphic);
+        }
 
         const polygon = new Polygon(map.spatialReference);
         polygon.addRing(coords);
 
         const fillSymbol = new SimpleFillSymbol().setColor(new Color([0, 255, 0, 0.25]));
-        const polygonGraphic = new Graphic(polygon, fillSymbol);
-        map.graphics.add(polygonGraphic);
+        currentPolygonGraphic = new Graphic(polygon, fillSymbol);
+        map.graphics.add(currentPolygonGraphic);
+
+        // Calculate and update area in real-time
+        const areaInMapUnits = calculatePolygonArea(coords);
+        const areaInHectares = convertToHectares(areaInMapUnits);
+        updateInfoPanel({ area: areaInHectares });
     }
 
     function sendCoordinatesToDjango(coordinates) {
         const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
         const fieldName = prompt("Enter a name for this field:");
-
+        
+        if (!fieldName) return; // User cancelled
+        
+        // Calculate area before sending
+        const areaInMapUnits = calculatePolygonArea(coordinates);
+        const areaInHectares = convertToHectares(areaInMapUnits);
+        
+        // Prepare data with area included
+        const fieldData = {
+            name: fieldName,
+            coordinates: coordinates,
+            area: areaInHectares,
+            area_units: 'hectares'
+        };
+        
+        // Show saving indicator
+        const addFieldButton = document.querySelector(".add-field-button");
+        const originalText = addFieldButton.textContent;
+        addFieldButton.textContent = "Saving...";
+        addFieldButton.disabled = true;
         
         fetch('/save-field/', {
             method: 'POST',
@@ -126,41 +177,42 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrftoken
             },
-            body: JSON.stringify({
-                name: fieldName,
-                coordinates: coordinates
-            })
+            body: JSON.stringify(fieldData)
         })
         .then(response => response.json())
         .then(data => {
             if (data.error) {
-            console.error('Error:', data.error);
-            alert('Error saving field: ' + data.error);
-        } else {
-            alert('Field saved successfully!');
-            console.log('Saved field:', data);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error sending coordinates to server');
-    });
-}
+                console.error('Error:', data.error);
+                alert('Error saving field: ' + data.error);
+            } else {
+                alert(`Field saved successfully! Area: ${areaInHectares.toFixed(2)} hectares`);
+                console.log('Saved field:', data);
+                
+                // Reset the drawing state
+                map.graphics.clear();
+                markerCoordinates = [];
+                markers.length = 0;
+                updateInfoPanel({ area: 0 });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error sending coordinates to server');
+        })
+        .finally(() => {
+            // Reset button state
+            addFieldButton.textContent = originalText;
+            addFieldButton.disabled = false;
+        });
+    }
 
     function updateInfoPanel(data) {
         const infoPanel = document.querySelector('.info-panel');
-        if (infoPanel) {
-            if (data.area) {
-                const areaElement = infoPanel.querySelector('h3 + div');
-                if (areaElement) {
-                    areaElement.textContent = `${data.area.toFixed(2)} ha`;
-                }
-            }
-
-            if (data.center) {
-                const centerElement = document.createElement('div');
-                centerElement.textContent = `Center: ${data.center.lng.toFixed(4)}, ${data.center.lat.toFixed(4)}`;
-                infoPanel.appendChild(centerElement);
+        if (infoPanel && data.area !== undefined) {
+            // Update area display
+            const areaElement = infoPanel.querySelector('h3 + p');
+            if (areaElement) {
+                areaElement.textContent = `${data.area.toFixed(2)} ha`;
             }
         }
     }
@@ -173,9 +225,13 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
             addFieldButton.textContent = "Finish Field";
             addFieldButton.style.backgroundColor = "#ff4444";
             mapClickHandle = map.on("click", handleMapClick);
+            
+            // Reset area display
+            updateInfoPanel({ area: 0 });
         } else {
-            addFieldButton.textContent = " Add Field";
+            addFieldButton.textContent = "Add Field";
             addFieldButton.style.backgroundColor = "";
+            
             if (mapClickHandle) {
                 mapClickHandle.remove();
                 mapClickHandle = null;
@@ -186,17 +242,22 @@ function setupPolygonDrawing(map, Graphic, Polygon, Point, SimpleMarkerSymbol, S
                 resetDrawing(map, markers);
             } else {
                 sendCoordinatesToDjango(markerCoordinates);
-                markerCoordinates = [];
-                resetDrawing(map, markers);
             }
         }
     });
+
+    function resetDrawing(map, markers) {
+        markers.forEach(marker => map.graphics.remove(marker));
+        markers.length = 0;
+        if (currentPolygonGraphic) {
+            map.graphics.remove(currentPolygonGraphic);
+            currentPolygonGraphic = null;
+        }
+        markerCoordinates = [];
+        updateInfoPanel({ area: 0 });
+    }
 }
 
-function resetDrawing(map, markers) {
-    markers.forEach(marker => map.graphics.remove(marker));
-    markers.length = 0;
-}
 
 document.addEventListener("DOMContentLoaded", function() {
     var myFieldsButton = document.getElementById("myFieldsButton");
