@@ -1,12 +1,602 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Payment Successful</title>
-</head>
-<body>
-    <h1>Payment Successful!</h1>
-    <p>Thank you for your payment.</p>
-    <a href="{% url 'map' %}">Return to Analysis</a>
-</body>
-</html>
+// ============================================================
+//  LAKE NAIVASHA — ML FLOOD/INUNDATION FEATURE EXTRACTION
+//  Google Earth Engine Script
+//
+//  Outputs: Monthly CSV (2000–2024) with:
+//    - Target: JRC lake surface area + Sentinel-1 water extent
+//    - Features: Rainfall, NDVI/EVI, soil moisture, LST,
+//                ENSO/IOD proxies, ERA5 land, seasonal encoding
+//
+//  Sensor harmonization:
+//    - Landsat 5 / 7 / 8 / 9  →  ETM+ spectral space (Roy et al. 2016)
+//    - MODIS as gap-free baseline NDVI/EVI
+//    - Sentinel-1 SAR (2014-present) for cloud-free water detection
+//
+//  Export → Google Drive folder: GEE_Exports/
+// ============================================================
+
+
+// ============================================================
+// 1. CONFIGURATION
+// ============================================================
+
+var CFG = {
+  startDate          : '2000-01-01',
+  endDate            : '2024-12-31',
+  climStart          : '1981-01-01',   // CHIRPS climatology baseline
+  climEnd            : '2010-12-31',
+  maxCloudCover      : 30,             // % for Landsat filtering
+  exportFolder       : 'GEE_Exports',
+  exportName         : 'Naivasha_ML_Features_2000_2024',
+  landsatScale       : 30,
+  modisScale         : 1000,
+  era5Scale          : 9000,
+  chirpsScale        : 5000,
+  s1Scale            : 10,
+  jrcScale           : 30
+};
+
+
+// ============================================================
+// 2. STUDY AREAS
+// ============================================================
+
+// Lake polygon — used for water area target variable
+var LAKE = ee.Geometry.Rectangle([36.17, -0.92, 36.53, -0.63]);
+
+// Malewa + Gilgil catchment — used for catchment-averaged features
+var CATCHMENT = ee.Geometry.Rectangle([35.95, -1.25, 36.85, -0.35]);
+
+// ============================================================
+// 3. LANDSAT SENSOR HARMONIZATION
+// ============================================================
+//
+//  Strategy:  all sensors → ETM+ (L7) spectral space
+//
+//  L5 (TM)    1984–2013 → bands already spectrally compatible with L7
+//  L7 (ETM+)  1999–2022 → reference sensor, no transformation
+//  L8 (OLI)   2013–pres → apply Roy et al. (2016) OLI→ETM+ coefficients
+//  L9 (OLI-2) 2021–pres → virtually identical to L8, same coefficients
+//
+//  Reference:
+//    Roy D.P. et al. (2016). Characterization of Landsat-7 to Landsat-8
+//    reflective wavelength and normalized difference vegetation index
+//    continuity. Remote Sensing of Environment, 185, 57–70.
+//
+//  Transformation form: ETM+ = (OLI − intercept) / slope
+//  where OLI = slope × ETM+ + intercept (from Roy et al. Table 2)
+// ============================================================
+
+// Roy et al. 2016 OLI→ETM+ per-band coefficients
+// Order: Blue, Green, Red, NIR, SWIR1, SWIR2
+var ROY_SLOPES     = ee.Image.constant([0.8474, 0.8483, 0.9047, 0.8462, 0.8937, 0.9071]);
+var ROY_INTERCEPTS = ee.Image.constant([0.0003, 0.0088, 0.0061, 0.0412, 0.0254, 0.0172]);
+
+// ---- QA masking + scaling for L4/5/7 (TM / ETM+) ----
+function prepL457(image) {
+  var qa = image.select('QA_PIXEL');
+  var mask = qa.bitwiseAnd(1 << 3).eq(0)   // cloud
+    .and(qa.bitwiseAnd(1 << 4).eq(0));      // cloud shadow
+  return image
+    .select(['SR_B1','SR_B2','SR_B3','SR_B4','SR_B5','SR_B7'])
+    .multiply(0.0000275).add(-0.2)
+    .rename(['Blue','Green','Red','NIR','SWIR1','SWIR2'])
+    .updateMask(mask)
+    .copyProperties(image, ['system:time_start','system:index']);
+}
+
+// ---- QA masking + scaling for L8/9 (OLI / OLI-2) ----
+function prepL89(image) {
+  var qa = image.select('QA_PIXEL');
+  var mask = qa.bitwiseAnd(1 << 3).eq(0)
+    .and(qa.bitwiseAnd(1 << 4).eq(0));
+  return image
+    .select(['SR_B2','SR_B3','SR_B4','SR_B5','SR_B6','SR_B7'])
+    .multiply(0.0000275).add(-0.2)
+    .rename(['Blue','Green','Red','NIR','SWIR1','SWIR2'])
+    .updateMask(mask)
+    .copyProperties(image, ['system:time_start','system:index']);
+}
+
+// ---- Apply Roy et al. harmonization (OLI → ETM+) ----
+function harmonizeToETM(image) {
+  return image
+    .select(['Blue','Green','Red','NIR','SWIR1','SWIR2'])
+    .subtract(ROY_INTERCEPTS)
+    .divide(ROY_SLOPES)
+    .rename(['Blue','Green','Red','NIR','SWIR1','SWIR2'])
+    .copyProperties(image, ['system:time_start','system:index']);
+}
+
+// ---- Compute spectral indices ----
+function addIndices(image) {
+  var ndvi  = image.normalizedDifference(['NIR','Red']).rename('NDVI');
+  var evi   = image.expression(
+    '2.5 * ((NIR - RED) / (NIR + 6*RED - 7.5*BLUE + 1))',
+    {NIR: image.select('NIR'), RED: image.select('Red'), BLUE: image.select('Blue')}
+  ).rename('EVI');
+  var mndwi = image.normalizedDifference(['Green','SWIR1']).rename('MNDWI'); // water
+  var ndbi  = image.normalizedDifference(['SWIR1','NIR']).rename('NDBI');    // built-up
+  return image.addBands([ndvi, evi, mndwi, ndbi]);
+}
+
+// ---- Build full harmonized Landsat collection ----
+
+
+// ============================================================
+// 4. CHIRPS CLIMATOLOGY (precomputed 1981–2010 baseline)
+//    Used to calculate monthly rainfall anomalies
+// ============================================================
+
+var CHIRPS_DAILY = ee.ImageCollection('UCSB-CHG/CHIRPS/DAILY');
+
+// Monthly mean daily rainfall for each calendar month (1–12)
+
+function buildHarmonizedLandsat(start, end) {
+  var l5 = ee.ImageCollection('LANDSAT/LT05/C02/T1_L2')
+    .filterDate(start, end).filterBounds(CATCHMENT)
+    .filter(ee.Filter.lt('CLOUD_COVER', CFG.maxCloudCover))
+    .map(prepL457).map(addIndices).map(castToFloat);
+
+  var l7 = ee.ImageCollection('LANDSAT/LE07/C02/T1_L2')
+    .filterDate(start, end).filterBounds(CATCHMENT)
+    .filter(ee.Filter.lt('CLOUD_COVER', CFG.maxCloudCover))
+    .map(prepL457).map(addIndices).map(castToFloat);
+
+  var l8 = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
+    .filterDate(start, end).filterBounds(CATCHMENT)
+    .filter(ee.Filter.lt('CLOUD_COVER', CFG.maxCloudCover))
+    .map(prepL89).map(harmonizeToETM).map(addIndices).map(castToFloat);
+
+  var l9 = ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')
+    .filterDate(start, end).filterBounds(CATCHMENT)
+    .filter(ee.Filter.lt('CLOUD_COVER', CFG.maxCloudCover))
+    .map(prepL89).map(harmonizeToETM).map(addIndices).map(castToFloat);
+
+  return l5.merge(l7).merge(l8).merge(l9);
+}
+
+// ============================================================
+// 5. HELPER: generic spatial reducer
+// ============================================================
+
+function reduce(image, geom, scale) {
+  return image.reduceRegion({
+    reducer   : ee.Reducer.mean(),
+    geometry  : geom,
+    scale     : scale,
+    maxPixels : 1e10,
+    bestEffort: true
+  });
+}
+function castToFloat(image) {
+  return image.toFloat()
+    .copyProperties(image, ['system:time_start', 'system:index']);
+}
+function reduceSum(image, geom, scale) {
+  return image.reduceRegion({
+    reducer   : ee.Reducer.sum(),
+    geometry  : geom,
+    scale     : scale,
+    maxPixels : 1e10,
+    bestEffort: true
+  });
+}
+
+// Safe getter — returns null when image is missing
+function safeGet(image, band, geom, scale, reducer) {
+  reducer = reducer || 'mean';
+  var fn = reducer === 'sum' ? reduceSum : reduce;
+  return ee.Algorithms.If(image, fn(ee.Image(image).select(band), geom, scale).get(band), null);
+}
+
+
+// ============================================================
+// 6. MONTHLY FEATURE EXTRACTION
+// ============================================================
+function chirpsSum(start, end) {
+  var col = CHIRPS_DAILY.filterDate(start, end);
+  return ee.Algorithms.If(
+    col.size().gt(0),
+    col.sum(),
+    ee.Image.constant(0).rename('precipitation')
+  );
+}
+function extractMonth(monthOffset) {
+  var date    = ee.Date(CFG.startDate).advance(monthOffset, 'month');
+  var dateEnd = date.advance(1, 'month');
+  var year    = date.get('year');
+  var month   = date.get('month');
+
+  // ---- 6a. RAINFALL (CHIRPS) ----
+
+var rain_curr = ee.Image(chirpsSum(date, dateEnd));
+var rain_7d   = ee.Image(chirpsSum(date.advance(-7,  'day'),   date));
+var rain_14d  = ee.Image(chirpsSum(date.advance(-14, 'day'),   date));
+var rain_30d  = ee.Image(chirpsSum(date.advance(-30, 'day'),   date));
+var rain_3m   = ee.Image(chirpsSum(date.advance(-3,  'month'), date));
+var rain_6m   = ee.Image(chirpsSum(date.advance(-6,  'month'), date));
+
+  // Anomaly = current month total − climatological monthly total
+  // ---- Climatology: mean daily rainfall for this calendar month (1981–2010) ----
+  var climCollection = CHIRPS_DAILY
+    .filterDate(CFG.climStart, CFG.climEnd)
+    .filter(ee.Filter.calendarRange(month, month, 'month'));
+
+  // Fallback: a zero-precipitation image in case climatology is empty
+  var fallback = ee.ImageCollection([
+    ee.Image.constant(0).rename('precipitation')
+      .set('system:time_start', ee.Date(CFG.climStart).millis())
+  ]);
+
+  var climDaily = climCollection.merge(fallback).mean();  // fallback only dominates if collection empty
+
+  var daysInMonth  = dateEnd.difference(date, 'day');
+  var rain_clim    = climDaily.multiply(daysInMonth);     // daysInMonth is ee.Number — no ee.Image.constant() needed
+  var rain_anomaly = rain_curr.subtract(rain_clim);           
+  var r = function(img) {
+    return reduce(img, CATCHMENT, CFG.chirpsScale).get('precipitation');
+  };
+
+  var feat_rain_curr    = r(rain_curr);
+  var feat_rain_7d      = r(rain_7d);
+  var feat_rain_14d     = r(rain_14d);
+  var feat_rain_30d     = r(rain_30d);
+  var feat_rain_3m      = r(rain_3m);
+  var feat_rain_6m      = r(rain_6m);
+  var feat_rain_anomaly = r(rain_anomaly);
+
+  // ---- 6b. MODIS NDVI & EVI (gap-free, 1 km, 2000–present) ----
+  // Used as the primary vegetation index; Landsat NDVI is auxiliary below.
+  var modisCol = ee.ImageCollection('MODIS/061/MOD13A3')
+  .filterDate(date, dateEnd);
+
+  var feat_ndvi_modis = ee.Algorithms.If(
+    modisCol.size().gt(0),
+    reduce(modisCol.first().select('NDVI').multiply(0.0001), CATCHMENT, CFG.modisScale)
+      .get('NDVI'),
+    null
+  );
+  var feat_evi_modis = ee.Algorithms.If(
+    modisCol.size().gt(0),
+    reduce(modisCol.first().select('EVI').multiply(0.0001), CATCHMENT, CFG.modisScale)
+      .get('EVI'),
+    null
+  );
+  // ---- 6c. HARMONIZED LANDSAT NDVI (monthly composite) ----
+  // Gap-fills cloud-covered months; useful for pre-2000 if extending back to 1984
+  var lsCol = buildHarmonizedLandsat(date, dateEnd);
+
+  var feat_ndvi_landsat = ee.Algorithms.If(
+    lsCol.size().gt(0),
+    reduce(lsCol.median().select('NDVI'), CATCHMENT, CFG.landsatScale).get('NDVI'),
+    null
+  );
+  var feat_mndwi_landsat = ee.Algorithms.If(
+    lsCol.size().gt(0),
+    reduce(lsCol.median().select('MNDWI'), CATCHMENT, CFG.landsatScale).get('MNDWI'),
+    null
+  );
+  // ---- 6d. ERA5 LAND (soil moisture, temperature, runoff) ----
+  var era5Col = ee.ImageCollection('ECMWF/ERA5_LAND/MONTHLY_AGGR')
+  .filterDate(date, dateEnd);
+
+  var era5 = ee.Algorithms.If(era5Col.size().gt(0), era5Col.first(), null);
+
+  var feat_sm_0_7   = safeGet(era5, 'volumetric_soil_water_layer_1', CATCHMENT, CFG.era5Scale);
+  var feat_sm_7_28  = safeGet(era5, 'volumetric_soil_water_layer_2', CATCHMENT, CFG.era5Scale);
+  var feat_runoff   = safeGet(era5, 'surface_runoff_sum',            CATCHMENT, CFG.era5Scale);
+  var feat_evap     = safeGet(era5, 'total_evaporation_sum',         CATCHMENT, CFG.era5Scale);
+  var feat_lai_high = safeGet(era5, 'leaf_area_index_high_vegetation', CATCHMENT, CFG.era5Scale);
+  var feat_lai_low  = safeGet(era5, 'leaf_area_index_low_vegetation',  CATCHMENT, CFG.era5Scale);
+  var feat_pot_evap = safeGet(era5, 'potential_evaporation_sum',       CATCHMENT, CFG.era5Scale);
+    // Temperature: convert K → °C inline
+  var feat_temp_2m = ee.Algorithms.If(
+    era5Col.size().gt(0),
+    reduce(
+      era5Col.first().select('temperature_2m').subtract(273.15),
+      CATCHMENT, CFG.era5Scale
+    ).get('temperature_2m'),
+    null
+  );
+
+  // ERA5 precipitation (m) as cross-check with CHIRPS
+  var feat_precip_era5 = safeGet(era5, 'total_precipitation_sum', CATCHMENT, CFG.era5Scale);
+
+  // ---- 6e. MODIS LST (Land Surface Temperature) ----
+  var lstCol = ee.ImageCollection('MODIS/061/MOD11A2')
+  .filterDate(date, dateEnd)
+  .select('LST_Day_1km');
+
+  var feat_lst = ee.Algorithms.If(
+    lstCol.size().gt(0),
+    reduce(
+      lstCol.mean().multiply(0.02).subtract(273.15),
+      CATCHMENT, CFG.modisScale
+    ).get('LST_Day_1km'),
+    null
+  );
+
+  // ---- 6f & 6g. ENSO / IOD ----
+  // Removed from GEE — joined from NOAA official indices in Python post-export.
+  // See post-processing notes at the bottom of this script.
+  var feat_enso    = null;
+  var feat_iod_wio = null;
+  var feat_iod_eio = null;
+  // IOD index = WIO_anom − EIO_anom  (computed in Python from the two columns)
+
+  // ---- 6h. GPM IMERG (2000-present, higher resolution cross-check) ----
+  var gpmCol = ee.ImageCollection('NASA/GPM_L3/IMERG_MONTHLY_V07')
+  .filterDate(date, dateEnd)
+  .select('precipitation');
+
+  var feat_gpm = ee.Algorithms.If(
+    gpmCol.size().gt(0),
+    reduce(gpmCol.mean(), CATCHMENT, CFG.chirpsScale).get('precipitation'),
+    null
+  );
+
+  // ---- 6i. TARGET A: JRC Monthly Water History — lake surface area ----
+  // Band 'water': 0 = no data, 1 = not water, 2 = water
+  var jrcCol = ee.ImageCollection('JRC/GSW1_4/MonthlyHistory')
+    .filterDate(date, dateEnd);
+
+  var feat_lake_area_jrc = ee.Algorithms.If(
+    jrcCol.size().gt(0),
+    reduceSum(
+      jrcCol.first().select('water').eq(2).selfMask().multiply(ee.Image.pixelArea()),
+      LAKE, CFG.jrcScale
+    ).get('water'),
+    null
+  );
+
+  // JRC water occurrence (long-run %) — static contextual feature
+  var jrcOccurrence = ee.Image('JRC/GSW1_4/GlobalSurfaceWater')
+    .select('occurrence');
+  var feat_jrc_occurrence = reduce(jrcOccurrence, LAKE, CFG.jrcScale).get('occurrence');
+
+  // ---- 6j. TARGET B: Sentinel-1 SAR water extent (2014-present) ----
+  // SAR is cloud-free — critical for East Africa's cloudy rainy seasons
+  // Otsu thresholding on VV backscatter; water = low backscatter
+  var s1Col = ee.ImageCollection('COPERNICUS/S1_GRD')
+  .filterDate(date, dateEnd)
+  .filterBounds(LAKE)
+  .filter(ee.Filter.eq('instrumentMode', 'IW'))
+  .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV'))
+  .select('VV');
+
+  var s1WaterThreshold = -14;
+  var feat_lake_area_s1 = ee.Algorithms.If(
+    s1Col.size().gt(0),
+    reduceSum(
+      s1Col.mean().lt(s1WaterThreshold).selfMask().multiply(ee.Image.pixelArea()).rename('water'),
+      LAKE, CFG.s1Scale
+    ).get('water'),             // ← also fixed the band name from 'VV' to 'water'
+    null
+  );
+
+  // ---- 6k. SEASONAL ENCODING (sin/cos of calendar month) ----
+  // Allows model to learn smooth circular seasonality without ordinal artefacts
+  var PI2 = 2 * Math.PI;
+  var sinMonth = ee.Number(month).subtract(1).multiply(PI2 / 12).sin();
+  var cosMonth = ee.Number(month).subtract(1).multiply(PI2 / 12).cos();
+
+  // ---- 6l. ASSEMBLE FEATURE ----
+  return ee.Feature(null, {
+    // Temporal identifiers
+    'date'                     : date.format('YYYY-MM-dd'),
+    'year'                     : year,
+    'month'                    : month,
+    'sin_month'                : sinMonth,
+    'cos_month'                : cosMonth,
+    'lai_high_vegetation'      : feat_lai_high,
+    'lai_low_vegetation'       : feat_lai_low,
+    'potential_evaporation_sum': feat_pot_evap,
+    // --- RAINFALL ---
+    'rain_current_month_mm'    : feat_rain_curr,
+    'rain_7d_prior_mm'         : feat_rain_7d,
+    'rain_14d_prior_mm'        : feat_rain_14d,
+    'rain_30d_prior_mm'        : feat_rain_30d,
+    'rain_3m_prior_mm'         : feat_rain_3m,
+    'rain_6m_prior_mm'         : feat_rain_6m,
+    'rain_anomaly_vs_clim_mm'  : feat_rain_anomaly,
+    'rain_gpm_mm_hr'           : feat_gpm,
+    'rain_era5_m'              : feat_precip_era5,
+
+    // --- VEGETATION ---
+    'ndvi_modis'               : feat_ndvi_modis,
+    'evi_modis'                : feat_evi_modis,
+    'ndvi_landsat_harmonized'  : feat_ndvi_landsat,
+    'mndwi_landsat_harmonized' : feat_mndwi_landsat,
+
+    // --- LAND SURFACE ---
+    'soil_moisture_0_7cm'      : feat_sm_0_7,
+    'soil_moisture_7_28cm'     : feat_sm_7_28,
+    'surface_runoff_era5_m'    : feat_runoff,
+    'evaporation_era5_m'       : feat_evap,
+    'temp_2m_celsius'          : feat_temp_2m,
+    'lst_day_celsius'          : feat_lst,
+
+    // --- CLIMATE INDICES ---
+    'enso_sst_anom_nino34'     : feat_enso,    // >0.5 = El Niño, <-0.5 = La Niña
+    'iod_west_sst_anom'        : feat_iod_wio, // combine in Python: iod = wio − eio
+    'iod_east_sst_anom'        : feat_iod_eio,
+
+    // --- TARGET VARIABLES ---
+    'lake_area_jrc_m2'         : feat_lake_area_jrc,   // primary target (2000–)
+    'lake_area_s1_m2'          : feat_lake_area_s1,    // cloud-free target (2014–)
+    'jrc_occurrence_pct'       : feat_jrc_occurrence   // contextual/static
+  });
+}
+
+
+// ============================================================
+// 7. ITERATE OVER ALL MONTHS
+// ============================================================
+
+var nMonths = ee.Date(CFG.endDate)
+  .difference(ee.Date(CFG.startDate), 'month')
+  .round()
+  .getInfo();   // client-side — needed to build the list
+
+print('Total months to process:', nMonths);
+
+var offsets = ee.List.sequence(0, nMonths - 1);
+
+var featureCollection = ee.FeatureCollection(offsets.map(extractMonth));
+
+print('Sample feature (first month):', featureCollection.first());
+
+
+// ============================================================
+// 8. STATIC FEATURE LAYER (single row — join in Python by year)
+// ============================================================
+// These don't change per month; export once and merge on year in Python.
+
+var dem        = ee.Image('USGS/SRTMGL1_003');
+var slope      = ee.Terrain.slope(dem);
+var aspect     = ee.Terrain.aspect(dem);
+var flowAcc    = ee.Image('WWF/HydroSHEDS/15ACC').select('b1');
+var worldcover = ee.ImageCollection('ESA/WorldCover/v200').first();
+var ghsl = ee.Image('JRC/GHSL/P2023A/GHS_BUILT_S/2020');
+
+var staticFeature = ee.Feature(null, {
+  'mean_elevation_m' : reduce(
+    dem.select('elevation'),
+    CATCHMENT,
+    90
+  ).get('elevation'),
+
+  'mean_slope_deg' : reduce(
+    slope.select('slope'),
+    CATCHMENT,
+    90
+  ).get('slope'),
+
+  'mean_aspect_deg' : reduce(
+    aspect.select('aspect'),
+    CATCHMENT,
+    90
+  ).get('aspect'),
+
+  'flow_accumulation' : reduce(
+    flowAcc.select('b1'),
+    CATCHMENT,
+    500
+  ).get('b1'),
+
+  'lc_trees_pct' : reduce(
+    worldcover.eq(10).rename('trees'),
+    CATCHMENT,
+    10
+  ).get('trees'),
+
+  'lc_shrubland_pct' : reduce(
+    worldcover.eq(20).rename('shrub'),
+    CATCHMENT,
+    10
+  ).get('shrub'),
+
+  'lc_grassland_pct' : reduce(
+    worldcover.eq(30).rename('grass'),
+    CATCHMENT,
+    10
+  ).get('grass'),
+
+  'lc_cropland_pct' : reduce(
+    worldcover.eq(40).rename('crop'),
+    CATCHMENT,
+    10
+  ).get('crop'),
+
+  'lc_urban_pct' : reduce(
+    worldcover.eq(50).rename('urban'),
+    CATCHMENT,
+    10
+  ).get('urban'),
+
+  'ghsl_builtup_m2' : reduce(
+    ghsl.select('built_surface'),
+    CATCHMENT,
+    100
+  ).get('built_surface')
+});
+
+Export.table.toDrive({
+  collection  : ee.FeatureCollection([staticFeature]),
+  description : 'Naivasha_Static_Features',
+  folder      : CFG.exportFolder,
+  fileFormat  : 'CSV'
+});
+
+
+// ============================================================
+// 9. EXPORT MONTHLY FEATURES → GOOGLE DRIVE CSV
+// ============================================================
+
+Export.table.toDrive({
+  collection  : featureCollection,
+  description : CFG.exportName,
+  folder      : CFG.exportFolder,
+  fileFormat  : 'CSV',
+  selectors   : [
+    // Temporal
+    'date', 'year', 'month', 'sin_month', 'cos_month',
+    // Rainfall
+    'rain_current_month_mm', 'rain_7d_prior_mm', 'rain_14d_prior_mm',
+    'rain_30d_prior_mm', 'rain_3m_prior_mm', 'rain_6m_prior_mm',
+    'rain_anomaly_vs_clim_mm', 'rain_gpm_mm_hr', 'rain_era5_m',
+    // Vegetation
+    'ndvi_modis', 'evi_modis',
+    'ndvi_landsat_harmonized', 'mndwi_landsat_harmonized',
+    // Land surface
+    'soil_moisture_0_7cm', 'soil_moisture_7_28cm',
+    'surface_runoff_era5_m', 'evaporation_era5_m',
+    'temp_2m_celsius', 'lst_day_celsius',
+    // Climate indices
+    'enso_sst_anom_nino34', 'iod_west_sst_anom', 'iod_east_sst_anom',
+    // Targets
+    'lake_area_jrc_m2', 'lake_area_s1_m2', 'jrc_occurrence_pct',
+    'lai_high_vegetation', 'lai_low_vegetation', 'potential_evaporation_sum',
+  ]
+});
+
+print('Export task submitted. Check Tasks panel → Run.');
+print('Files will appear in Google Drive → GEE_Exports/');
+
+
+// ============================================================
+// 10. POST-PROCESSING NOTES (do in Python after export)
+// ============================================================
+//
+//  1. MERGE STATIC FEATURES:
+//     df = df.merge(static_df, how='left')   # static values apply to all rows
+//
+//  2. COMPUTE DERIVED FEATURES:
+//     df['iod_index']      = df['iod_west_sst_anom'] - df['iod_east_sst_anom']
+//     df['enso_category']  = pd.cut(df['enso_sst_anom_nino34'],
+//                                   bins=[-99,-0.5,0.5,99],
+//                                   labels=['la_nina','neutral','el_nino'])
+//
+//  3. CREATE LAG FEATURES (critical for this lake system):
+//     for lag in [1, 2, 3, 6]:
+//         df[f'lake_area_lag{lag}m'] = df['lake_area_jrc_m2'].shift(lag)
+//         df[f'rain_lag{lag}m']      = df['rain_current_month_mm'].shift(lag)
+//         df[f'ndvi_lag{lag}m']      = df['ndvi_modis'].shift(lag)
+//
+//  4. FILL MISSING SENTINEL-1 (pre-2014):
+//     Use lake_area_jrc_m2 as target for full time series.
+//     Use lake_area_s1_m2 as secondary target from 2014 onwards.
+//
+//  5. ENSO / IOD EXTERNAL CROSS-CHECK (optional):
+//     Download NOAA ONI index: https://psl.noaa.gov/data/correlation/oni.data
+//     Download DMI (IOD) index: https://psl.noaa.gov/gcos_wgsp/Timeseries/DMI/
+//     Merge by year+month — these are more precise than the SST proxy above.
+//
+//  6. CONVERT LAKE AREA TARGET:
+//     df['lake_area_km2'] = df['lake_area_jrc_m2'] / 1e6
+//
+//  7. TRAIN/TEST SPLIT:
+//     Use 2000–2018 for training, 2019–2024 for test
+//     OR use time-series cross-validation (TimeSeriesSplit in sklearn)
+// ============================================================
