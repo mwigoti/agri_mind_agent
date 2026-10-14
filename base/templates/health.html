@@ -1960,15 +1960,15 @@
         const hasCrop = !!field.crop;
         const isActive = field.crop?.status === 'active';
         const isEnded = field.crop?.status === 'harvested' || field.crop?.status === 'failed';
-        const isSelected = selectedFieldId === features.properties.name;
+        const isSelected = selectedFieldId === field.properties.name;
         const stage = isActive ? getGrowthStage(field.crop.plantingDate) : null;
 
         return `
           <div class="field-card ${isSelected ? 'selected' : ''}" data-field-id="${field.id}">
             <div class="field-card-header">
               <div class="field-card-info">
-                <h3>${features.properties.name}</h3>
-                <p>${features.properties.area.toFixed(2)} hectares</p>
+                <h3>${field.properties.name}</h3>
+                <p>${field.properties.area.toFixed(2)} hectares</p>
               </div>
               ${!hasCrop ? '<span class="badge badge-muted">No crop</span>' : ''}
               ${isActive ? '<span class="badge badge-success"><span class="badge-dot"></span>Active</span>' : ''}
@@ -2355,8 +2355,8 @@
 
         // Handle different possible response structures
         let rawFields = [];
-        if (data.features) {
-        rawFields = data.features;
+        if (data.field) {
+        rawFields = data.field;
         } else if (Array.isArray(data)) {
         rawFields = data;
         } else if (data.fields) {
