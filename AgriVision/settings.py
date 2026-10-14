@@ -93,12 +93,19 @@ WSGI_APPLICATION = 'AgriVision.wsgi.application'
 
 from urllib.parse import urlparse
 
+from dotenv import load_dotenv
+
+
+# Load environment variables from .env
+load_dotenv()
+
 DATABASE_URL = os.getenv("DATABASE_URL", '')
+
 if DATABASE_URL:
     url = urlparse(DATABASE_URL)
     DATABASES = {
         'default': {
-            'ENGINE': 'django.contrib.gis.db.backends.postgis',  
+            'ENGINE': 'django.contrib.gis.db.backends.postgis',
             'NAME': url.path[1:],
             'USER': url.username,
             'PASSWORD': url.password,
