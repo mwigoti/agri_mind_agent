@@ -195,6 +195,9 @@ AFRICAS_TALKING_USERNAME = config('AFRICAS_TALKING_USERNAME', default='sandbox')
 AFRICAS_TALKING_API_KEY = config('AFRICAS_TALKING_API_KEY', default='')
 AFRICAS_TALKING_USSD_CODE = config('AFRICAS_TALKING_USSD_CODE', default='*384*1234#')
 AFRICAS_TALKING_SANDBOX = config('AFRICAS_TALKING_SANDBOX', default=True, cast=bool)
+CSRF_TRUSTED_ORIGINS = [
+   ' https://068bed127975.ngrok-free.app '
+]
 
 # Add logging for USSD
 LOGGING = {
