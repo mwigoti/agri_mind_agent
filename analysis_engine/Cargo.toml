@@ -9,7 +9,17 @@ authors = ["Your Name <your.email@example.com>"]
 # Web framework
 actix-web = "4.4"
 tokio = { version = "1.0", features = ["full"] }
-env_logger = "0.10"
+gdal = "0.16"
+
+futures-util = "0.3"
+
+
+
+
+
+
+tempfile = "3.0"
+futures = "0.3"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
