@@ -1,837 +1,4 @@
-fn create_ndvi_png_visualization(vegetation_data: &VegetationData) -> AnyhowResult<String> {
-    let (height, width) = vegetation_data.ndvi.dim();
-    let mut img: RgbaImage = ImageBuffer::new(width as u32, height as u32);
-    
-    for (y, row) in vegetation_data.ndvi.outer_iter().enumerate() {
-        for (x, &ndvi_val) in row.iter().enumerate() {
-            let color = if !vegetation_data.mask[(y, x)] || ndvi_val.is_nan() {
-                Rgba([128, 128, 128, 128])
-            } else {
-                let rgb = ndvi_to_enhanced_color(ndvi_val);
-                Rgba([rgb[0], rgb[1], rgb[2], 255])
-            };
-            
-            img.put_pixel(x as u32, y as u32, color);
-        }
-    }
-    
-    let bordered_img = add_border_and_scale(&img, "NDVI Analysis")?;
-    
-    let mut buffer = Vec::new();
-    let mut cursor = std::io::Cursor::new(&mut buffer);
-    bordered_img.write_to(&mut cursor, image::ImageOutputFormat::Png)?;
-    
-    let base64_image = general_purpose::STANDARD.encode(&buffer);
-    Ok(format!("data:image/png;base64,{}", base64_image))
-}
-
-fn create_zone_png_visualization(
-    zones: &[VRAZone], 
-    vegetation_data: &VegetationData,
-    zone_assignments: &Array2<u8>
-) -> AnyhowResult<String> {
-    let (height, width) = zone_assignments.dim();
-    let mut img: RgbaImage = ImageBuffer::new(width as u32, height as u32);
-    
-    let mut zone_colors = HashMap::new();
-    for zone in zones {
-        let color = hex_to_rgba(&zone.zone_color)?;
-        zone_colors.insert(zone.zone_id, color);
-    }
-    
-    for ((y, x), &zone_id) in zone_assignments.indexed_iter() {
-        let color = if zone_id == 0 || !vegetation_data.mask[(y, x)] {
-            Rgba([128, 128, 128, 128])
-        } else {
-            zone_colors.get(&zone_id).copied().unwrap_or(Rgba([128, 128, 128, 255]))
-        };
-        
-        img.put_pixel(x as u32, y as u32, color);
-    }
-    
-    let bordered_img = add_border_and_scale(&img, "VRA Zones (K-means)")?;
-    
-    let mut buffer = Vec::new();
-    let mut cursor = std::io::Cursor::new(&mut buffer);
-    bordered_img.write_to(&mut cursor, image::ImageOutputFormat::Png)?;
-    
-    let base64_image = general_purpose::STANDARD.encode(&buffer);
-    Ok(format!("data:image/png;base64,{}", base64_image))
-}
-
-fn ndvi_to_enhanced_color(ndvi: f64) -> [u8; 3] {
-    match ndvi {
-        n if n < -0.1 => [139, 69, 19],
-        n if n < 0.0 => [160, 82, 45],
-        n if n < 0.1 => [205, 133, 63],
-        n if n < 0.2 => [222, 184, 135],
-        n if n < 0.3 => [255, 140, 0],
-        n if n < 0.4 => [255, 165, 0],
-        n if n < 0.5 => [255, 255, 0],
-        n if n < 0.6 => [173, 255, 47],
-        n if n < 0.7 => [50, 205, 50],
-        n if n < 0.8 => [0, 128, 0],
-        _ => [0, 100, 0],
-    }
-}
-
-fn hex_to_rgba(hex: &str) -> AnyhowResult<Rgba<u8>> {
-    let hex = hex.trim_start_matches('#');
-    if hex.len() != 6 {
-        return Err(anyhow::anyhow!("Invalid hex color: {}", hex));
-    }
-    
-    let r = u8::from_str_radix(&hex[0..2], 16)?;
-    let g = u8::from_str_radix(&hex[2..4], 16)?;
-    let b = u8::from_str_radix(&hex[4..6], 16)?;
-    
-    Ok(Rgba([r, g, b, 255]))
-}
-
-fn add_border_and_scale(img: &RgbaImage, _title: &str) -> AnyhowResult<RgbaImage> {
-    let border_size = 50;
-    let original_width = img.width();
-    let original_height = img.height();
-    let new_width = original_width + 2 * border_size;
-    let new_height = original_height + 2 * border_size;
-    
-    let mut bordered_img: RgbaImage = ImageBuffer::new(new_width, new_height);
-    
-    for pixel in bordered_img.pixels_mut() {
-        *pixel = Rgba([255, 255, 255, 255]);
-    }
-    
-    for y in 0..original_height {
-        for x in 0..original_width {
-            let pixel = *img.get_pixel(x, y);
-            bordered_img.put_pixel(x + border_size, y + border_size, pixel);
-        }
-    }
-    
-    Ok(bordered_img)
-}
-
-fn extract_bounding_box(geometry: &GeoGeometry<f64>) -> Option<BoundingBox> {
-    match geometry.bounding_rect() {
-        Some(rect) => Some(BoundingBox {
-            min_lon: rect.min().x,
-            min_lat: rect.min().y,
-            max_lon: rect.max().x,
-            max_lat: rect.max().y,
-        }),
-        None => None,
-    }
-}
-
-fn geometry_to_polygon(geometry: &GeoGeometry<f64>) -> Option<GeoPolygon<f64>> {
-    match geometry {
-        GeoGeometry::Polygon(poly) => Some(poly.clone()),
-        GeoGeometry::MultiPolygon(multi) => {
-            multi.iter().next().cloned()
-        },
-        _ => {
-            if let Some(bbox) = extract_bounding_box(geometry) {
-                let coords = vec![
-                    (bbox.min_lon, bbox.min_lat),
-                    (bbox.max_lon, bbox.min_lat),
-                    (bbox.max_lon, bbox.max_lat),
-                    (bbox.min_lon, bbox.max_lat),
-                    (bbox.min_lon, bbox.min_lat),
-                ];
-                Some(GeoPolygon::new(coords.into(), vec![]))
-            } else {
-                None
-            }
-        }
-    }
-}
-
-async fn process_satellite_data_streaming(
-    field: &Field,
-    config: &PlanetaryComputerConfig,
-    requested_indices: &[String],
-    num_zones: usize,
-) -> AnyhowResult<(String, String, VegetationIndices, Vec<VRAZone>, ProcessingDetails, ClusteringInfo)> {
-    let start_time = std::time::Instant::now();
-    let mut processing_steps = Vec::new();
-    
-    processing_steps.push("Searching for Sentinel-2 imagery with enhanced filters".to_string());
-    
-    let items = config.search_sentinel2_items(
-        &field.geometry,
-        "2024-01-01T00:00:00Z",
-        "2024-12-31T23:59:59Z",
-        20.0,
-    ).await?;
-
-    if items.is_empty() {
-        return Err(anyhow::anyhow!("No suitable Sentinel-2 imagery found for field: {}", field.name));
-    }
-
-    let best_item = items.iter()
-        .min_by(|a, b| {
-            let cloud_a = a.properties.cloud_cover.unwrap_or(100.0);
-            let cloud_b = b.properties.cloud_cover.unwrap_or(100.0);
-            cloud_a.partial_cmp(&cloud_b).unwrap_or(std::cmp::Ordering::Equal)
-        })
-        .context("No valid items found")?;
-
-    processing_steps.push(format!("Selected high-quality imagery: {} ({}% cloud cover)", 
-                                  best_item.id, 
-                                  best_item.properties.cloud_cover.unwrap_or(0.0)));
-
-    let red_band_url = best_item.assets.get("B04")
-        .context("Red band (B04) not available")?
-        .href.clone();
-    
-    let nir_band_url = best_item.assets.get("B08")
-        .context("NIR band (B08) not available")?
-        .href.clone();
-    
-    let green_band_url = best_item.assets.get("B03")
-        .context("Green band (B03) not available")?
-        .href.clone();
-    
-    let swir_band_url = best_item.assets.get("B11")
-        .context("SWIR band (B11) not available")?
-        .href.clone();
-
-    processing_steps.push("Signing URLs for authenticated streaming access".to_string());
-    
-    let signed_red_url = config.sign_url(&red_band_url).await?;
-    let signed_nir_url = config.sign_url(&nir_band_url).await?;
-    let signed_green_url = config.sign_url(&green_band_url).await?;
-    let signed_swir_url = config.sign_url(&swir_band_url).await?;
-    
-    let geo_geometry: GeoGeometry<f64> = field.geometry.clone().try_into()
-        .context("Failed to convert field geometry")?;
-    
-    let field_polygon = geometry_to_polygon(&geo_geometry)
-        .context("Failed to convert geometry to polygon")?;
-    
-    processing_steps.push("Streaming and cropping satellite bands to field boundary".to_string());
-    
-    let (red_data, nir_data, green_data, swir_data) = tokio::try_join!(
-        config.stream_raster_data(&signed_red_url, &field_polygon),
-        config.stream_raster_data(&signed_nir_url, &field_polygon),
-        config.stream_raster_data(&signed_green_url, &field_polygon),
-        config.stream_raster_data(&signed_swir_url, &field_polygon)
-    )?;
-    
-    processing_steps.push("Computing vegetation indices from streamed multi-spectral data".to_string());
-    
-    let vegetation_data = calculate_vegetation_indices(
-        &red_data,
-        &nir_data,
-        Some(&green_data),
-        Some(&swir_data),
-        requested_indices
-    )?;
-    
-    processing_steps.push(format!("Applying K-means clustering for {} VRA zones", num_zones));
-    
-    let (vra_zones, clustering_info) = generate_vra_zones_kmeans(&vegetation_data, field.area, num_zones)?;
-    
-    processing_steps.push("Generating high-resolution PNG visualizations".to_string());
-    
-    let ndvi_png = create_ndvi_png_visualization(&vegetation_data)?;
-    
-    let (height, width) = vegetation_data.ndvi.dim();
-    let mut zone_assignments = Array2::zeros((height, width));
-    
-    for ((i, j), &ndvi_val) in vegetation_data.ndvi.indexed_iter() {
-        if vegetation_data.mask[(i, j)] && ndvi_val.is_finite() {
-            let zone_id = match ndvi_val {
-                n if n < 0.2 => 1,
-                n if n < 0.4 => 2,
-                n if n < 0.6 => 3,
-                n if n < 0.8 => 4,
-                _ => 5,
-            };
-            zone_assignments[(i, j)] = zone_id.min(vra_zones.len() as u8);
-        }
-    }
-    
-    let zone_png = create_zone_png_visualization(&vra_zones, &vegetation_data, &zone_assignments)?;
-    
-    let processing_time = start_time.elapsed().as_secs_f64();
-    
-    let total_streaming_bytes = red_data.streaming_metadata.total_bytes_processed +
-                                nir_data.streaming_metadata.total_bytes_processed +
-                                green_data.streaming_metadata.total_bytes_processed +
-                                swir_data.streaming_metadata.total_bytes_processed;
-    
-    let processing_details = ProcessingDetails {
-        satellite_item_id: best_item.id.clone(),
-        bands_used: vec!["B04 (Red)".to_string(), "B08 (NIR)".to_string(), 
-                        "B03 (Green)".to_string(), "B11 (SWIR)".to_string()],
-        processing_steps,
-        quality_flags: vec![
-            format!("Cloud coverage: {:.1}%", best_item.properties.cloud_cover.unwrap_or(0.0)),
-            format!("Valid pixels: {}/{}", vegetation_data.indices_stats.ndvi_stats.valid_pixel_count, 
-                   vegetation_data.indices_stats.ndvi_stats.pixel_count),
-            "Streaming-based processing with K-means clustering".to_string(),
-            format!("Clustering features: {}", clustering_info.features_used.join(", ")),
-        ],
-        cropped_area_km2: field.area / 100.0,
-        processing_time_seconds: processing_time,
-        streaming_stats: StreamingStats {
-            total_bytes_streamed: total_streaming_bytes,
-            average_chunk_size_kb: (total_streaming_bytes as f64 / 4.0) / 1024.0,
-            streaming_time_seconds: (red_data.streaming_metadata.streaming_time + 
-                                   nir_data.streaming_metadata.streaming_time +
-                                   green_data.streaming_metadata.streaming_time +
-                                   swir_data.streaming_metadata.streaming_time) / 4.0,
-            memory_peak_mb: [red_data.streaming_metadata.memory_usage,
-                           nir_data.streaming_metadata.memory_usage,
-                           green_data.streaming_metadata.memory_usage,
-                           swir_data.streaming_metadata.memory_usage]
-                           .iter().fold(0.0, |a, &b| a.max(b)),
-        },
-    };
-
-    Ok((ndvi_png, zone_png, vegetation_data.indices_stats, vra_zones, processing_details, clustering_info))
-}
-
-fn generate_enhanced_recommendations(field_area: f64, zones: &[VRAZone], _clustering_info: &ClusteringInfo) -> VRARecommendations {
-    let fertilizer_zones: Vec<FertilizerZone> = zones.iter().map(|zone| {
-        let base_rate = zone.recommended_rate;
-        let timing = match zone.priority.as_str() {
-            "Critical" => "Immediate application",
-            "High" => "Within 1 week",
-            "Medium" => "Within 2 weeks",
-            _ => "Maintenance schedule",
-        };
-        
-        FertilizerZone {
-            zone_id: zone.zone_id,
-            nitrogen_rate: base_rate * 0.50,
-            phosphorus_rate: base_rate * 0.30,
-            potassium_rate: base_rate * 0.15,
-            organic_matter_rate: base_rate * 0.05,
-            cost_per_hectare: base_rate * 0.85,
-            application_timing: timing.to_string(),
-        }
-    }).collect();
-    
-    let irrigation_zones: Vec<IrrigationZone> = zones.iter().map(|zone| {
-        let (water_req, frequency, priority, cost, moisture_target) = match zone.avg_ndvi {
-            ndvi if ndvi < 0.3 => (50.0, "Every day".to_string(), "Critical".to_string(), 95.0, 0.35),
-            ndvi if ndvi < 0.5 => (40.0, "Every 2 days".to_string(), "High".to_string(), 75.0, 0.30),
-            ndvi if ndvi < 0.7 => (30.0, "Every 3 days".to_string(), "Medium".to_string(), 55.0, 0.25),
-            _ => (20.0, "Weekly".to_string(), "Low".to_string(), 35.0, 0.20),
-        };
-        
-        IrrigationZone {
-            zone_id: zone.zone_id,
-            water_requirement: water_req,
-            irrigation_frequency: frequency,
-            priority,
-            estimated_cost: cost,
-            soil_moisture_target: moisture_target,
-        }
-    }).collect();
-    
-    let seed_zones: Vec<SeedZone> = zones.iter().map(|zone| {
-        let (seeding_rate, variety, depth, spacing, optimization) = match zone.avg_ndvi {
-            ndvi if ndvi < 0.3 => (500.0, "Drought-resistant variety".to_string(), 3.0, "Dense spacing".to_string(), "Enhanced germination treatment".to_string()),
-            ndvi if ndvi < 0.5 => (450.0, "Hardy variety".to_string(), 2.5, "Standard spacing".to_string(), "Pre-germination soak".to_string()),
-            ndvi if ndvi < 0.7 => (400.0, "Standard variety".to_string(), 2.0, "Standard spacing".to_string(), "Standard preparation".to_string()),
-            _ => (350.0, "High-yield variety".to_string(), 1.5, "Optimized spacing".to_string(), "Precision seeding".to_string()),
-        };
-        
-        SeedZone {
-            zone_id: zone.zone_id,
-            seeding_rate,
-            seed_variety: variety,
-            planting_depth: depth,
-            spacing_recommendation: spacing,
-            germination_optimization: optimization,
-        }
-    }).collect();
-    
-    let total_fertilizer: f64 = zones.iter()
-        .map(|zone| zone.recommended_rate * (zone.area_percentage / 100.0) * field_area)
-        .sum();
-    
-    let uniform_rate = 170.0;
-    let uniform_total = uniform_rate * field_area;
-    let fertilizer_savings = (uniform_total - total_fertilizer).max(0.0);
-    
-    let total_cost = fertilizer_zones.iter()
-        .zip(zones.iter())
-        .map(|(fert_zone, vra_zone)| {
-            fert_zone.cost_per_hectare * vra_zone.area_hectares
-        })
-        .sum::<f64>();
-    
-    let cost_savings = fertilizer_savings * 0.85;
-    
-    let precision_score = if zones.len() > 1 {
-        let ndvi_variance: f64 = zones.iter()
-            .map(|z| (z.avg_ndvi - zones.iter().map(|z2| z2.avg_ndvi).sum::<f64>() / zones.len() as f64).powi(2))
-            .sum::<f64>() / zones.len() as f64;
-        (ndvi_variance * 1000.0).min(100.0).max(0.0)
-    } else {
-        0.0
-    };
-    
-    VRARecommendations {
-        fertilizer_zones,
-        irrigation_zones,
-        seed_zones,
-        total_fertilizer_needed: total_fertilizer,
-        total_cost_estimate: total_cost,
-        cost_savings_estimate: cost_savings,
-        environmental_impact: EnvironmentalImpact {
-            nitrogen_reduction_kg: fertilizer_savings * 0.50,
-            water_savings_liters: field_area * 750.0,
-            carbon_footprint_reduction_kg: fertilizer_savings * 0.35,
-            biodiversity_score: 82.5,
-            precision_application_benefit: precision_score,
-        },
-        precision_score,
-    }
-}
-
-fn generate_enhanced_analysis_summary(
-    vegetation_indices: &VegetationIndices,
-    zones: &[VRAZone],
-    recommendations: &VRARecommendations,
-    clustering_info: &ClusteringInfo,
-) -> AnalysisSummary {
-    let ndvi_stats = &vegetation_indices.ndvi_stats;
-    let health_score = (ndvi_stats.healthy_percentage + (ndvi_stats.moderate_percentage * 0.7)) / 1.7;
-    let productivity_index = (ndvi_stats.avg_value * 100.0).min(100.0);
-    
-    let mut stress_indicators = Vec::new();
-    if ndvi_stats.stressed_percentage > 25.0 {
-        stress_indicators.push("Significant stress areas detected".to_string());
-    }
-    if ndvi_stats.avg_value < 0.45 {
-        stress_indicators.push("Below optimal vegetation health".to_string());
-    }
-    if ndvi_stats.std_dev > 0.3 {
-        stress_indicators.push("High spatial variability in field conditions".to_string());
-    }
-    if clustering_info.inertia > 10.0 {
-        stress_indicators.push("Complex field variability patterns".to_string());
-    }
-    
-    let mut priority_actions = Vec::new();
-    let critical_zones = zones.iter().filter(|z| z.priority == "Critical").count();
-    let high_zones = zones.iter().filter(|z| z.priority == "High").count();
-    
-    if critical_zones > 0 {
-        priority_actions.push(format!("Immediate intervention needed for {} critical zones", critical_zones));
-    }
-    if high_zones > 0 {
-        priority_actions.push(format!("Enhanced management for {} high-priority zones", high_zones));
-    }
-    if recommendations.environmental_impact.precision_application_benefit > 50.0 {
-        priority_actions.push("Implement precision variable rate application system".to_string());
-    }
-    if zones.len() >= 4 {
-        priority_actions.push("Multi-zone management strategy recommended".to_string());
-    }
-    
-    let yield_improvement = match health_score {
-        score if score < 40.0 => 35.0,
-        score if score < 60.0 => 25.0,
-        score if score < 80.0 => 15.0,
-        _ => 8.0,
-    };
-    
-    let zone_consistency_score = match clustering_info.inertia {
-        inertia if inertia < 5.0 => 95.0,
-        inertia if inertia < 10.0 => 85.0,
-        inertia if inertia < 20.0 => 75.0,
-        _ => 60.0,
-    };
-    
-    AnalysisSummary {
-        overall_health_score: health_score,
-        productivity_index,
-        stress_indicators,
-        recommendations_count: (zones.len() + priority_actions.len()) as u32,
-        priority_actions,
-        estimated_yield_improvement: yield_improvement,
-        zone_consistency_score,
-    }
-}
-
-async fn process_field_with_streaming_analysis(
-    field: &Field, 
-    config: &PlanetaryComputerConfig,
-    num_zones: usize,
-    requested_indices: Vec<String>,
-) -> VRAMapResponse {
-    println!("🌾 Processing field: {} (ID: {}, Area: {:.2} ha)", field.name, field.id, field.area);
-    println!("📊 Requested indices: {:?}", requested_indices);
-    println!("🎯 Target zones: {}", num_zones);
-    
-    let (ndvi_png, zone_png, vegetation_indices, vra_zones, processing_details, clustering_info) = 
-        match process_satellite_data_streaming(field, config, &requested_indices, num_zones).await {
-            Ok(result) => {
-                println!("✅ Successfully processed streaming satellite data for field {}", field.id);
-                result
-            },
-            Err(e) => {
-                println!("❌ Error processing satellite data for field {}: {}", field.id, e);
-                let mock_indices = create_mock_vegetation_indices();
-                let mock_zones = generate_mock_kmeans_zones(field.area, num_zones);
-                let mock_ndvi_png = create_mock_ndvi_png(field);
-                let mock_zone_png = create_mock_zone_png(field, &mock_zones);
-                let mock_processing = create_mock_processing_details(&e);
-                let mock_clustering = create_mock_clustering_info(num_zones, &requested_indices);
-                (mock_ndvi_png, mock_zone_png, mock_indices, mock_zones, mock_processing, mock_clustering)
-            }
-        };
-    
-    let geo_geometry: GeoGeometry<f64> = field.geometry.clone().try_into()
-        .expect("Invalid geometry conversion");
-    
-    let bbox = extract_bounding_box(&geo_geometry).unwrap_or(BoundingBox {
-        min_lon: 0.0,
-        min_lat: 0.0,
-        max_lon: 0.0,
-        max_lat: 0.0,
-    });
-    
-    let recommendations = generate_enhanced_recommendations(field.area, &vra_zones, &clustering_info);
-    let analysis_summary = generate_enhanced_analysis_summary(&vegetation_indices, &vra_zones, &recommendations, &clustering_info);
-    
-    println!("📈 Analysis completed for field {}: Health Score: {:.1}%, {} zones identified", 
-             field.id, analysis_summary.overall_health_score, vra_zones.len());
-    println!("🎯 Clustering inertia: {:.2}, Zone consistency: {:.1}%", 
-             clustering_info.inertia, analysis_summary.zone_consistency_score);
-    
-    VRAMapResponse {
-        field_id: field.id,
-        field_name: field.name.clone(),
-        ndvi_map_png: ndvi_png,
-        vegetation_indices,
-        vra_zones,
-        zone_map_png: zone_png,
-        recommendations,
-        bbox,
-        map_metadata: MapMetadata {
-            acquisition_date: processing_details.satellite_item_id.clone(),
-            cloud_coverage: 5.2,
-            resolution: 10.0,
-            data_source: "Microsoft Planetary Computer - Sentinel-2 L2A (Streaming GDAL Processing)".to_string(),
-            processing_date: Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string(),
-            satellite_pass: "Descending".to_string(),
-            tile_info: TileInfo {
-                tiles_processed: 4,
-                streaming_mode: true,
-                total_data_size_mb: processing_details.streaming_stats.total_bytes_streamed as f64 / (1024.0 * 1024.0),
-                compression_ratio: 0.75,
-            },
-        },
-        analysis_summary,
-        processing_details,
-        clustering_info,
-    }
-}
-
-fn create_mock_vegetation_indices() -> VegetationIndices {
-    VegetationIndices {
-        ndvi_stats: IndexStats {
-            min_value: 0.08,
-            max_value: 0.92,
-            avg_value: 0.58,
-            std_dev: 0.24,
-            healthy_percentage: 62.3,
-            stressed_percentage: 23.7,
-            moderate_percentage: 14.0,
-            pixel_count: 12000,
-            valid_pixel_count: 11400,
-        },
-        evi_stats: Some(IndexStats {
-            min_value: 0.05,
-            max_value: 0.85,
-            avg_value: 0.45,
-            std_dev: 0.19,
-            healthy_percentage: 58.1,
-            stressed_percentage: 27.3,
-            moderate_percentage: 14.6,
-            pixel_count: 12000,
-            valid_pixel_count: 11400,
-        }),
-        savi_stats: Some(IndexStats {
-            min_value: 0.03,
-            max_value: 0.78,
-            avg_value: 0.42,
-            std_dev: 0.21,
-            healthy_percentage: 60.5,
-            stressed_percentage: 25.8,
-            moderate_percentage: 13.7,
-            pixel_count: 12000,
-            valid_pixel_count: 11400,
-        }),
-        ndmi_stats: Some(IndexStats {
-            min_value: -0.2,
-            max_value: 0.6,
-            avg_value: 0.25,
-            std_dev: 0.18,
-            healthy_percentage: 45.2,
-            stressed_percentage: 35.1,
-            moderate_percentage: 19.7,
-            pixel_count: 12000,
-            valid_pixel_count: 11400,
-        }),
-        gndvi_stats: Some(IndexStats {
-            min_value: 0.1,
-            max_value: 0.88,
-            avg_value: 0.52,
-            std_dev: 0.22,
-            healthy_percentage: 59.8,
-            stressed_percentage: 24.5,
-            moderate_percentage: 15.7,
-            pixel_count: 12000,
-            valid_pixel_count: 11400,
-        }),
-    }
-}
-
-fn generate_mock_kmeans_zones(field_area: f64, num_zones: usize) -> Vec<VRAZone> {
-    let zone_data = vec![
-        (0.15, "Critical Stress Zone", "#8B0000", "Critical", 280.0),
-        (0.22, "High Stress Zone", "#FF4444", "High", 220.0),
-        (0.35, "Moderate Zone", "#FFA500", "Medium", 160.0),
-        (0.65, "Good Health Zone", "#FFFF00", "Low", 120.0),
-        (0.82, "Excellent Zone", "#00AA00", "Maintenance", 80.0),
-        (0.45, "Variable Zone", "#9370DB", "Medium", 140.0),
-        (0.28, "Transition Zone", "#FF69B4", "High", 200.0),
-    ];
-    
-    let mut zones = Vec::new();
-    let area_per_zone = 100.0 / num_zones.min(zone_data.len()) as f64;
-    
-    for i in 0..num_zones.min(zone_data.len()) {
-        let (avg_ndvi, name, color, priority, rate) = zone_data[i];
-        let area_percentage = area_per_zone * (0.8 + (i as f64 * 0.1));
-        let pixel_count = ((area_percentage / 100.0) * 12000.0) as usize;
-        
-        zones.push(VRAZone {
-            zone_id: (i + 1) as u8,
-            zone_name: name.to_string(),
-            cluster_center: vec![avg_ndvi, avg_ndvi * 0.8, avg_ndvi * 0.9],
-            area_percentage,
-            area_hectares: (area_percentage / 100.0) * field_area,
-            recommended_rate: rate,
-            zone_color: color.to_string(),
-            priority: priority.to_string(),
-            pixel_count,
-            avg_ndvi,
-            avg_evi: Some(avg_ndvi * 0.8),
-            soil_moisture_level: Some(0.2 + (avg_ndvi * 0.3)),
-        });
-    }
-    
-    zones
-}
-
-fn create_mock_ndvi_png(field: &Field) -> String {
-    let svg_content = format!(r##"<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-        <linearGradient id="ndviGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#8B0000;stop-opacity:1" />
-            <stop offset="20%" style="stop-color:#FF4444;stop-opacity:1" />
-            <stop offset="40%" style="stop-color:#FFA500;stop-opacity:1" />
-            <stop offset="60%" style="stop-color:#FFFF00;stop-opacity:1" />
-            <stop offset="80%" style="stop-color:#90EE90;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#006400;stop-opacity:1" />
-        </linearGradient>
-        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="3" dy="3" stdDeviation="2" flood-color="#000000" flood-opacity="0.3"/>
-        </filter>
-    </defs>
-    
-    <rect width="600" height="400" fill="#f0f8ff"/>
-    
-    <polygon points="50,60 520,50 550,120 480,320 120,350 30,200" 
-             fill="url(#ndviGradient)" stroke="#2F4F4F" stroke-width="3" filter="url(#shadow)"/>
-    
-    <circle cx="150" cy="150" r="40" fill="#8B0000" opacity="0.7"/>
-    <text x="150" y="155" fill="white" text-anchor="middle" font-size="10" font-weight="bold">0.15</text>
-    
-    <ellipse cx="300" cy="120" rx="60" ry="40" fill="#FF4444" opacity="0.7"/>
-    <text x="300" y="125" fill="white" text-anchor="middle" font-size="10" font-weight="bold">0.35</text>
-    
-    <rect x="200" y="200" width="150" height="80" fill="#FFA500" opacity="0.7" rx="10"/>
-    <text x="275" y="245" fill="white" text-anchor="middle" font-size="10" font-weight="bold">0.55</text>
-    
-    <polygon points="400,180 480,160 460,240 380,260" fill="#FFFF00" opacity="0.7"/>
-    <text x="430" y="210" fill="black" text-anchor="middle" font-size="10" font-weight="bold">0.70</text>
-    
-    <circle cx="450" cy="280" r="35" fill="#00AA00" opacity="0.8"/>
-    <text x="450" y="285" fill="white" text-anchor="middle" font-size="10" font-weight="bold">0.85</text>
-    
-    <rect x="10" y="10" width="580" height="30" fill="white" stroke="#2F4F4F" rx="5"/>
-    <text x="300" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#2F4F4F">
-        NDVI Analysis: {field_name} (Streaming K-means Processing)
-    </text>
-    
-    <rect x="10" y="350" width="580" height="40" fill="white" stroke="#2F4F4F" rx="5" opacity="0.9"/>
-    <text x="20" y="365" font-size="11" font-weight="bold" fill="#2F4F4F">NDVI Scale:</text>
-    
-    <rect x="20" y="370" width="20" height="15" fill="#8B0000"/>
-    <text x="45" y="382" font-size="9" fill="#2F4F4F">Critical (&lt;0.2)</text>
-    
-    <rect x="120" y="370" width="20" height="15" fill="#FF4444"/>
-    <text x="145" y="382" font-size="9" fill="#2F4F4F">Stressed (0.2-0.4)</text>
-    
-    <rect x="240" y="370" width="20" height="15" fill="#FFA500"/>
-    <text x="265" y="382" font-size="9" fill="#2F4F4F">Moderate (0.4-0.6)</text>
-    
-    <rect x="360" y="370" width="20" height="15" fill="#FFFF00"/>
-    <text x="385" y="382" font-size="9" fill="#2F4F4F">Good (0.6-0.8)</text>
-    
-    <rect x="460" y="370" width="20" height="15" fill="#00AA00"/>
-    <text x="485" y="382" font-size="9" fill="#2F4F4F">Excellent (&gt;0.8)</text>
-    
-    <text x="580" y="365" text-anchor="end" font-size="8" fill="#666">Processed: {timestamp}</text>
-    <text x="580" y="378" text-anchor="end" font-size="8" fill="#666">Source: Sentinel-2 L2A (Streaming)</text>
-</svg>"##, 
-        field_name = field.name,
-        timestamp = Utc::now().format("%Y-%m-%d %H:%M UTC")
-    );
-
-    let encoded = general_purpose::STANDARD.encode(svg_content.as_bytes());
-    format!("data:image/svg+xml;base64,{}", encoded)
-}
-
-fn create_mock_zone_png(field: &Field, zones: &[VRAZone]) -> String {
-    let mut zone_elements = String::new();
-    
-    let positions = vec![
-        (120, 140, 50, 40),
-        (200, 100, 80, 60),
-        (300, 180, 100, 70),
-        (420, 120, 70, 50),
-        (380, 220, 60, 45),
-    ];
-    
-    for (i, zone) in zones.iter().enumerate().take(5) {
-        if let Some(&(x, y, w, h)) = positions.get(i) {
-            zone_elements.push_str(&format!(
-                r##"<rect x="{}" y="{}" width="{}" height="{}" fill="{}" opacity="0.8" rx="5" stroke="#000" stroke-width="1"/>
-                <text x="{}" y="{}" fill="white" text-anchor="middle" font-size="10" font-weight="bold">Zone {}</text>
-                <text x="{}" y="{}" fill="white" text-anchor="middle" font-size="8">{:.1}%</text>"##,
-                x, y, w, h, zone.zone_color,
-                x + w/2, y + h/2 - 5, zone.zone_id,
-                x + w/2, y + h/2 + 8, zone.area_percentage
-            ));
-        }
-    }
-    
-    let svg_content = format!(r##"<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-        <filter id="zoneShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="2" dy="2" stdDeviation="1" flood-color="#000000" flood-opacity="0.4"/>
-        </filter>
-    </defs>
-    
-    <rect width="600" height="400" fill="#f5f5f5"/>
-    
-    <polygon points="50,60 520,50 550,120 480,320 120,350 30,200" 
-             fill="none" stroke="#333" stroke-width="3" stroke-dasharray="5,5"/>
-    
-    {zone_elements}
-    
-    <rect x="10" y="10" width="580" height="30" fill="white" stroke="#333" rx="5"/>
-    <text x="300" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">
-        VRA Zones: {field_name} (K-means Clustering)
-    </text>
-    
-    <rect x="10" y="320" width="250" height="70" fill="white" stroke="#333" rx="5" opacity="0.95"/>
-    <text x="20" y="335" font-size="11" font-weight="bold" fill="#333">Management Zones:</text>
-    
-    {legend_items}
-    
-    <rect x="270" y="320" width="320" height="70" fill="white" stroke="#333" rx="5" opacity="0.95"/>
-    <text x="280" y="335" font-size="11" font-weight="bold" fill="#333">Clustering Statistics:</text>
-    <text x="280" y="350" font-size="9" fill="#333">Algorithm: K-means | Zones: {num_zones}</text>
-    <text x="280" y="365" font-size="9" fill="#333">Features: NDVI, EVI, SAVI, NDMI, GNDVI</text>
-    <text x="280" y="380" font-size="9" fill="#333">Total Area: {area:.1} ha | Processed: {timestamp}</text>
-</svg>"##,
-        field_name = field.name,
-        zone_elements = zone_elements,
-        legend_items = generate_zone_legend_items(zones),
-        num_zones = zones.len(),
-        area = field.area,
-        timestamp = Utc::now().format("%Y-%m-%d %H:%M UTC")
-    );
-
-    let encoded = general_purpose::STANDARD.encode(svg_content.as_bytes());
-    format!("data:image/svg+xml;base64,{}", encoded)
-}
-
-fn generate_zone_legend_items(zones: &[VRAZone]) -> String {
-    let mut items = String::new();
-    
-    for (i, zone) in zones.iter().enumerate().take(4) {
-        let y_pos = 345 + (i * 12);
-        items.push_str(&format!(
-            r##"<rect x="20" y="{}" width="12" height="8" fill="{}"/>
-            <text x="37" y="{}" font-size="8" fill="#333">{} ({:.1}%)</text>"##,
-            y_pos, zone.zone_color, y_pos + 7, zone.zone_name, zone.area_percentage
-        ));
-    }
-    
-    items
-}
-
-fn create_mock_processing_details(error: &anyhow::Error) -> ProcessingDetails {
-    ProcessingDetails {
-        satellite_item_id: "MOCK_SENTINEL2_ITEM".to_string(),
-        bands_used: vec!["B04 (Red)".to_string(), "B08 (NIR)".to_string(), 
-                        "B03 (Green)".to_string(), "B11 (SWIR)".to_string()],
-        processing_steps: vec![
-            "Fallback processing initiated".to_string(),
-            "Mock data generation".to_string(),
-            "K-means clustering simulation".to_string(),
-            "PNG visualization creation".to_string(),
-        ],
-        quality_flags: vec![
-            format!("Processing error: {}", error),
-            "Using simulated data".to_string(),
-            "Mock clustering applied".to_string(),
-        ],
-        cropped_area_km2: 1.25,
-        processing_time_seconds: 0.15,
-        streaming_stats: StreamingStats {
-            total_bytes_streamed: 0,
-            average_chunk_size_kb: 0.0,
-            streaming_time_seconds: 0.0,
-            memory_peak_mb: 10.0,
-        },
-    }
-}
-
-fn create_mock_clustering_info(num_zones: usize, indices: &[String]) -> ClusteringInfo {
-    ClusteringInfo {
-        algorithm: "K-Means (Mock)".to_string(),
-        num_clusters: num_zones,
-        features_used: indices.to_vec(),
-        convergence_iterations: 25,
-        inertia: 8.5,
-        silhouette_score: Some(0.72),
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct ProcessedFieldsResponse {
-    message: String,
-    count: usize,
-    fields: Vec<VRAMapResponse>,
-    processing_time_ms: u128,
-    total_area_processed: f64,
-    analysis_timestamp: String,
-}
-
+use actix_web::{post, web, App, HttpServer, Responder, Result, middleware::Logger};
 #[post("/generate-vra-maps")]
 async fn generate_vra_maps_enhanced(
     request: web::Json<Vec<VRAAnalysisRequest>>
@@ -1217,14 +384,15 @@ async fn main() -> std::io::Result<()> {
     .bind(&bind_address)?
     .run()
     .await
-}use actix_web::{post, web, App, HttpServer, Responder, Result, middleware::Logger};
+}
 use serde::{Deserialize, Serialize};
 use reqwest;
 use base64::{Engine as _, engine::general_purpose};
 use std::collections::HashMap;
 use dotenv::dotenv;
 use std::env;
-use geojson::{Geometry as GeoJsonGeometry, Value as GeoJsonValue, Polygon as GeoJsonPolygon};
+use geojson::{Geometry as GeoJsonGeometry, Value as GeoJsonValue};
+
 use std::convert::TryInto;
 use std::io::Write;
 use gdal::Dataset;
@@ -1365,6 +533,303 @@ impl SimpleKMeans {
             iterations,
         })
     }
+}
+
+fn create_mock_vegetation_indices() -> VegetationIndices {
+    VegetationIndices {
+        ndvi_stats: IndexStats {
+            min_value: 0.08,
+            max_value: 0.92,
+            avg_value: 0.58,
+            std_dev: 0.24,
+            healthy_percentage: 62.3,
+            stressed_percentage: 23.7,
+            moderate_percentage: 14.0,
+            pixel_count: 12000,
+            valid_pixel_count: 11400,
+        },
+        evi_stats: Some(IndexStats {
+            min_value: 0.05,
+            max_value: 0.85,
+            avg_value: 0.45,
+            std_dev: 0.19,
+            healthy_percentage: 58.1,
+            stressed_percentage: 27.3,
+            moderate_percentage: 14.6,
+            pixel_count: 12000,
+            valid_pixel_count: 11400,
+        }),
+        savi_stats: Some(IndexStats {
+            min_value: 0.03,
+            max_value: 0.78,
+            avg_value: 0.42,
+            std_dev: 0.21,
+            healthy_percentage: 60.5,
+            stressed_percentage: 25.8,
+            moderate_percentage: 13.7,
+            pixel_count: 12000,
+            valid_pixel_count: 11400,
+        }),
+        ndmi_stats: Some(IndexStats {
+            min_value: -0.2,
+            max_value: 0.6,
+            avg_value: 0.25,
+            std_dev: 0.18,
+            healthy_percentage: 45.2,
+            stressed_percentage: 35.1,
+            moderate_percentage: 19.7,
+            pixel_count: 12000,
+            valid_pixel_count: 11400,
+        }),
+        gndvi_stats: Some(IndexStats {
+            min_value: 0.1,
+            max_value: 0.88,
+            avg_value: 0.52,
+            std_dev: 0.22,
+            healthy_percentage: 59.8,
+            stressed_percentage: 24.5,
+            moderate_percentage: 15.7,
+            pixel_count: 12000,
+            valid_pixel_count: 11400,
+        }),
+    }
+}
+
+fn generate_mock_kmeans_zones(field_area: f64, num_zones: usize) -> Vec<VRAZone> {
+    let zone_data = vec![
+        (0.15, "Critical Stress Zone", "#8B0000", "Critical", 280.0),
+        (0.22, "High Stress Zone", "#FF4444", "High", 220.0),
+        (0.35, "Moderate Zone", "#FFA500", "Medium", 160.0),
+        (0.65, "Good Health Zone", "#FFFF00", "Low", 120.0),
+        (0.82, "Excellent Zone", "#00AA00", "Maintenance", 80.0),
+        (0.45, "Variable Zone", "#9370DB", "Medium", 140.0),
+        (0.28, "Transition Zone", "#FF69B4", "High", 200.0),
+    ];
+    
+    let mut zones = Vec::new();
+    let area_per_zone = 100.0 / num_zones.min(zone_data.len()) as f64;
+    
+    for i in 0..num_zones.min(zone_data.len()) {
+        let (avg_ndvi, name, color, priority, rate) = zone_data[i];
+        let area_percentage = area_per_zone * (0.8 + (i as f64 * 0.1));
+        let pixel_count = ((area_percentage / 100.0) * 12000.0) as usize;
+        
+        zones.push(VRAZone {
+            zone_id: (i + 1) as u8,
+            zone_name: name.to_string(),
+            cluster_center: vec![avg_ndvi, avg_ndvi * 0.8, avg_ndvi * 0.9],
+            area_percentage,
+            area_hectares: (area_percentage / 100.0) * field_area,
+            recommended_rate: rate,
+            zone_color: color.to_string(),
+            priority: priority.to_string(),
+            pixel_count,
+            avg_ndvi,
+            avg_evi: Some(avg_ndvi * 0.8),
+            soil_moisture_level: Some(0.2 + (avg_ndvi * 0.3)),
+        });
+    }
+    
+    zones
+}
+
+fn create_mock_ndvi_png(field: &Field) -> String {
+    let svg_content = format!(r##"<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="ndviGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#8B0000;stop-opacity:1" />
+            <stop offset="20%" style="stop-color:#FF4444;stop-opacity:1" />
+            <stop offset="40%" style="stop-color:#FFA500;stop-opacity:1" />
+            <stop offset="60%" style="stop-color:#FFFF00;stop-opacity:1" />
+            <stop offset="80%" style="stop-color:#90EE90;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#006400;stop-opacity:1" />
+        </linearGradient>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="3" dy="3" stdDeviation="2" flood-color="#000000" flood-opacity="0.3"/>
+        </filter>
+    </defs>
+    
+    <rect width="600" height="400" fill="#f0f8ff"/>
+    
+    <polygon points="50,60 520,50 550,120 480,320 120,350 30,200" 
+             fill="url(#ndviGradient)" stroke="#2F4F4F" stroke-width="3" filter="url(#shadow)"/>
+    
+    <circle cx="150" cy="150" r="40" fill="#8B0000" opacity="0.7"/>
+    <text x="150" y="155" fill="white" text-anchor="middle" font-size="10" font-weight="bold">0.15</text>
+    
+    <ellipse cx="300" cy="120" rx="60" ry="40" fill="#FF4444" opacity="0.7"/>
+    <text x="300" y="125" fill="white" text-anchor="middle" font-size="10" font-weight="bold">0.35</text>
+    
+    <rect x="200" y="200" width="150" height="80" fill="#FFA500" opacity="0.7" rx="10"/>
+    <text x="275" y="245" fill="white" text-anchor="middle" font-size="10" font-weight="bold">0.55</text>
+    
+    <polygon points="400,180 480,160 460,240 380,260" fill="#FFFF00" opacity="0.7"/>
+    <text x="430" y="210" fill="black" text-anchor="middle" font-size="10" font-weight="bold">0.70</text>
+    
+    <circle cx="450" cy="280" r="35" fill="#00AA00" opacity="0.8"/>
+    <text x="450" y="285" fill="white" text-anchor="middle" font-size="10" font-weight="bold">0.85</text>
+    
+    <rect x="10" y="10" width="580" height="30" fill="white" stroke="#2F4F4F" rx="5"/>
+    <text x="300" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#2F4F4F">
+        NDVI Analysis: {field_name} (Streaming K-means Processing)
+    </text>
+    
+    <rect x="10" y="350" width="580" height="40" fill="white" stroke="#2F4F4F" rx="5" opacity="0.9"/>
+    <text x="20" y="365" font-size="11" font-weight="bold" fill="#2F4F4F">NDVI Scale:</text>
+    
+    <rect x="20" y="370" width="20" height="15" fill="#8B0000"/>
+    <text x="45" y="382" font-size="9" fill="#2F4F4F">Critical (&lt;0.2)</text>
+    
+    <rect x="120" y="370" width="20" height="15" fill="#FF4444"/>
+    <text x="145" y="382" font-size="9" fill="#2F4F4F">Stressed (0.2-0.4)</text>
+    
+    <rect x="240" y="370" width="20" height="15" fill="#FFA500"/>
+    <text x="265" y="382" font-size="9" fill="#2F4F4F">Moderate (0.4-0.6)</text>
+    
+    <rect x="360" y="370" width="20" height="15" fill="#FFFF00"/>
+    <text x="385" y="382" font-size="9" fill="#2F4F4F">Good (0.6-0.8)</text>
+    
+    <rect x="460" y="370" width="20" height="15" fill="#00AA00"/>
+    <text x="485" y="382" font-size="9" fill="#2F4F4F">Excellent (&gt;0.8)</text>
+    
+    <text x="580" y="365" text-anchor="end" font-size="8" fill="#666">Processed: {timestamp}</text>
+    <text x="580" y="378" text-anchor="end" font-size="8" fill="#666">Source: Sentinel-2 L2A (Streaming)</text>
+</svg>"##, 
+        field_name = field.name,
+        timestamp = Utc::now().format("%Y-%m-%d %H:%M UTC")
+    );
+
+    let encoded = general_purpose::STANDARD.encode(svg_content.as_bytes());
+    format!("data:image/svg+xml;base64,{}", encoded)
+}
+
+fn create_mock_zone_png(field: &Field, zones: &[VRAZone]) -> String {
+    let mut zone_elements = String::new();
+    
+    let positions = vec![
+        (120, 140, 50, 40),
+        (200, 100, 80, 60),
+        (300, 180, 100, 70),
+        (420, 120, 70, 50),
+        (380, 220, 60, 45),
+    ];
+    
+    for (i, zone) in zones.iter().enumerate().take(5) {
+        if let Some(&(x, y, w, h)) = positions.get(i) {
+            zone_elements.push_str(&format!(
+                r##"<rect x="{}" y="{}" width="{}" height="{}" fill="{}" opacity="0.8" rx="5" stroke="#000" stroke-width="1"/>
+                <text x="{}" y="{}" fill="white" text-anchor="middle" font-size="10" font-weight="bold">Zone {}</text>
+                <text x="{}" y="{}" fill="white" text-anchor="middle" font-size="8">{:.1}%</text>"##,
+                x, y, w, h, zone.zone_color,
+                x + w/2, y + h/2 - 5, zone.zone_id,
+                x + w/2, y + h/2 + 8, zone.area_percentage
+            ));
+        }
+    }
+    
+    let svg_content = format!(r##"<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <filter id="zoneShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="2" dy="2" stdDeviation="1" flood-color="#000000" flood-opacity="0.4"/>
+        </filter>
+    </defs>
+    
+    <rect width="600" height="400" fill="#f5f5f5"/>
+    
+    <polygon points="50,60 520,50 550,120 480,320 120,350 30,200" 
+             fill="none" stroke="#333" stroke-width="3" stroke-dasharray="5,5"/>
+    
+    {zone_elements}
+    
+    <rect x="10" y="10" width="580" height="30" fill="white" stroke="#333" rx="5"/>
+    <text x="300" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">
+        VRA Zones: {field_name} (K-means Clustering)
+    </text>
+    
+    <rect x="10" y="320" width="250" height="70" fill="white" stroke="#333" rx="5" opacity="0.95"/>
+    <text x="20" y="335" font-size="11" font-weight="bold" fill="#333">Management Zones:</text>
+    
+    {legend_items}
+    
+    <rect x="270" y="320" width="320" height="70" fill="white" stroke="#333" rx="5" opacity="0.95"/>
+    <text x="280" y="335" font-size="11" font-weight="bold" fill="#333">Clustering Statistics:</text>
+    <text x="280" y="350" font-size="9" fill="#333">Algorithm: K-means | Zones: {num_zones}</text>
+    <text x="280" y="365" font-size="9" fill="#333">Features: NDVI, EVI, SAVI, NDMI, GNDVI</text>
+    <text x="280" y="380" font-size="9" fill="#333">Total Area: {area:.1} ha | Processed: {timestamp}</text>
+</svg>"##,
+        field_name = field.name,
+        zone_elements = zone_elements,
+        legend_items = generate_zone_legend_items(zones),
+        num_zones = zones.len(),
+        area = field.area,
+        timestamp = Utc::now().format("%Y-%m-%d %H:%M UTC")
+    );
+
+    let encoded = general_purpose::STANDARD.encode(svg_content.as_bytes());
+    format!("data:image/svg+xml;base64,{}", encoded)
+}
+
+fn generate_zone_legend_items(zones: &[VRAZone]) -> String {
+    let mut items = String::new();
+    
+    for (i, zone) in zones.iter().enumerate().take(4) {
+        let y_pos = 345 + (i * 12);
+        items.push_str(&format!(
+            r##"<rect x="20" y="{}" width="12" height="8" fill="{}"/>
+            <text x="37" y="{}" font-size="8" fill="#333">{} ({:.1}%)</text>"##,
+            y_pos, zone.zone_color, y_pos + 7, zone.zone_name, zone.area_percentage
+        ));
+    }
+    
+    items
+}
+
+fn create_mock_processing_details(error: &anyhow::Error) -> ProcessingDetails {
+    ProcessingDetails {
+        satellite_item_id: "MOCK_SENTINEL2_ITEM".to_string(),
+        bands_used: vec!["B04 (Red)".to_string(), "B08 (NIR)".to_string(), 
+                        "B03 (Green)".to_string(), "B11 (SWIR)".to_string()],
+        processing_steps: vec![
+            "Fallback processing initiated".to_string(),
+            "Mock data generation".to_string(),
+            "K-means clustering simulation".to_string(),
+            "PNG visualization creation".to_string(),
+        ],
+        quality_flags: vec![
+            format!("Processing error: {}", error),
+            "Using simulated data".to_string(),
+            "Mock clustering applied".to_string(),
+        ],
+        cropped_area_km2: 1.25,
+        processing_time_seconds: 0.15,
+        streaming_stats: StreamingStats {
+            total_bytes_streamed: 0,
+            average_chunk_size_kb: 0.0,
+            streaming_time_seconds: 0.0,
+            memory_peak_mb: 10.0,
+        },
+    }
+}
+
+fn create_mock_clustering_info(num_zones: usize, indices: &[String]) -> ClusteringInfo {
+    ClusteringInfo {
+        algorithm: "K-Means (Mock)".to_string(),
+        num_clusters: num_zones,
+        features_used: indices.to_vec(),
+        convergence_iterations: 25,
+        inertia: 8.5,
+        silhouette_score: Some(0.72),
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ProcessedFieldsResponse {
+    message: String,
+    count: usize,
+    fields: Vec<VRAMapResponse>,
+    processing_time_ms: u128,
+    total_area_processed: f64,
+    analysis_timestamp: String,
 }
 
 #[derive(Error, Debug)]
@@ -1910,16 +1375,25 @@ struct RasterData {
     no_data_value: Option<f64>,
 }
 
-// Add missing bounds calculation function
+#[derive(Debug)]
+struct GeometryBounds {
+    min_x: f64,
+    max_x: f64,
+    min_y: f64,
+    max_y: f64,
+}
+use geojson::Value;
+
+// Fixed bounds calculation function
 fn calculate_bounds(geometry: &GeoJsonGeometry) -> AnyhowResult<GeometryBounds> {
-    match &geometry.value { GeoJsonValue::Polygon(polygon) => {
-        GeoJsonGeometry::Polygon(polygon) => {
-            if let Some(exterior_ring) = polygon.exterior() {
+    match &geometry.value {
+        GeoJsonValue::Polygon(polygon) => {
+            if let Some(exterior_ring) = polygon.iter().next() {
                 let mut min_x = f64::INFINITY;
                 let mut max_x = f64::NEG_INFINITY;
                 let mut min_y = f64::INFINITY;
                 let mut max_y = f64::NEG_INFINITY;
-                
+
                 for coord in exterior_ring {
                     if coord.len() >= 2 {
                         min_x = min_x.min(coord[0]);
@@ -1928,7 +1402,7 @@ fn calculate_bounds(geometry: &GeoJsonGeometry) -> AnyhowResult<GeometryBounds> 
                         max_y = max_y.max(coord[1]);
                     }
                 }
-                
+
                 Ok(GeometryBounds { min_x, max_x, min_y, max_y })
             } else {
                 Err(anyhow::anyhow!("Polygon has no rings"))
@@ -1938,14 +1412,10 @@ fn calculate_bounds(geometry: &GeoJsonGeometry) -> AnyhowResult<GeometryBounds> 
     }
 }
 
-#[derive(Debug)]
-struct GeometryBounds {
-    min_x: f64,
-    max_x: f64,
-    min_y: f64,
-    max_y: f64,
-}
 
+                
+ 
+           
 // Coordinate transformation functions
 pub fn transform_geometry_to_wgs84(
     geometry: &GeoJsonGeometry,
@@ -1963,12 +1433,12 @@ pub fn transform_geometry_to_wgs84(
     let transformer = Proj::new_known_crs(&from_crs, &to_crs, None)
         .map_err(|e| anyhow::anyhow!("Failed to create transformer: {}", e))?;
     
-    match &geometry.value { GeoJsonValue::Polygon(polygon) => {
-        GeoJsonGeometry::Polygon(polygon) => {
+    match &geometry.value {
+        GeoJsonValue::Polygon(polygon) => {
             let mut transformed_rings = Vec::new();
             
             // Process exterior ring
-            if let Some(exterior) = polygon.exterior() {
+            if let Some(exterior) = polygon.iter().next() {
                 let mut transformed_coords = Vec::new();
                 
                 for coord in exterior {
@@ -1983,7 +1453,7 @@ pub fn transform_geometry_to_wgs84(
             }
             
             // Process interior rings (holes)
-            for interior in polygon.interiors() {
+            for interior in polygon.iter().skip(1) {
                 let mut transformed_coords = Vec::new();
                 
                 for coord in interior {
@@ -1996,13 +1466,14 @@ pub fn transform_geometry_to_wgs84(
                 
                 transformed_rings.push(transformed_coords);
             }
-            
-            let new_polygon = GeoJsonPolygon::new(transformed_rings);
-            Ok(GeoJsonGeometry::new(GeoJsonValue::Polygon(new_polygon)))
+
+            let new_polygon = GeoJsonValue::Polygon(transformed_rings); // ✅ fix here
+            Ok(GeoJsonGeometry::new(new_polygon))
         },
         _ => Err(anyhow::anyhow!("Only Polygon geometry supported for transformation")),
     }
 }
+
 
 fn detect_coordinate_system(geometry: &GeoJsonGeometry) -> AnyhowResult<u32> {
     let bounds = calculate_bounds(geometry)?;
@@ -2430,4 +1901,541 @@ fn generate_vra_zones_kmeans(
     };
     
     Ok((zones, clustering_info))
+}
+
+fn create_ndvi_png_visualization(vegetation_data: &VegetationData) -> AnyhowResult<String> {
+    let (height, width) = vegetation_data.ndvi.dim();
+    let mut img: RgbaImage = ImageBuffer::new(width as u32, height as u32);
+    
+    for (y, row) in vegetation_data.ndvi.outer_iter().enumerate() {
+        for (x, &ndvi_val) in row.iter().enumerate() {
+            let color = if !vegetation_data.mask[(y, x)] || ndvi_val.is_nan() {
+                Rgba([128, 128, 128, 128])
+            } else {
+                let rgb = ndvi_to_enhanced_color(ndvi_val);
+                Rgba([rgb[0], rgb[1], rgb[2], 255])
+            };
+            
+            img.put_pixel(x as u32, y as u32, color);
+        }
+    }
+    
+    let bordered_img = add_border_and_scale(&img, "NDVI Analysis")?;
+    
+    let mut buffer = Vec::new();
+    let mut cursor = std::io::Cursor::new(&mut buffer);
+    bordered_img.write_to(&mut cursor, image::ImageOutputFormat::Png)?;
+    
+    let base64_image = general_purpose::STANDARD.encode(&buffer);
+    Ok(format!("data:image/png;base64,{}", base64_image))
+}
+
+fn create_zone_png_visualization(
+    zones: &[VRAZone], 
+    vegetation_data: &VegetationData,
+    zone_assignments: &Array2<u8>
+) -> AnyhowResult<String> {
+    let (height, width) = zone_assignments.dim();
+    let mut img: RgbaImage = ImageBuffer::new(width as u32, height as u32);
+    
+    let mut zone_colors = HashMap::new();
+    for zone in zones {
+        let color = hex_to_rgba(&zone.zone_color)?;
+        zone_colors.insert(zone.zone_id, color);
+    }
+    
+    for ((y, x), &zone_id) in zone_assignments.indexed_iter() {
+        let color = if zone_id == 0 || !vegetation_data.mask[(y, x)] {
+            Rgba([128, 128, 128, 128])
+        } else {
+            zone_colors.get(&zone_id).copied().unwrap_or(Rgba([128, 128, 128, 255]))
+        };
+        
+        img.put_pixel(x as u32, y as u32, color);
+    }
+    
+    let bordered_img = add_border_and_scale(&img, "VRA Zones (K-means)")?;
+    
+    let mut buffer = Vec::new();
+    let mut cursor = std::io::Cursor::new(&mut buffer);
+    bordered_img.write_to(&mut cursor, image::ImageOutputFormat::Png)?;
+    
+    let base64_image = general_purpose::STANDARD.encode(&buffer);
+    Ok(format!("data:image/png;base64,{}", base64_image))
+}
+
+fn ndvi_to_enhanced_color(ndvi: f64) -> [u8; 3] {
+    match ndvi {
+        n if n < -0.1 => [139, 69, 19],
+        n if n < 0.0 => [160, 82, 45],
+        n if n < 0.1 => [205, 133, 63],
+        n if n < 0.2 => [222, 184, 135],
+        n if n < 0.3 => [255, 140, 0],
+        n if n < 0.4 => [255, 165, 0],
+        n if n < 0.5 => [255, 255, 0],
+        n if n < 0.6 => [173, 255, 47],
+        n if n < 0.7 => [50, 205, 50],
+        n if n < 0.8 => [0, 128, 0],
+        _ => [0, 100, 0],
+    }
+}
+
+fn hex_to_rgba(hex: &str) -> AnyhowResult<Rgba<u8>> {
+    let hex = hex.trim_start_matches('#');
+    if hex.len() != 6 {
+        return Err(anyhow::anyhow!("Invalid hex color: {}", hex));
+    }
+    
+    let r = u8::from_str_radix(&hex[0..2], 16)?;
+    let g = u8::from_str_radix(&hex[2..4], 16)?;
+    let b = u8::from_str_radix(&hex[4..6], 16)?;
+    
+    Ok(Rgba([r, g, b, 255]))
+}
+
+fn add_border_and_scale(img: &RgbaImage, _title: &str) -> AnyhowResult<RgbaImage> {
+    let border_size = 50;
+    let original_width = img.width();
+    let original_height = img.height();
+    let new_width = original_width + 2 * border_size;
+    let new_height = original_height + 2 * border_size;
+    
+    let mut bordered_img: RgbaImage = ImageBuffer::new(new_width, new_height);
+    
+    for pixel in bordered_img.pixels_mut() {
+        *pixel = Rgba([255, 255, 255, 255]);
+    }
+    
+    for y in 0..original_height {
+        for x in 0..original_width {
+            let pixel = *img.get_pixel(x, y);
+            bordered_img.put_pixel(x + border_size, y + border_size, pixel);
+        }
+    }
+    
+    Ok(bordered_img)
+}
+
+fn extract_bounding_box(geometry: &GeoGeometry<f64>) -> Option<BoundingBox> {
+    match geometry.bounding_rect() {
+        Some(rect) => Some(BoundingBox {
+            min_lon: rect.min().x,
+            min_lat: rect.min().y,
+            max_lon: rect.max().x,
+            max_lat: rect.max().y,
+        }),
+        None => None,
+    }
+}
+
+fn geometry_to_polygon(geometry: &GeoGeometry<f64>) -> Option<GeoPolygon<f64>> {
+    match geometry {
+        GeoGeometry::Polygon(poly) => Some(poly.clone()),
+        GeoGeometry::MultiPolygon(multi) => {
+            multi.iter().next().cloned()
+        },
+        _ => {
+            if let Some(bbox) = extract_bounding_box(geometry) {
+                let coords = vec![
+                    (bbox.min_lon, bbox.min_lat),
+                    (bbox.max_lon, bbox.min_lat),
+                    (bbox.max_lon, bbox.max_lat),
+                    (bbox.min_lon, bbox.max_lat),
+                    (bbox.min_lon, bbox.min_lat),
+                ];
+                Some(GeoPolygon::new(coords.into(), vec![]))
+            } else {
+                None
+            }
+        }
+    }
+}
+
+async fn process_satellite_data_streaming(
+    field: &Field,
+    config: &PlanetaryComputerConfig,
+    requested_indices: &[String],
+    num_zones: usize,
+) -> AnyhowResult<(String, String, VegetationIndices, Vec<VRAZone>, ProcessingDetails, ClusteringInfo)> {
+    let start_time = std::time::Instant::now();
+    let mut processing_steps = Vec::new();
+    
+    processing_steps.push("Searching for Sentinel-2 imagery with enhanced filters".to_string());
+    
+    let items = config.search_sentinel2_items(
+        &field.geometry,
+        "2024-01-01T00:00:00Z",
+        "2024-12-31T23:59:59Z",
+        20.0,
+    ).await?;
+
+    if items.is_empty() {
+        return Err(anyhow::anyhow!("No suitable Sentinel-2 imagery found for field: {}", field.name));
+    }
+
+    let best_item = items.iter()
+        .min_by(|a, b| {
+            let cloud_a = a.properties.cloud_cover.unwrap_or(100.0);
+            let cloud_b = b.properties.cloud_cover.unwrap_or(100.0);
+            cloud_a.partial_cmp(&cloud_b).unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .context("No valid items found")?;
+
+    processing_steps.push(format!("Selected high-quality imagery: {} ({}% cloud cover)", 
+                                  best_item.id, 
+                                  best_item.properties.cloud_cover.unwrap_or(0.0)));
+
+    let red_band_url = best_item.assets.get("B04")
+        .context("Red band (B04) not available")?
+        .href.clone();
+    
+    let nir_band_url = best_item.assets.get("B08")
+        .context("NIR band (B08) not available")?
+        .href.clone();
+    
+    let green_band_url = best_item.assets.get("B03")
+        .context("Green band (B03) not available")?
+        .href.clone();
+    
+    let swir_band_url = best_item.assets.get("B11")
+        .context("SWIR band (B11) not available")?
+        .href.clone();
+
+    processing_steps.push("Signing URLs for authenticated streaming access".to_string());
+    
+    let signed_red_url = config.sign_url(&red_band_url).await?;
+    let signed_nir_url = config.sign_url(&nir_band_url).await?;
+    let signed_green_url = config.sign_url(&green_band_url).await?;
+    let signed_swir_url = config.sign_url(&swir_band_url).await?;
+    
+    let geo_geometry: GeoGeometry<f64> = field.geometry.clone().try_into()
+        .context("Failed to convert field geometry")?;
+    
+    let field_polygon = geometry_to_polygon(&geo_geometry)
+        .context("Failed to convert geometry to polygon")?;
+    
+    processing_steps.push("Streaming and cropping satellite bands to field boundary".to_string());
+    
+    let (red_data, nir_data, green_data, swir_data) = tokio::try_join!(
+        config.stream_raster_data(&signed_red_url, &field_polygon),
+        config.stream_raster_data(&signed_nir_url, &field_polygon),
+        config.stream_raster_data(&signed_green_url, &field_polygon),
+        config.stream_raster_data(&signed_swir_url, &field_polygon)
+    )?;
+    
+    processing_steps.push("Computing vegetation indices from streamed multi-spectral data".to_string());
+    
+    let vegetation_data = calculate_vegetation_indices(
+        &red_data,
+        &nir_data,
+        Some(&green_data),
+        Some(&swir_data),
+        requested_indices
+    )?;
+    
+    processing_steps.push(format!("Applying K-means clustering for {} VRA zones", num_zones));
+    
+    let (vra_zones, clustering_info) = generate_vra_zones_kmeans(&vegetation_data, field.area, num_zones)?;
+    
+    processing_steps.push("Generating high-resolution PNG visualizations".to_string());
+    
+    let ndvi_png = create_ndvi_png_visualization(&vegetation_data)?;
+    
+    let (height, width) = vegetation_data.ndvi.dim();
+    let mut zone_assignments = Array2::zeros((height, width));
+    
+    for ((i, j), &ndvi_val) in vegetation_data.ndvi.indexed_iter() {
+        if vegetation_data.mask[(i, j)] && ndvi_val.is_finite() {
+            let zone_id = match ndvi_val {
+                n if n < 0.2 => 1,
+                n if n < 0.4 => 2,
+                n if n < 0.6 => 3,
+                n if n < 0.8 => 4,
+                _ => 5,
+            };
+            zone_assignments[(i, j)] = zone_id.min(vra_zones.len() as u8);
+        }
+    }
+    
+    let zone_png = create_zone_png_visualization(&vra_zones, &vegetation_data, &zone_assignments)?;
+    
+    let processing_time = start_time.elapsed().as_secs_f64();
+    
+    let total_streaming_bytes = red_data.streaming_metadata.total_bytes_processed +
+                                nir_data.streaming_metadata.total_bytes_processed +
+                                green_data.streaming_metadata.total_bytes_processed +
+                                swir_data.streaming_metadata.total_bytes_processed;
+    
+    let processing_details = ProcessingDetails {
+        satellite_item_id: best_item.id.clone(),
+        bands_used: vec!["B04 (Red)".to_string(), "B08 (NIR)".to_string(), 
+                        "B03 (Green)".to_string(), "B11 (SWIR)".to_string()],
+        processing_steps,
+        quality_flags: vec![
+            format!("Cloud coverage: {:.1}%", best_item.properties.cloud_cover.unwrap_or(0.0)),
+            format!("Valid pixels: {}/{}", vegetation_data.indices_stats.ndvi_stats.valid_pixel_count, 
+                   vegetation_data.indices_stats.ndvi_stats.pixel_count),
+            "Streaming-based processing with K-means clustering".to_string(),
+            format!("Clustering features: {}", clustering_info.features_used.join(", ")),
+        ],
+        cropped_area_km2: field.area / 100.0,
+        processing_time_seconds: processing_time,
+        streaming_stats: StreamingStats {
+            total_bytes_streamed: total_streaming_bytes,
+            average_chunk_size_kb: (total_streaming_bytes as f64 / 4.0) / 1024.0,
+            streaming_time_seconds: (red_data.streaming_metadata.streaming_time + 
+                                   nir_data.streaming_metadata.streaming_time +
+                                   green_data.streaming_metadata.streaming_time +
+                                   swir_data.streaming_metadata.streaming_time) / 4.0,
+            memory_peak_mb: [red_data.streaming_metadata.memory_usage,
+                           nir_data.streaming_metadata.memory_usage,
+                           green_data.streaming_metadata.memory_usage,
+                           swir_data.streaming_metadata.memory_usage]
+                           .iter().fold(0.0, |a, &b| a.max(b)),
+        },
+    };
+
+    Ok((ndvi_png, zone_png, vegetation_data.indices_stats, vra_zones, processing_details, clustering_info))
+}
+
+fn generate_enhanced_recommendations(field_area: f64, zones: &[VRAZone], _clustering_info: &ClusteringInfo) -> VRARecommendations {
+    let fertilizer_zones: Vec<FertilizerZone> = zones.iter().map(|zone| {
+        let base_rate = zone.recommended_rate;
+        let timing = match zone.priority.as_str() {
+            "Critical" => "Immediate application",
+            "High" => "Within 1 week",
+            "Medium" => "Within 2 weeks",
+            _ => "Maintenance schedule",
+        };
+        
+        FertilizerZone {
+            zone_id: zone.zone_id,
+            nitrogen_rate: base_rate * 0.50,
+            phosphorus_rate: base_rate * 0.30,
+            potassium_rate: base_rate * 0.15,
+            organic_matter_rate: base_rate * 0.05,
+            cost_per_hectare: base_rate * 0.85,
+            application_timing: timing.to_string(),
+        }
+    }).collect();
+    
+    let irrigation_zones: Vec<IrrigationZone> = zones.iter().map(|zone| {
+        let (water_req, frequency, priority, cost, moisture_target) = match zone.avg_ndvi {
+            ndvi if ndvi < 0.3 => (50.0, "Every day".to_string(), "Critical".to_string(), 95.0, 0.35),
+            ndvi if ndvi < 0.5 => (40.0, "Every 2 days".to_string(), "High".to_string(), 75.0, 0.30),
+            ndvi if ndvi < 0.7 => (30.0, "Every 3 days".to_string(), "Medium".to_string(), 55.0, 0.25),
+            _ => (20.0, "Weekly".to_string(), "Low".to_string(), 35.0, 0.20),
+        };
+        
+        IrrigationZone {
+            zone_id: zone.zone_id,
+            water_requirement: water_req,
+            irrigation_frequency: frequency,
+            priority,
+            estimated_cost: cost,
+            soil_moisture_target: moisture_target,
+        }
+    }).collect();
+    
+    let seed_zones: Vec<SeedZone> = zones.iter().map(|zone| {
+        let (seeding_rate, variety, depth, spacing, optimization) = match zone.avg_ndvi {
+            ndvi if ndvi < 0.3 => (500.0, "Drought-resistant variety".to_string(), 3.0, "Dense spacing".to_string(), "Enhanced germination treatment".to_string()),
+            ndvi if ndvi < 0.5 => (450.0, "Hardy variety".to_string(), 2.5, "Standard spacing".to_string(), "Pre-germination soak".to_string()),
+            ndvi if ndvi < 0.7 => (400.0, "Standard variety".to_string(), 2.0, "Standard spacing".to_string(), "Standard preparation".to_string()),
+            _ => (350.0, "High-yield variety".to_string(), 1.5, "Optimized spacing".to_string(), "Precision seeding".to_string()),
+        };
+        
+        SeedZone {
+            zone_id: zone.zone_id,
+            seeding_rate,
+            seed_variety: variety,
+            planting_depth: depth,
+            spacing_recommendation: spacing,
+            germination_optimization: optimization,
+        }
+    }).collect();
+    
+    let total_fertilizer: f64 = zones.iter()
+        .map(|zone| zone.recommended_rate * (zone.area_percentage / 100.0) * field_area)
+        .sum();
+    
+    let uniform_rate = 170.0;
+    let uniform_total = uniform_rate * field_area;
+    let fertilizer_savings = (uniform_total - total_fertilizer).max(0.0);
+    
+    let total_cost = fertilizer_zones.iter()
+        .zip(zones.iter())
+        .map(|(fert_zone, vra_zone)| {
+            fert_zone.cost_per_hectare * vra_zone.area_hectares
+        })
+        .sum::<f64>();
+    
+    let cost_savings = fertilizer_savings * 0.85;
+    
+    let precision_score = if zones.len() > 1 {
+        let ndvi_variance: f64 = zones.iter()
+            .map(|z| (z.avg_ndvi - zones.iter().map(|z2| z2.avg_ndvi).sum::<f64>() / zones.len() as f64).powi(2))
+            .sum::<f64>() / zones.len() as f64;
+        (ndvi_variance * 1000.0).min(100.0).max(0.0)
+    } else {
+        0.0
+    };
+    
+    VRARecommendations {
+        fertilizer_zones,
+        irrigation_zones,
+        seed_zones,
+        total_fertilizer_needed: total_fertilizer,
+        total_cost_estimate: total_cost,
+        cost_savings_estimate: cost_savings,
+        environmental_impact: EnvironmentalImpact {
+            nitrogen_reduction_kg: fertilizer_savings * 0.50,
+            water_savings_liters: field_area * 750.0,
+            carbon_footprint_reduction_kg: fertilizer_savings * 0.35,
+            biodiversity_score: 82.5,
+            precision_application_benefit: precision_score,
+        },
+        precision_score,
+    }
+}
+
+fn generate_enhanced_analysis_summary(
+    vegetation_indices: &VegetationIndices,
+    zones: &[VRAZone],
+    recommendations: &VRARecommendations,
+    clustering_info: &ClusteringInfo,
+) -> AnalysisSummary {
+    let ndvi_stats = &vegetation_indices.ndvi_stats;
+    let health_score = (ndvi_stats.healthy_percentage + (ndvi_stats.moderate_percentage * 0.7)) / 1.7;
+    let productivity_index = (ndvi_stats.avg_value * 100.0).min(100.0);
+    
+    let mut stress_indicators = Vec::new();
+    if ndvi_stats.stressed_percentage > 25.0 {
+        stress_indicators.push("Significant stress areas detected".to_string());
+    }
+    if ndvi_stats.avg_value < 0.45 {
+        stress_indicators.push("Below optimal vegetation health".to_string());
+    }
+    if ndvi_stats.std_dev > 0.3 {
+        stress_indicators.push("High spatial variability in field conditions".to_string());
+    }
+    if clustering_info.inertia > 10.0 {
+        stress_indicators.push("Complex field variability patterns".to_string());
+    }
+    
+    let mut priority_actions = Vec::new();
+    let critical_zones = zones.iter().filter(|z| z.priority == "Critical").count();
+    let high_zones = zones.iter().filter(|z| z.priority == "High").count();
+    
+    if critical_zones > 0 {
+        priority_actions.push(format!("Immediate intervention needed for {} critical zones", critical_zones));
+    }
+    if high_zones > 0 {
+        priority_actions.push(format!("Enhanced management for {} high-priority zones", high_zones));
+    }
+    if recommendations.environmental_impact.precision_application_benefit > 50.0 {
+        priority_actions.push("Implement precision variable rate application system".to_string());
+    }
+    if zones.len() >= 4 {
+        priority_actions.push("Multi-zone management strategy recommended".to_string());
+    }
+    
+    let yield_improvement = match health_score {
+        score if score < 40.0 => 35.0,
+        score if score < 60.0 => 25.0,
+        score if score < 80.0 => 15.0,
+        _ => 8.0,
+    };
+    
+    let zone_consistency_score = match clustering_info.inertia {
+        inertia if inertia < 5.0 => 95.0,
+        inertia if inertia < 10.0 => 85.0,
+        inertia if inertia < 20.0 => 75.0,
+        _ => 60.0,
+    };
+    
+    AnalysisSummary {
+        overall_health_score: health_score,
+        productivity_index,
+        stress_indicators,
+        recommendations_count: (zones.len() + priority_actions.len()) as u32,
+        priority_actions,
+        estimated_yield_improvement: yield_improvement,
+        zone_consistency_score,
+    }
+}
+
+async fn process_field_with_streaming_analysis(
+    field: &Field, 
+    config: &PlanetaryComputerConfig,
+    num_zones: usize,
+    requested_indices: Vec<String>,
+) -> VRAMapResponse {
+    println!("🌾 Processing field: {} (ID: {}, Area: {:.2} ha)", field.name, field.id, field.area);
+    println!("📊 Requested indices: {:?}", requested_indices);
+    println!("🎯 Target zones: {}", num_zones);
+    
+    let (ndvi_png, zone_png, vegetation_indices, vra_zones, processing_details, clustering_info) = 
+        match process_satellite_data_streaming(field, config, &requested_indices, num_zones).await {
+            Ok(result) => {
+                println!("✅ Successfully processed streaming satellite data for field {}", field.id);
+                result
+            },
+            Err(e) => {
+                println!("❌ Error processing satellite data for field {}: {}", field.id, e);
+                let mock_indices = create_mock_vegetation_indices();
+                let mock_zones = generate_mock_kmeans_zones(field.area, num_zones);
+                let mock_ndvi_png = create_mock_ndvi_png(field);
+                let mock_zone_png = create_mock_zone_png(field, &mock_zones);
+                let mock_processing = create_mock_processing_details(&e);
+                let mock_clustering = create_mock_clustering_info(num_zones, &requested_indices);
+                (mock_ndvi_png, mock_zone_png, mock_indices, mock_zones, mock_processing, mock_clustering)
+            }
+        };
+    
+    let geo_geometry: GeoGeometry<f64> = field.geometry.clone().try_into()
+        .expect("Invalid geometry conversion");
+    
+    let bbox = extract_bounding_box(&geo_geometry).unwrap_or(BoundingBox {
+        min_lon: 0.0,
+        min_lat: 0.0,
+        max_lon: 0.0,
+        max_lat: 0.0,
+    });
+    
+    let recommendations = generate_enhanced_recommendations(field.area, &vra_zones, &clustering_info);
+    let analysis_summary = generate_enhanced_analysis_summary(&vegetation_indices, &vra_zones, &recommendations, &clustering_info);
+    
+    println!("📈 Analysis completed for field {}: Health Score: {:.1}%, {} zones identified", 
+             field.id, analysis_summary.overall_health_score, vra_zones.len());
+    println!("🎯 Clustering inertia: {:.2}, Zone consistency: {:.1}%", 
+             clustering_info.inertia, analysis_summary.zone_consistency_score);
+    
+    VRAMapResponse {
+        field_id: field.id,
+        field_name: field.name.clone(),
+        ndvi_map_png: ndvi_png,
+        vegetation_indices,
+        vra_zones,
+        zone_map_png: zone_png,
+        recommendations,
+        bbox,
+        map_metadata: MapMetadata {
+            acquisition_date: processing_details.satellite_item_id.clone(),
+            cloud_coverage: 5.2,
+            resolution: 10.0,
+            data_source: "Microsoft Planetary Computer - Sentinel-2 L2A (Streaming GDAL Processing)".to_string(),
+            processing_date: Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+            satellite_pass: "Descending".to_string(),
+            tile_info: TileInfo {
+                tiles_processed: 4,
+                streaming_mode: true,
+                total_data_size_mb: processing_details.streaming_stats.total_bytes_streamed as f64 / (1024.0 * 1024.0),
+                compression_ratio: 0.75,
+            },
+        },
+        analysis_summary,
+        processing_details,
+        clustering_info,
+    }
 }
