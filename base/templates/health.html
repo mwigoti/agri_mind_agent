@@ -1957,7 +1957,7 @@
       fieldsArray = [data];
     }
     
-    console.log('✅ Fields array:', fieldsArray);
+    console.log('Fields array:', fieldsArray);
     
     // Transform GeoJSON data to our fields format
     fields = fieldsArray.map(feature => {
@@ -1975,14 +1975,14 @@
       };
     });
 
-    console.log('✅ Transformed fields:', fields);
+    console.log('Transformed fields:', fields);
     
     renderFields();
     updateStats();
     
     return fields;
   } catch (error) {
-    console.error('❌ Failed to fetch fields:', error);
+    console.error('Failed to fetch fields:', error);
     showError('Failed to load fields: ' + error.message);
     return [];
   }
