@@ -2882,9 +2882,9 @@
     // SUBMIT BUTTON HANDLER
     // ========================================
    
-    document.addEventListener('DOMContentLoaded', async function() {
+    document.addEventListener('DOMContentLoaded', function() {
       // Fetch fields when page loads
-      await fetchFieldsFromDatabase();
+      fetchFieldsFromDatabase();
       
       // Setup modal components
       populateCropOptions();
