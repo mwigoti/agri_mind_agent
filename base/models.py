@@ -282,3 +282,131 @@ class ActivityOptimization(models.Model):
     
     def __str__(self):
         return f"{self.field.name} - {self.get_activity_type_display()} - Score: {self.overall_score}"
+
+
+# ── Add to existing models.py ──────────────────────────────────────────────
+
+from django.db import models as _models  # alias to avoid collision with gis models
+from django.utils.timezone import now as _now
+
+
+class AnalysisResult(_models.Model):
+    """
+    Stores GEE pipeline output for one Field × FieldActivity pair.
+    Created/updated by run_pipeline_2() in gee_pipeline.py.
+    Read by Pipeline 3 (ML) and Pipeline 4 (LLM advisory).
+    """
+
+    STATUS_CHOICES = [
+        ("queued",  "Queued"),
+        ("running", "Running"),
+        ("done",    "Done"),
+        ("error",   "Error"),
+    ]
+
+    field    = _models.ForeignKey("Field",         on_delete=_models.CASCADE, related_name="analysis_results")
+    activity = _models.ForeignKey("FieldActivity", on_delete=_models.CASCADE, related_name="analysis_results")
+
+    pipeline_status = _models.CharField(max_length=20, choices=STATUS_CHOICES, default="queued")
+    error_message   = _models.TextField(blank=True, null=True)
+
+    # ── Sentinel-2 ────────────────────────────────────────────
+    ndvi_latest      = _models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
+    ndre_latest      = _models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
+    ndvi_auc         = _models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
+    ndre_peak        = _models.DecimalField(max_digits=6, decimal_places=4, null=True, blank=True)
+    scene_count      = _models.IntegerField(default=0)
+    latest_scene_date = _models.CharField(max_length=10, null=True, blank=True)  # "YYYY-MM-DD"
+
+    # ── Climate ───────────────────────────────────────────────
+    total_rainfall_mm = _models.DecimalField(max_digits=8, decimal_places=1, null=True, blank=True)
+    cumulative_gdd    = _models.DecimalField(max_digits=8, decimal_places=1, null=True, blank=True)
+    heat_stress_frac  = _models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+
+    # ── Soil ──────────────────────────────────────────────────
+    soc_gkg       = _models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    soil_ph       = _models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+
+    # ── Advisory ─────────────────────────────────────────────
+    stress_flags  = _models.JSONField(default=list, blank=True)
+
+    # ── Full bundle (for ML + LLM pipelines) ─────────────────
+    full_bundle   = _models.JSONField(default=dict, blank=True)
+
+    created_at    = _models.DateTimeField(auto_now_add=True)
+    updated_at    = _models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ["field", "activity"]
+        ordering        = ["-updated_at"]
+
+    def __str__(self):
+        return f"AnalysisResult: {self.field.name} / activity {self.activity_id} [{self.pipeline_status}]"
+
+    # ── Convenience properties for Pipeline 3 ────────────────
+    @property
+    def ml_feature_dict(self) -> dict:
+        """
+        Returns a flat dict of the key features Pipeline 3 (ML) needs.
+        Mirrors the feature_bundle["sentinel|chirps|era5|soil"] keys.
+        """
+        bundle = self.full_bundle or {}
+        return {
+            "ndvi_veg_mean":    self.ndvi_latest,
+            "ndre_veg_mean":    self.ndre_latest,
+            "ndvi_auc_full":    self.ndvi_auc,
+            "ndre_tassel_peak": self.ndre_peak,
+            "ewa_total_mm":     self.total_rainfall_mm,
+            "cumulative_gdd":   self.cumulative_gdd,
+            "heat_stress_frac": self.heat_stress_frac,
+            "soc_gkg":          bundle.get("soil", {}).get("soc_gkg"),
+            "clay_pct":         bundle.get("soil", {}).get("clay_pct"),
+            "soil_ph":          self.soil_ph,
+        }
+
+
+class FieldSoilData(models.Model):
+    field                  = models.OneToOneField(Field, on_delete=models.CASCADE,
+                                                  related_name='soil_data')
+    # Physical
+    sand_pct               = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    clay_pct               = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    silt_pct               = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    bulk_density           = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    # Chemical
+    soc_gkg                = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    soil_ph                = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    cec                    = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    electrical_conductivity= models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    # Nutrients
+    nitrogen_gkg           = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    total_phosphorus_mgkg  = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    total_potassium_mgkg   = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    exchangeable_k         = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    phosphorus_olsen_mgkg  = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    # Water
+    water_capacity_pf2     = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    water_capacity_pf2_5   = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    wilting_point          = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    plant_available_water  = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    # Classification
+    soil_type              = models.CharField(max_length=100, null=True, blank=True)
+    climate_type           = models.CharField(max_length=100, null=True, blank=True)
+    # Geomorphology
+    elevation_m            = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    slope_pct              = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    # Biological
+    microbial_abundance    = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    macrofauna_groups      = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    # Threats
+    soil_loss              = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    erosion_class          = models.CharField(max_length=50,  null=True, blank=True)
+    desertification_vuln   = models.CharField(max_length=50,  null=True, blank=True)
+    # Meteo (background reference)
+    annual_temp_c          = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    annual_precip_mm       = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+
+    fetched_at             = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Soil — {self.field.name} | pH {self.soil_ph} | SOC {self.soc_gkg} g/kg"

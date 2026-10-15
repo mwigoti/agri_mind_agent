@@ -1847,3 +1847,229 @@ def health_check(request):
             'error': str(e),
             'gee_status': 'disconnected'
         }, status=500)
+
+
+"""
+agrivision/views_analysis.py
+
+View for POST /api/analyze-crop/
+==================================
+Triggered from the "Analyze Crop" button in health.html.
+Runs Pipeline 2 (GEE data collection) asynchronously via Celery
+and immediately returns a job-id so the frontend can poll for status.
+
+URL conf addition (urls.py):
+    path("api/analyze-crop/",     views_analysis.analyze_crop,      name="analyze_crop"),
+    path("api/analysis-status/<int:result_id>/",
+                                  views_analysis.analysis_status,   name="analysis_status"),
+
+Celery task is in tasks.py (see bottom of this file).
+"""
+
+import json
+import logging
+
+from django.http        import JsonResponse
+from django.views.decorators.http import require_POST, require_GET
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf   import csrf_exempt   # remove if using session auth properly
+
+from .models import Field, FieldActivity, AnalysisResult
+
+logger = logging.getLogger(__name__)
+
+
+# ─────────────────────────────────────────────────────────────
+#  POST /api/analyze-crop/
+# ─────────────────────────────────────────────────────────────
+@login_required
+@require_POST
+def analyze_crop(request):
+    """
+    Kicks off Pipeline 2 for a given field + activity.
+
+    Expected JSON body:
+        {
+          "field_id":    <int>,
+          "activity_id": <int>      # FieldActivity pk (the planting record)
+        }
+
+    Returns immediately with:
+        {
+          "status":    "queued",
+          "result_id": <int>,       # AnalysisResult pk — poll this
+          "message":   "Analysis started — check /api/analysis-status/<result_id>/"
+        }
+    """
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+
+    field_id    = body.get("field_id")
+    activity_id = body.get("activity_id")
+
+    if not field_id or not activity_id:
+        return JsonResponse(
+            {"status": "error", "message": "field_id and activity_id are required"},
+            status=400,
+        )
+
+    # ── Validate ownership ──────────────────────────────────
+    try:
+        field = Field.objects.get(pk=field_id, owner=request.user)
+    except Field.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Field not found"}, status=404)
+
+    try:
+        activity = FieldActivity.objects.get(pk=activity_id, field=field)
+    except FieldActivity.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Activity not found"}, status=404)
+
+    # ── Create or reset AnalysisResult row ──────────────────
+    result, created = AnalysisResult.objects.update_or_create(
+        field_id=field_id,
+        activity_id=activity_id,
+        defaults={"pipeline_status": "queued", "full_bundle": {}},
+    )
+
+    # ── Dispatch Celery task ─────────────────────────────────
+    # If Celery is not yet configured, fall back to synchronous execution
+    # (comment out the try/except once Celery is running in production)
+    try:
+        from .tasks import run_pipeline_2_task
+        run_pipeline_2_task.delay(field_id, activity_id, result.pk)
+    except Exception as exc:
+        logger.warning("Celery not available — running synchronously: %s", exc)
+        _run_synchronous(field_id, activity_id, result.pk)
+
+    return JsonResponse({
+        "status":    "queued",
+        "result_id": result.pk,
+        "message":   "Analysis started — poll /api/analysis-status/{}/".format(result.pk),
+    })
+
+
+# ─────────────────────────────────────────────────────────────
+#  GET /api/analysis-status/<result_id>/
+# ─────────────────────────────────────────────────────────────
+@login_required
+@require_GET
+def analysis_status(request, result_id: int):
+    """
+    Poll this endpoint after calling /api/analyze-crop/.
+
+    Returns:
+        {
+          "status":        "queued" | "running" | "done" | "error",
+          "result_id":     <int>,
+
+          // When status == "done":
+          "ndvi_latest":       <float>,
+          "ndre_latest":       <float>,
+          "evi_latest":        <float>,
+          "ndvi_auc":          <float>,
+          "ndre_peak":         <float>,
+          "scene_count":       <int>,
+          "latest_scene_date": <"YYYY-MM-DD">,
+          "total_rainfall_mm": <float>,
+          "cumulative_gdd":    <float>,
+          "heat_stress_frac":  <float>,
+          "soc_gkg":           <float>,
+          "soil_ph":           <float>,
+          "stress_flags":      ["flag 1", "flag 2", ...],
+          "scenes":            [{date, ndvi, ndre, evi, savi, gndvi}, ...],
+          "chirps_windows":    [{window_start, mm}, ...],
+        }
+    """
+    try:
+        result = AnalysisResult.objects.select_related("field").get(
+            pk=result_id,
+            field__owner=request.user,
+        )
+    except AnalysisResult.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Result not found"}, status=404)
+
+    if result.pipeline_status in ("queued", "running"):
+        return JsonResponse({
+            "status":    result.pipeline_status,
+            "result_id": result.pk,
+        })
+
+    if result.pipeline_status == "error":
+        return JsonResponse({
+            "status":    "error",
+            "result_id": result.pk,
+            "message":   result.error_message or "Pipeline failed",
+        })
+
+    # ── Done — return structured response ────────────────────
+    bundle   = result.full_bundle or {}
+    sentinel = bundle.get("sentinel", {})
+    chirps   = bundle.get("chirps", {})
+    era5     = bundle.get("era5", {})
+    soil     = bundle.get("soil", {})
+
+    return JsonResponse({
+        "status":            "done",
+        "result_id":         result.pk,
+
+        # Vegetation indices
+        "ndvi_latest":       result.ndvi_latest,
+        "ndre_latest":       result.ndre_latest,
+        "evi_latest":        sentinel.get("evi_latest"),
+        "savi_latest":       sentinel.get("savi_latest"),
+        "gndvi_latest":      sentinel.get("gndvi_latest"),
+        "ndvi_auc":          result.ndvi_auc,
+        "ndre_peak":         result.ndre_peak,
+        "scene_count":       result.scene_count,
+        "latest_scene_date": result.latest_scene_date,
+
+        # All individual scenes for NDVI trend chart
+        "scenes":            sentinel.get("scenes", []),
+
+        # Climate
+        "total_rainfall_mm": result.total_rainfall_mm,
+        "chirps_windows":    chirps.get("windows", []),
+        "cumulative_gdd":    result.cumulative_gdd,
+        "heat_stress_frac":  result.heat_stress_frac,
+        "recent_tmax_c":     era5.get("recent_tmax_c"),
+        "recent_tmin_c":     era5.get("recent_tmin_c"),
+
+        # Soil
+        "soc_gkg":           result.soc_gkg,
+        "soil_ph":           result.soil_ph,
+        "bulk_density":      soil.get("bulk_density"),
+        "clay_pct":          soil.get("clay_pct"),
+        "total_nitrogen":    soil.get("total_nitrogen"),
+
+        # Advisory
+        "stress_flags":      result.stress_flags or [],
+
+        # Pipeline 3/4 hooks
+        "ready_for_ml":      bundle.get("ready_for_ml", False),
+    })
+
+
+# ─────────────────────────────────────────────────────────────
+#  SYNC FALLBACK (development / no Celery)
+# ─────────────────────────────────────────────────────────────
+def _run_synchronous(field_id: int, activity_id: int, result_id: int):
+    """Run the pipeline in-process (blocking). For dev only."""
+    from .gee_pipeline import run_pipeline_2
+    from .models import AnalysisResult
+
+    result = AnalysisResult.objects.get(pk=result_id)
+    result.pipeline_status = "running"
+    result.save(update_fields=["pipeline_status"])
+
+    try:
+        run_pipeline_2(field_id, activity_id)
+        result.refresh_from_db()
+        result.pipeline_status = "done"
+        result.save(update_fields=["pipeline_status"])
+    except Exception as exc:
+        logger.exception("Synchronous pipeline failed: %s", exc)
+        result.pipeline_status = "error"
+        result.error_message   = str(exc)
+        result.save(update_fields=["pipeline_status", "error_message"])

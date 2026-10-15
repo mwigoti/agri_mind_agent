@@ -1611,6 +1611,152 @@
       font-weight: 500;
       color: hsl(var(--muted-foreground));
     }
+    
+    /* ── Analysis panel (slides in below the crop-details modal) ── */
+    .analysis-panel {
+      background: hsl(var(--card));
+      border-radius: var(--radius);
+      border: 1px solid hsl(var(--border));
+      margin-top: 1rem;
+      overflow: hidden;
+    }
+
+    .analysis-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      background: hsl(var(--primary) / 0.06);
+      border-bottom: 1px solid hsl(var(--border));
+    }
+
+    .analysis-panel-header h4 {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+    }
+
+    @media (max-width: 640px) {
+      .analysis-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .analysis-metric {
+      background: hsl(var(--muted) / 0.4);
+      border-radius: 8px;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .analysis-metric-label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: hsl(var(--muted-foreground));
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .analysis-metric-value {
+      font-size: 1.125rem;
+      font-weight: 700;
+      font-family: var(--font-heading);
+      color: hsl(var(--foreground));
+    }
+
+    .analysis-metric-sub {
+      font-size: 0.6875rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    /* colour variants */
+    .metric-good  .analysis-metric-value { color: hsl(var(--success)); }
+    .metric-warn  .analysis-metric-value { color: hsl(var(--warning)); }
+    .metric-bad   .analysis-metric-value { color: hsl(var(--destructive)); }
+
+    /* stress flags */
+    .stress-flag-list {
+      padding: 0 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .stress-flag {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.625rem 0.875rem;
+      background: hsl(var(--warning) / 0.08);
+      border: 1px solid hsl(var(--warning) / 0.25);
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      color: hsl(var(--foreground));
+      line-height: 1.5;
+    }
+
+    .stress-flag-icon { flex-shrink: 0; font-size: 1rem; }
+
+    .stress-none {
+      padding: 0.625rem 0.875rem;
+      background: hsl(var(--success) / 0.08);
+      border: 1px solid hsl(var(--success) / 0.25);
+      border-radius: 8px;
+      font-size: 0.8125rem;
+      color: hsl(var(--success));
+      font-weight: 600;
+    }
+
+    /* NDVI mini sparkline */
+    .ndvi-sparkline-wrap {
+      padding: 0 1.25rem 1rem;
+    }
+
+    .ndvi-sparkline-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 0.5rem;
+    }
+
+    .ndvi-bar-track {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 48px;
+    }
+
+    .ndvi-bar {
+      flex: 1;
+      border-radius: 3px 3px 0 0;
+      transition: height 0.4s ease;
+      min-width: 4px;
+    }
+
+    /* loading shimmer */
+    @keyframes shimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+    .shimmer {
+      background: linear-gradient(90deg,
+        hsl(var(--muted)) 25%, hsl(var(--border)) 50%, hsl(var(--muted)) 75%);
+      background-size: 400px 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 6px;
+      height: 1rem;
+    }
+  </style>
   </style>
 </head>
 <body>
@@ -2530,7 +2676,7 @@
 
             <div class="modal-footer">
               <button class="btn btn-outline" onclick="closeCropDetails()">Close</button>
-              <button class="btn btn-primary" onclick="closeCropDetails(); openRegisterModal(${fieldId});">
+              <button class="btn btn-primary" onclick="analyzeCrop(${fieldId}, ${field.crop.activityId})">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
                 </svg>
@@ -2979,10 +3125,273 @@
       }
     });
 
-    // ========================================
-    // ADD YOUR EXISTING SIMULATION FUNCTIONS HERE
-    // ========================================
-    // (simulateSatelliteImageProcessing, calculateSimulatedNDVI, etc.)
+    
+const _analysisPolls = {};
+
+/**
+ * Called by the "Analyze Crop" button in viewCropDetails().
+ * 1. POSTs to /api/analyze-crop/  → receives result_id
+ * 2. Injects a loading panel into the crop-details modal
+ * 3. Polls /api/analysis-status/<result_id>/ every 4 s
+ * 4. Populates the panel when done
+ */
+async function analyzeCrop(fieldId, activityId) {
+  if (!activityId) {
+    showError('No activity ID found — please register the crop first');
+    return;
+  }
+
+  // ── Inject panel placeholder into details modal ──────────
+  const modalBody = document.querySelector('#crop-details-overlay .modal-body');
+  if (!modalBody) return;
+
+  const panelId = `analysis-panel-${fieldId}`;
+
+  // Remove old panel if re-running
+  const old = document.getElementById(panelId);
+  if (old) old.remove();
+
+  const panel = document.createElement('div');
+  panel.id        = panelId;
+  panel.className = 'analysis-panel';
+  panel.innerHTML = _loadingPanelHTML();
+  modalBody.appendChild(panel);
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // ── POST to kick off pipeline ────────────────────────────
+  let resultId;
+  try {
+    const res  = await fetch('/api/analyze-crop/', {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken':  getCookie('csrftoken'),
+      },
+      body: JSON.stringify({ field_id: fieldId, activity_id: activityId }),
+      credentials: 'same-origin',
+    });
+    const data = await res.json();
+
+    if (data.status === 'error') {
+      _setAnalysisPanelError(panelId, data.message);
+      return;
+    }
+    resultId = data.result_id;
+  } catch (err) {
+    _setAnalysisPanelError(panelId, 'Network error — could not start analysis');
+    return;
+  }
+
+  // ── Poll for result ──────────────────────────────────────
+  let attempts = 0;
+  const MAX_ATTEMPTS = 60;   // 60 × 4 s = 4 min timeout
+
+  _analysisPolls[resultId] = setInterval(async () => {
+    attempts++;
+    if (attempts > MAX_ATTEMPTS) {
+      clearInterval(_analysisPolls[resultId]);
+      _setAnalysisPanelError(panelId, 'Analysis timed out — GEE may be busy. Try again shortly.');
+      return;
+    }
+
+    try {
+      const res  = await fetch(`/api/analysis-status/${resultId}/`, {
+        credentials: 'same-origin',
+      });
+      const data = await res.json();
+
+      if (data.status === 'done') {
+        clearInterval(_analysisPolls[resultId]);
+        _renderAnalysisPanel(panelId, data);
+      } else if (data.status === 'error') {
+        clearInterval(_analysisPolls[resultId]);
+        _setAnalysisPanelError(panelId, data.message || 'Pipeline error');
+      }
+      // 'queued' / 'running' → keep polling
+    } catch (err) {
+      console.warn('Poll error:', err);
+    }
+  }, 4000);
+}
+
+
+// ── Loading placeholder ───────────────────────────────────────
+function _loadingPanelHTML() {
+  return `
+    <div class="analysis-panel-header">
+      <h4>
+        🛰️ Satellite Analysis
+        <span style="font-size:0.75rem; font-weight:500; color:hsl(var(--muted-foreground));">
+          — running…
+        </span>
+      </h4>
+      <span style="font-size:0.75rem; color:hsl(var(--muted-foreground));">
+        Querying GEE, CHIRPS, ERA5…
+      </span>
+    </div>
+    <div class="analysis-grid">
+      ${['NDVI','NDRE','Rainfall','GDD','Heat Stress','SOC'].map(l => `
+        <div class="analysis-metric">
+          <div class="analysis-metric-label">${l}</div>
+          <div class="shimmer" style="height:1.5rem; margin-top:0.25rem;"></div>
+          <div class="shimmer" style="height:0.75rem; margin-top:0.25rem; width:60%;"></div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+
+// ── Render completed results ──────────────────────────────────
+function _renderAnalysisPanel(panelId, d) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+
+  const ndvi        = d.ndvi_latest;
+  const ndre        = d.ndre_latest;
+  const ndviClass   = ndvi == null ? '' : ndvi >= 0.55 ? 'metric-good' : ndvi >= 0.35 ? 'metric-warn' : 'metric-bad';
+  const ndreClass   = ndre == null ? '' : ndre >= 0.30 ? 'metric-good' : ndre >= 0.18 ? 'metric-warn' : 'metric-bad';
+  const hsFrac      = d.heat_stress_frac || 0;
+  const hsClass     = hsFrac < 0.10 ? 'metric-good' : hsFrac < 0.25 ? 'metric-warn' : 'metric-bad';
+
+  const fmt   = v => v == null ? '—' : v.toFixed(2);
+  const fmtMm = v => v == null ? '—' : `${Math.round(v)} mm`;
+  const fmtGdd= v => v == null ? '—' : `${Math.round(v)} °C·d`;
+
+  // NDVI sparkline
+  const scenes   = d.scenes || [];
+  const sparkHTML = scenes.length > 0
+    ? `<div class="ndvi-bar-track" title="NDVI over time (oldest → newest)">
+        ${scenes.map(s => {
+          const pct   = Math.max(0, Math.min(1, s.ndvi)) * 100;
+          const color = s.ndvi >= 0.55 ? 'hsl(var(--success))' :
+                        s.ndvi >= 0.35 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))';
+          return `<div class="ndvi-bar" style="height:${pct}%; background:${color};"
+                       title="${s.date}: NDVI ${s.ndvi.toFixed(3)}"></div>`;
+        }).join('')}
+      </div>`
+    : '<span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">No scenes yet</span>';
+
+  // Stress flags
+  const flags = d.stress_flags || [];
+  const flagsHTML = flags.length === 0
+    ? `<div class="stress-none">✅ No major stress signals detected</div>`
+    : flags.map(f =>
+        `<div class="stress-flag"><span class="stress-flag-icon">⚠️</span><span>${f}</span></div>`
+      ).join('');
+
+  panel.innerHTML = `
+    <div class="analysis-panel-header">
+      <h4>🛰️ Satellite Analysis
+        <span style="font-size:0.7rem;font-weight:500;color:hsl(var(--muted-foreground));">
+          — ${d.scene_count} scene${d.scene_count !== 1 ? 's' : ''}
+          ${d.latest_scene_date ? `· last ${d.latest_scene_date}` : ''}
+        </span>
+      </h4>
+      <span style="font-size:0.7rem;color:hsl(var(--muted-foreground));">
+        ${d.ready_for_ml ? '✓ Ready for yield model' : '⚠ More data needed'}
+      </span>
+    </div>
+
+    <div class="analysis-grid">
+      <div class="analysis-metric ${ndviClass}">
+        <div class="analysis-metric-label">NDVI</div>
+        <div class="analysis-metric-value">${fmt(ndvi)}</div>
+        <div class="analysis-metric-sub">Canopy greenness</div>
+      </div>
+      <div class="analysis-metric ${ndreClass}">
+        <div class="analysis-metric-label">NDRE</div>
+        <div class="analysis-metric-value">${fmt(ndre)}</div>
+        <div class="analysis-metric-sub">Chlorophyll / N</div>
+      </div>
+      <div class="analysis-metric">
+        <div class="analysis-metric-label">EVI</div>
+        <div class="analysis-metric-value">${fmt(d.evi_latest)}</div>
+        <div class="analysis-metric-sub">Canopy structure</div>
+      </div>
+      <div class="analysis-metric">
+        <div class="analysis-metric-label">Rainfall</div>
+        <div class="analysis-metric-value">${fmtMm(d.total_rainfall_mm)}</div>
+        <div class="analysis-metric-sub">Season total (CHIRPS)</div>
+      </div>
+      <div class="analysis-metric">
+        <div class="analysis-metric-label">GDD</div>
+        <div class="analysis-metric-value">${fmtGdd(d.cumulative_gdd)}</div>
+        <div class="analysis-metric-sub">Thermal time (ERA5)</div>
+      </div>
+      <div class="analysis-metric ${hsClass}">
+        <div class="analysis-metric-label">Heat Stress</div>
+        <div class="analysis-metric-value">${Math.round(hsFrac * 100)}%</div>
+        <div class="analysis-metric-sub">Days above threshold</div>
+      </div>
+      <div class="analysis-metric">
+        <div class="analysis-metric-label">Soil OC</div>
+        <div class="analysis-metric-value">${d.soc_gkg != null ? d.soc_gkg.toFixed(1) + ' g/kg' : '—'}</div>
+        <div class="analysis-metric-sub">Organic carbon</div>
+      </div>
+      <div class="analysis-metric">
+        <div class="analysis-metric-label">Soil pH</div>
+        <div class="analysis-metric-value">${d.soil_ph != null ? d.soil_ph.toFixed(1) : '—'}</div>
+        <div class="analysis-metric-sub">SoilGrids 250 m</div>
+      </div>
+      <div class="analysis-metric">
+        <div class="analysis-metric-label">Temp (recent)</div>
+        <div class="analysis-metric-value">${d.recent_tmax_c != null ? d.recent_tmax_c + '°C' : '—'}</div>
+        <div class="analysis-metric-sub">7-day max · ERA5</div>
+      </div>
+    </div>
+
+    <div class="ndvi-sparkline-wrap">
+      <div class="ndvi-sparkline-label">NDVI trend (${scenes.length} scenes)</div>
+      ${sparkHTML}
+    </div>
+
+    <div style="padding: 0 1.25rem 0.5rem;">
+      <div style="font-size:0.75rem;font-weight:600;color:hsl(var(--muted-foreground));margin-bottom:0.5rem;">
+        AGRONOMIC FLAGS
+      </div>
+      <div class="stress-flag-list" style="padding:0;">
+        ${flagsHTML}
+      </div>
+    </div>
+
+    <div style="padding: 0.75rem 1.25rem 1rem; border-top: 1px solid hsl(var(--border)); margin-top: 0.75rem;">
+      <button class="btn btn-primary btn-sm" style="width:100%;"
+              onclick="requestYieldForecast(${d.result_id})"
+              ${d.ready_for_ml ? '' : 'disabled title="Need at least 2 clear satellite scenes"'}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+        ${d.ready_for_ml ? 'Run Yield Forecast →' : 'Yield Forecast (needs more data)'}
+      </button>
+    </div>
+  `;
+}
+
+
+// ── Error state ───────────────────────────────────────────────
+function _setAnalysisPanelError(panelId, message) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  panel.innerHTML = `
+    <div class="analysis-panel-header">
+      <h4>🛰️ Satellite Analysis</h4>
+    </div>
+    <div style="padding:1.25rem; text-align:center; color:hsl(var(--destructive));">
+      <div style="font-size:1.5rem; margin-bottom:0.5rem;">❌</div>
+      <div style="font-weight:600; margin-bottom:0.25rem;">Analysis failed</div>
+      <div style="font-size:0.8125rem; color:hsl(var(--muted-foreground));">${message}</div>
+    </div>
+  `;
+}
+
+
+// ── Hook for Pipeline 3 (ML yield model — add later) ─────────
+function requestYieldForecast(resultId) {
+  // Pipeline 3 entry point — POST /api/yield-forecast/ with result_id
+  // Implemented in the next pipeline phase
+  showSuccess('Yield forecast queued (Pipeline 3 — coming soon)');
+  console.log('[Pipeline 3 hook] result_id =', resultId);
+}
     
   </script>  
 </body>
