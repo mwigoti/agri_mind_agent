@@ -460,6 +460,153 @@
       color: hsl(var(--muted-foreground));
     }
 
+    /* Stat Box Styles */
+  .stat-box {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .stat-box-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-box-label {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-box-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: hsl(var(--foreground));
+  }
+
+  /* Timeline Styles */
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .timeline-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    position: relative;
+  }
+
+  .timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 24px;
+    bottom: -16px;
+    width: 2px;
+    background: hsl(var(--border));
+  }
+
+  .timeline-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid hsl(var(--border));
+    background: hsl(var(--card));
+    flex-shrink: 0;
+    margin-top: 2px;
+    z-index: 1;
+    position: relative;
+  }
+
+  .timeline-dot.active {
+    background: hsl(var(--success));
+    border-color: hsl(var(--success));
+  }
+
+  .timeline-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .timeline-content strong {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: hsl(var(--foreground));
+  }
+
+  .timeline-content span {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Growth Stage Tracker */
+  .growth-stage-tracker {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+  }
+
+  .stage-item {
+    flex: 1;
+    min-width: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: hsl(var(--card));
+    border: 2px solid hsl(var(--border));
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+
+  .stage-item.active {
+    border-color: hsl(var(--primary));
+    background: hsl(var(--primary) / 0.05);
+  }
+
+  .stage-item.completed {
+    border-color: hsl(var(--success));
+    background: hsl(var(--success) / 0.05);
+  }
+
+  .stage-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: hsl(var(--muted));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .stage-item.active .stage-number {
+    background: hsl(var(--primary));
+    color: white;
+  }
+
+  .stage-item.completed .stage-number {
+    background: hsl(var(--success));
+    color: white;
+  }
+
+  .stage-name {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-align: center;
+    color: hsl(var(--foreground));
+  }
+
     .previous-crop {
       display: flex;
       align-items: center;
@@ -2036,6 +2183,9 @@
     // ========================================
     // CREATE FIELD CARD ELEMENT
     // ========================================
+    // ========================================
+    // CREATE FIELD CARD ELEMENT
+    // ========================================
     function createFieldCard(field) {
       const card = document.createElement('div');
       card.className = 'field-card';
@@ -2045,6 +2195,8 @@
 
       // Create crop section HTML
       let cropHTML = '';
+      let buttonHTML = '';
+      
       if (field.crop) {
         const cropIcon = CROP_TYPES.find(c => c.id === field.crop.type.id)?.icon || '🌱';
         const daysSincePlanting = Math.floor(
@@ -2066,11 +2218,40 @@
             ` : ''}
           </div>
         `;
+        
+        // Two buttons for active crops
+        buttonHTML = `
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+            <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="viewCropDetails(${field.id})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              View Crop
+            </button>
+            <button class="btn btn-outline btn-sm" style="flex: 1;" onclick="openRegisterModal(${field.id})">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+              </svg>
+              Update
+            </button>
+          </div>
+        `;
       } else {
         cropHTML = `
           <div style="padding: 0.75rem; background: hsl(var(--muted) / 0.3); border-radius: 8px; margin-bottom: 1rem; text-align: center;">
             <span style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">No active crop</span>
           </div>
+        `;
+        
+        // Single button for no crop
+        buttonHTML = `
+          <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="openRegisterModal(${field.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"/><path d="M12 5v14"/>
+            </svg>
+            Register Crop
+          </button>
         `;
       }
 
@@ -2082,12 +2263,7 @@
           </div>
         </div>
         ${cropHTML}
-        <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="openRegisterModal(${field.id})">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14"/><path d="M12 5v14"/>
-          </svg>
-          ${field.crop ? 'Update Crop' : 'Register Crop'}
-        </button>
+        ${buttonHTML}
       `;
 
       // Add click handler for field selection
@@ -2181,6 +2357,186 @@
       }
 
       console.log('Opening registration for field:', field);
+    }
+    // ========================================
+    // VIEW CROP DETAILS
+    // ========================================
+    function viewCropDetails(fieldId) {
+      const field = fields.find(f => f.id === fieldId);
+      if (!field || !field.crop) {
+        showError('No crop data found for this field');
+        return;
+      }
+
+      // Calculate crop stats
+      const plantingDate = new Date(field.crop.plantingDate);
+      const daysSincePlanting = Math.floor((Date.now() - plantingDate.getTime()) / (1000 * 60 * 60 * 24));
+      const cropIcon = CROP_TYPES.find(c => c.id === field.crop.type.id)?.icon || '🌱';
+      
+      // Create detailed view modal
+      const detailsHTML = `
+        <div class="modal-overlay" id="crop-details-overlay" style="display: flex;">
+          <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+              <div class="modal-header-content">
+                <div class="modal-icon">
+                  <span style="font-size: 1.5rem;">${cropIcon}</span>
+                </div>
+                <div class="modal-title">
+                  <h3>${field.crop.type.name} Details</h3>
+                  <p>${field.name} • ${formatArea(field.area)}</p>
+                </div>
+              </div>
+              <button class="btn btn-icon btn-ghost" onclick="closeCropDetails()" style="margin-left: auto;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+              <!-- Status Badge -->
+              <div style="text-align: center; margin-bottom: 1.5rem;">
+                <span class="badge badge-success" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
+                  <span class="badge-dot"></span>
+                  Active Crop
+                </span>
+              </div>
+
+              <!-- Key Stats Grid -->
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="stat-box">
+                  <div class="stat-box-icon">📅</div>
+                  <div class="stat-box-label">Planted</div>
+                  <div class="stat-box-value">${formatDate(field.crop.plantingDate)}</div>
+                </div>
+                <div class="stat-box">
+                  <div class="stat-box-icon">⏱️</div>
+                  <div class="stat-box-label">Days Growing</div>
+                  <div class="stat-box-value">${daysSincePlanting} days</div>
+                </div>
+                ${field.crop.variety ? `
+                <div class="stat-box">
+                  <div class="stat-box-icon">🌱</div>
+                  <div class="stat-box-label">Variety</div>
+                  <div class="stat-box-value">${field.crop.variety}</div>
+                </div>
+                ` : ''}
+                ${field.crop.irrigation ? `
+                <div class="stat-box">
+                  <div class="stat-box-icon">${getIrrigationIcon(field.crop.irrigation)}</div>
+                  <div class="stat-box-label">Irrigation</div>
+                  <div class="stat-box-value">${field.crop.irrigation.charAt(0).toUpperCase() + field.crop.irrigation.slice(1)}</div>
+                </div>
+                ` : ''}
+              </div>
+
+              <!-- Growth Stage -->
+              <div style="background: hsl(var(--muted) / 0.3); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <h4 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem; color: hsl(var(--muted-foreground));">Growth Stage</h4>
+                <div class="growth-stage-tracker">
+                  ${generateGrowthStageTracker(daysSincePlanting)}
+                </div>
+              </div>
+
+              <!-- Activity Timeline -->
+              <div>
+                <h4 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem; color: hsl(var(--muted-foreground));">Timeline</h4>
+                <div class="timeline">
+                  <div class="timeline-item">
+                    <div class="timeline-dot active"></div>
+                    <div class="timeline-content">
+                      <strong>Planted</strong>
+                      <span>${formatDate(field.crop.plantingDate)}</span>
+                    </div>
+                  </div>
+                  <div class="timeline-item">
+                    <div class="timeline-dot ${daysSincePlanting >= 30 ? 'active' : ''}"></div>
+                    <div class="timeline-content">
+                      <strong>Vegetative Growth</strong>
+                      <span>${daysSincePlanting >= 30 ? 'Completed' : `In ${30 - daysSincePlanting} days`}</span>
+                    </div>
+                  </div>
+                  <div class="timeline-item">
+                    <div class="timeline-dot ${daysSincePlanting >= 60 ? 'active' : ''}"></div>
+                    <div class="timeline-content">
+                      <strong>Flowering</strong>
+                      <span>${daysSincePlanting >= 60 ? 'Completed' : `In ${60 - daysSincePlanting} days`}</span>
+                    </div>
+                  </div>
+                  <div class="timeline-item">
+                    <div class="timeline-dot ${daysSincePlanting >= 90 ? 'active' : ''}"></div>
+                    <div class="timeline-content">
+                      <strong>Ready for Harvest</strong>
+                      <span>${daysSincePlanting >= 90 ? 'Ready now!' : `In ${90 - daysSincePlanting} days`}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn btn-outline" onclick="closeCropDetails()">Close</button>
+              <button class="btn btn-primary" onclick="closeCropDetails(); openRegisterModal(${fieldId});">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                </svg>
+                Update Crop
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Append to body
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = detailsHTML;
+      document.body.appendChild(tempDiv.firstElementChild);
+      
+      console.log('Viewing crop details for field:', field);
+    }
+
+    // Close crop details modal
+    function closeCropDetails() {
+      const overlay = document.getElementById('crop-details-overlay');
+      if (overlay) {
+        overlay.remove();
+      }
+    }
+
+    // Helper function to get irrigation icon
+    function getIrrigationIcon(type) {
+      const icons = {
+        'rainfed': '🌧️',
+        'drip': '💧',
+        'sprinkler': '🌊',
+        'flood': '🌊'
+      };
+      return icons[type] || '💧';
+    }
+
+    // Generate growth stage tracker
+    function generateGrowthStageTracker(days) {
+      const stages = [
+        { name: 'Germination', start: 0, end: 14 },
+        { name: 'Vegetative', start: 14, end: 45 },
+        { name: 'Flowering', start: 45, end: 75 },
+        { name: 'Maturation', start: 75, end: 90 }
+      ];
+      
+      let currentStage = stages.find(s => days >= s.start && days < s.end) || stages[stages.length - 1];
+      
+      return stages.map((stage, index) => {
+        const isActive = stage.name === currentStage.name;
+        const isCompleted = days > stage.end;
+        
+        return `
+          <div class="stage-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}">
+            <div class="stage-number">${index + 1}</div>
+            <div class="stage-name">${stage.name}</div>
+          </div>
+        `;
+      }).join('');
     }
     // ========================================
     // MODAL FUNCTIONALITY
