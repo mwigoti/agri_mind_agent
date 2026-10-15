@@ -1584,8 +1584,8 @@
         // Real-time updates simulation
         setInterval(() => {
             if (Math.random() < 0.1) { // 10% chance every interval
-                weatherData.current.humidity = Math.max(30, Math.min(90, weatherData.current.humidity + (Math.random() - 0.5) * 5));
-                weatherData.current.windSpeed = Math.max(5, Math.min(30, weatherData.current.windSpeed + (Math.random() - 0.5) * 3));
+                weatherData.current.humidity = Math.max(30, Math.min(90, weatherData.current.humidity + (Math.random() - 0.5) * 5)).toFixed(2);
+                weatherData.current.windSpeed = Math.max(5, Math.min(30, weatherData.current.windSpeed + (Math.random() - 0.5) * 3)).toFixed(2);
                 loadWeatherData();
             }
         }, 15000); // Update every 15 seconds

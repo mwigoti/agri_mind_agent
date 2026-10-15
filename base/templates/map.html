@@ -886,7 +886,13 @@
                     <li id="weatherMenuItem" onclick="WeatherManager.hideWeatherDashboard()">Hide Weather Dashboard</li>
                     <li id="overview">Overview</li>
                     <li id="vraMapsButton">VRA Maps</li>
-                    <li id="fieldActivity">Field Activity Log</li>
+                  {% url "activity" as activity_url %}
+<li id="fieldActivity" onclick='window.location.href="{{ activity_url|escapejs }}"'>
+    Field Activity Log
+</li>
+
+
+
                     <li id="dataManager">Data Manager</li>
                     <li id="myFieldsButton">Field Manager</li>
                     <li id="notifications">Notifications</li>
