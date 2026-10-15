@@ -34,14 +34,12 @@ Integration notes for later pipelines
 """
 
 import logging
+import sys
 from datetime import datetime, timedelta, date
 from typing import Any
 
 import ee
 from django.conf import settings
-
-import logging
-import sys
 
 # ── Terminal logger — prints everything to stdout in real time ──
 logging.basicConfig(
@@ -135,8 +133,8 @@ _MAX_CLOUD_PCT = 30             # reject scenes with >30 % cloud over AOI
 _S2_SCALE_M   = 10             # Sentinel-2 native pixel scale (metres)
 _ERA5_SCALE_M = 11132           # ERA5-Land ~0.1° in metres
 _CHIRPS_SCALE_M = 5566          # CHIRPS 0.05° in metres
-_SOIL_SCALE_M = 250 
-_IMERG_SCALE_M  = 1000             # SoilGrids
+_SOIL_SCALE_M   = 250               # SoilGrids
+_IMERG_SCALE_M  = 1000             # IMERG ~10 km
 
 
 # ─────────────────────────────────────────────────────────────
@@ -202,6 +200,22 @@ def run_pipeline_2(field_id: int, activity_id: int) -> dict[str, Any]:
         sentinel_result = {"scene_count": 0, "scenes": [], "ndvi_latest": None,
                            "ndre_latest": None, "evi_latest": None,
                            "ndvi_auc": None, "ndre_peak": None}
+
+    # ── Sentinel-1 SAR ───────────────────────────────────────
+    logger.info("-" * 40)
+    logger.info("STEP 1b: Sentinel-1 SAR extraction...")
+    try:
+        sar_result = _extract_sentinel1(
+            aoi=aoi,
+            start=monitoring_start,
+            end=S2_END,
+        )
+        logger.info("  ✓ SAR scenes     : %s", sar_result.get("scene_count"))
+        logger.info("  ✓ VH latest      : %s", sar_result.get("vh_latest"))
+    except Exception as exc:
+        logger.error("  ✗ Sentinel-1 SAR FAILED: %s", exc, exc_info=True)
+        sar_result = {"scene_count": 0, "scenes": [], "vv_latest": None,
+                      "vh_latest": None, "ratio_latest": None, "vh_auc": None}
 
     # ── CHIRPS + IMERG ───────────────────────────────────────
     logger.info("-" * 40)
@@ -295,6 +309,14 @@ def run_pipeline_2(field_id: int, activity_id: int) -> dict[str, Any]:
         "ready_for_ml": sentinel_result.get("scene_count", 0) >= 2,
     }
 
+    # ── S2 + SAR fusion ──────────────────────────────────────
+    fused_result = _fuse_s2_sar(sentinel_result, sar_result)
+    feature_bundle["fused"] = fused_result
+    logger.info("  ✓ Fused timeline : %s observations (%s S2 + %s SAR gap-fills)",
+                len(fused_result["timeline"]),
+                fused_result["s2_scene_count"],
+                fused_result["gap_fill_count"])
+
     _save_to_db(field_id, activity_id, feature_bundle)
 
     logger.info("=" * 60)
@@ -307,7 +329,7 @@ def run_pipeline_2(field_id: int, activity_id: int) -> dict[str, Any]:
     logger.info("=" * 60)
 
     return feature_bundle
-
+ 
 # ─────────────────────────────────────────────────────────────
 #  SENTINEL-2 EXTRACTION
 # ─────────────────────────────────────────────────────────────
@@ -439,11 +461,143 @@ def _extract_sentinel2(
         "latest_date":     latest["date"],
         "latest_composite_ref": latest_composite_ref,  # ← Pipeline 3 hook
     }
+def _extract_sentinel1(
+    aoi: ee.Geometry,
+    start: date,
+    end: date,
+) -> dict:
+    """
+    Sentinel-1 SAR backscatter extraction.
+    VV  — sensitive to soil moisture and surface roughness
+    VH  — sensitive to vegetation volume / canopy structure
+    VH/VV ratio — proxy for canopy density (analogous to NDVI)
+    Works through clouds — fills S2 gaps.
+    """
+    start_str = start.strftime("%Y-%m-%d")
+    end_str   = (end + timedelta(days=1)).strftime("%Y-%m-%d")
 
+    s1 = (
+        ee.ImageCollection("COPERNICUS/S1_GRD")
+        .filterDate(start_str, end_str)
+        .filterBounds(aoi)
+        .filter(ee.Filter.eq("instrumentMode", "IW"))          # Interferometric Wide swath
+        .filter(ee.Filter.listContains("transmitterReceiverPolarisation", "VV"))
+        .filter(ee.Filter.listContains("transmitterReceiverPolarisation", "VH"))
+        .filter(ee.Filter.eq("orbitProperties_pass", "DESCENDING"))  # more consistent over Kenya
+        .select(["VV", "VH"])
+    )
 
-# ─────────────────────────────────────────────────────────────
-#  CHIRPS RAINFALL
-# ─────────────────────────────────────────────────────────────
+    scene_count = s1.size().getInfo()
+
+    if scene_count == 0:
+        logger.warning("No Sentinel-1 scenes found")
+        return {
+            "scene_count": 0,
+            "scenes":      [],
+            "vv_latest":   None,
+            "vh_latest":   None,
+            "ratio_latest":None,
+            "vh_auc":      None,
+        }
+
+    def add_ratio(img):
+        # VH/VV ratio in dB space = VH - VV
+        ratio = img.select("VH").subtract(img.select("VV")).rename("VH_VV_ratio")
+        return img.addBands(ratio)
+
+    s1 = s1.map(add_ratio)
+
+    def reduce_scene(img):
+        stats = img.select(["VV", "VH", "VH_VV_ratio"]).reduceRegion(
+            reducer=ee.Reducer.mean(),
+            geometry=aoi,
+            scale=10,
+            maxPixels=1e9,
+            bestEffort=True,
+        )
+        return ee.Feature(None, stats.set("date", img.date().format("YYYY-MM-dd")))
+
+    scenes_raw = s1.map(reduce_scene).getInfo()["features"]
+
+    scenes = []
+    for feat in scenes_raw:
+        p = feat["properties"]
+        if p.get("VV") is None:
+            continue
+        scenes.append({
+            "date":      p["date"],
+            "vv":        round(p.get("VV")           or 0, 4),
+            "vh":        round(p.get("VH")           or 0, 4),
+            "vh_vv":     round(p.get("VH_VV_ratio")  or 0, 4),
+        })
+
+    scenes.sort(key=lambda s: s["date"])
+
+    if not scenes:
+        return {"scene_count": 0, "scenes": [], "vv_latest": None,
+                "vh_latest": None, "ratio_latest": None, "vh_auc": None}
+
+    latest  = scenes[-1]
+    vh_auc  = _trapezoid_auc([s["vh"] for s in scenes])
+
+    return {
+        "scene_count":  len(scenes),
+        "scenes":       scenes,
+        "vv_latest":    latest["vv"],
+        "vh_latest":    latest["vh"],
+        "ratio_latest": latest["vh_vv"],
+        "vh_auc":       round(vh_auc, 3),
+        "latest_date":  latest["date"],
+    }
+def _fuse_s2_sar(sentinel: dict, sar: dict) -> dict:
+    """
+    Fuse Sentinel-2 optical and Sentinel-1 SAR into a unified
+    vegetation timeline. Where S2 has cloud gaps, SAR fills in.
+
+    SAR VH is converted to a pseudo-NDVI using a linear scaling
+    calibrated for East Africa maize:
+        pseudo_ndvi = (VH + 25) / 20
+    (VH typically ranges -25 to -5 dB for bare soil to dense crop)
+    """
+    s2_scenes  = {s["date"]: s for s in sentinel.get("scenes", [])}
+    sar_scenes = {s["date"]: s for s in sar.get("scenes", [])}
+
+    all_dates = sorted(set(list(s2_scenes.keys()) + list(sar_scenes.keys())))
+
+    fused = []
+    for d in all_dates:
+        if d in s2_scenes:
+            # S2 available — use real NDVI
+            s = s2_scenes[d]
+            fused.append({
+                "date":         d,
+                "ndvi":         s["ndvi"],
+                "ndre":         s["ndre"],
+                "source":       "S2",
+                "pseudo_ndvi":  s["ndvi"],
+            })
+        elif d in sar_scenes:
+            # S2 gap — derive pseudo-NDVI from SAR VH
+            vh = sar_scenes[d]["vh"]
+            pseudo_ndvi = round(min(max((vh + 25) / 20, 0), 1), 4)
+            fused.append({
+                "date":        d,
+                "ndvi":        pseudo_ndvi,
+                "ndre":        None,          # SAR cannot estimate NDRE
+                "source":      "SAR",
+                "pseudo_ndvi": pseudo_ndvi,
+                "vh_db":       vh,
+            })
+
+    fused_ndvi_auc = _trapezoid_auc([f["ndvi"] for f in fused])
+
+    return {
+        "timeline":        fused,
+        "fused_ndvi_auc":  round(fused_ndvi_auc, 3),
+        "s2_scene_count":  len(s2_scenes),
+        "sar_scene_count": len(sar_scenes),
+        "gap_fill_count":  len([f for f in fused if f["source"] == "SAR"]),
+    }
 # ─────────────────────────────────────────────────────────────
 #  CHIRPS + IMERG TIERED RAINFALL EXTRACTION
 # ─────────────────────────────────────────────────────────────
