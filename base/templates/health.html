@@ -1916,7 +1916,7 @@
     // ========================================
     async function fetchFieldsFromDatabase() {
       try {
-        const response = await fetch('/api/get-fields-geojson/', {
+        const response = await fetch('/api/myfields/', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -1928,7 +1928,7 @@
         }
 
         const data = await response.json();
-        console.log('✅ Fields fetched from database:', data);
+        console.log('Fields fetched from database:', data);
         
         // Transform GeoJSON data to our fields format
         fields = data.map(feature => ({
