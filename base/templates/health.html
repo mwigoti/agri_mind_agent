@@ -1508,7 +1508,7 @@
             </div>
             <div class="stat-text">
               <span>Total Fields</span>
-              <strong id="total-fields">3</strong>
+              <strong id="total-fields">0</strong>
             </div>
           </div>
           <div class="stat-item">
@@ -1519,7 +1519,7 @@
             </div>
             <div class="stat-text">
               <span>Total Area</span>
-              <strong id="total-area">4.4 ha</strong>
+              <strong id="total-area">0.000 ha</strong>
             </div>
           </div>
           <div class="stat-item">
@@ -1531,7 +1531,7 @@
             </div>
             <div class="stat-text">
               <span>Active Crops</span>
-              <strong id="active-crops">1</strong>
+              <strong id="active-crops">0</strong>
             </div>
           </div>
         </div>
@@ -1539,9 +1539,9 @@
 
       <div class="content-grid">
         <div>
-          <p class="field-list-header">3 fields</p>
+          <p class="field-list-header">0 fields</p>
           <div class="field-list" id="field-list">
-            
+            <!-- Fields will be dynamically loaded here -->
           </div>
         </div>
 
@@ -1561,9 +1561,11 @@
           <div class="map-content">
             <div style="position: relative;">
               <svg width="380" height="320" viewBox="0 0 380 320" class="map-svg">
-                <polygon id="map-field-1" class="map-polygon active" points="50,70 170,45 195,140 75,165" data-field="1"/>
-                <polygon id="map-field-2" class="map-polygon active" points="200,55 320,80 295,175 175,150" data-field="2"/>
-                <polygon id="map-field-3" class="map-polygon inactive" points="95,195 215,170 240,265 120,290" data-field="3"/>
+                <!-- Map polygons will be dynamically generated based on your field data -->
+                <!-- These are just placeholder polygons for visual reference -->
+                <polygon id="map-field-1" class="map-polygon inactive" points="50,70 170,45 195,140 75,165" data-field="1" style="display: none;"/>
+                <polygon id="map-field-2" class="map-polygon inactive" points="200,55 320,80 295,175 175,150" data-field="2" style="display: none;"/>
+                <polygon id="map-field-3" class="map-polygon inactive" points="95,195 215,170 240,265 120,290" data-field="3" style="display: none;"/>
               </svg>
               <div class="map-info-card hidden" id="map-info-card">
                 <div class="map-info-icon">
@@ -2036,7 +2038,7 @@
 
     function updateStats() {
       document.getElementById('total-fields').textContent = fields.length;
-      document.getElementById('total-area').textContent = fields.reduce((sum, f) => sum + f.area, 0).toFixed(1) + ' ha';
+      document.getElementById('total-area').textContent = fields.reduce((sum, f) => sum + f.area, 0).toFixed(3) + ' ha';
       document.getElementById('active-crops').textContent = fields.filter(f => f.crop?.status === 'active').length;
       document.querySelector('.field-list-header').textContent = `${fields.length} field${fields.length !== 1 ? 's' : ''}`;
     }
@@ -2060,18 +2062,20 @@
 
       if (selectedFieldId) {
         const field = fields.find(f => f.id === selectedFieldId);
-        mapInfoCard.classList.remove('hidden');
-        document.getElementById('map-info-name').textContent = field.name;
+        if (field) {
+          mapInfoCard.classList.remove('hidden');
+          document.getElementById('map-info-name').textContent = field.name;
         
-        // Position the info card
-        const positions = {
-          '1': { top: '85px', left: '85px' },
-          '2': { top: '95px', left: '210px' },
-          '3': { top: '210px', left: '140px' }
-        };
-        const pos = positions[selectedFieldId] || { top: '50%', left: '50%' };
-        mapInfoCard.style.top = pos.top;
-        mapInfoCard.style.left = pos.left;
+          // Position the info card
+          const positions = {
+            '1': { top: '85px', left: '85px' },
+            '2': { top: '95px', left: '210px' },
+            '3': { top: '210px', left: '140px' }
+          };
+          const pos = positions[selectedFieldId] || { top: '50%', left: '50%' };
+          mapInfoCard.style.top = pos.top;
+          mapInfoCard.style.left = pos.left;
+        }  // <-- THIS WAS MISSING
       } else {
         mapInfoCard.classList.add('hidden');
       }
@@ -2250,23 +2254,70 @@
       if (e.target === modalOverlay) closeModal();
     });
 
-    submitBtn.addEventListener('click', () => {
+    submitBtn.addEventListener('click', async () => {
       if (!currentFieldForRegistration || !selectedCrop || !plantingDateInput.value) return;
 
-      const fieldIndex = fields.findIndex(f => f.id === currentFieldForRegistration.id);
-      fields[fieldIndex].crop = {
-        type: selectedCrop,
-        plantingDate: new Date(plantingDateInput.value),
-        status: 'active',
-        variety: document.getElementById('variety-input').value || undefined,
-        irrigationType: selectedIrrigation || undefined,
-        notes: document.getElementById('notes-input').value || undefined,
-        ndviData: null
-      };
+      // Disable button and show loading state
+      submitBtn.disabled = true;
+      const originalButtonHTML = submitBtn.innerHTML;
+      submitBtn.innerHTML = 'Saving...';
 
-      closeModal();
-      renderFields();
-      updateMapSelection();
+      try {
+        // Prepare the crop data for backend
+        const cropData = {
+          field_id: currentFieldForRegistration.id,
+          crop_type: selectedCrop.id,
+          planting_date: plantingDateInput.value,
+          variety: document.getElementById('variety-input').value || null,
+          irrigation_type: selectedIrrigation || null,
+          notes: document.getElementById('notes-input').value || null,
+          status: 'active'
+        };
+
+        // Send to backend
+        const response = await fetch("/api/register-crop/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCSRFToken()
+          },
+          body: JSON.stringify(cropData)
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log("Crop registered successfully:", result);
+
+        // Update local fields array with the new crop
+        const fieldIndex = fields.findIndex(f => f.id === currentFieldForRegistration.id);
+        fields[fieldIndex].crop = {
+          type: selectedCrop,
+          plantingDate: new Date(plantingDateInput.value),
+          status: 'active',
+          variety: document.getElementById('variety-input').value || undefined,
+          irrigationType: selectedIrrigation || undefined,
+          notes: document.getElementById('notes-input').value || undefined,
+          ndviData: null
+        };
+
+        closeModal();
+        renderFields();
+        updateMapSelection();
+
+        // Optional: Show success notification
+        alert('Crop registered successfully! Monitoring will begin in 5-7 days.');
+
+      } catch (error) {
+        console.error("Error registering crop:", error);
+        alert('Failed to register crop. Please try again.');
+        
+        // Re-enable button and restore original text
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalButtonHTML;
+      }
     });
 
     backBtn.addEventListener('click', hideMonitoringView);
