@@ -1855,10 +1855,7 @@
     </div>
   </div>
 
-  <script>
-    // ========================================
-    // DATA
-    // ========================================
+<script>
     // ========================================
     // DATA
     // ========================================
@@ -1880,87 +1877,420 @@
     let selectedIrrigation = '';
 
     // ========================================
-// CROP REGISTRATION TO DATABASE
-// ========================================
-async function registerCropToDatabase(fieldId, cropType, plantingDate) {
-  const variety = document.getElementById('variety-input')?.value || '';
-  const notes = document.getElementById('notes-input')?.value || '';
-  
-  const payload = {
-    field_id: fieldId,
-    crop_name: cropType.name,
-    planting_date: plantingDate.toISOString(),
-    variety: variety,
-    irrigation_type: selectedIrrigation,
-    notes: notes
-  };
-  
-  try {
-    const response = await fetch('/api/register-crop/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCookie('csrftoken')
-      },
-      body: JSON.stringify(payload)
-    });
+    // HELPER FUNCTIONS
+    // ========================================
     
-    const result = await response.json();
-    
-    if (result.status === 'success') {
-      console.log('Crop registered in database:', result);
-      return result;
-    } else {
-      console.error('❌ Registration failed:', result.message);
-      alert('Failed to register crop: ' + result.message);
-      return null;
+    // Helper function to get CSRF token
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
     }
-  } catch (error) {
-    console.error('❌ Network error:', error);
-    alert('Failed to connect to server');
-    return null;
-  }
-}
 
-// Helper function to get CSRF token
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
+    // Format area for display
+    function formatArea(area) {
+      if (area >= 10000) {
+        return `${(area / 10000).toFixed(2)} ha`;
+      }
+      return `${area.toFixed(2)} m²`;
+    }
+
+    // Format date for display
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return date.toLocaleDateString('en-US', options);
+    }
+
+    // ========================================
+    // FETCH FIELDS FROM DATABASE
+    // ========================================
+    async function fetchFieldsFromDatabase() {
+      try {
+        const response = await fetch('/api/get-fields-geojson/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Fields fetched from database:', data);
+        
+        // Transform GeoJSON data to our fields format
+        fields = data.map(feature => ({
+          id: feature.properties.id,
+          name: feature.properties.name,
+          area: feature.properties.area,
+          coordinates: feature.geometry.coordinates[0], // Polygon coordinates
+          crop: null, // Will be populated if there's an active crop
+          createdAt: feature.properties.created_at
+        }));
+
+        renderFields();
+        updateStats();
+        
+        return fields;
+      } catch (error) {
+        console.error('❌ Failed to fetch fields:', error);
+        showError('Failed to load fields from database');
+        return [];
       }
     }
-  }
-  return cookieValue;
-}
 
+    // ========================================
+    // RENDER FIELDS TO UI
+    // ========================================
+    function renderFields() {
+      const fieldList = document.getElementById('field-list');
+      const fieldListHeader = document.querySelector('.field-list-header');
+      
+      if (!fieldList) {
+        console.error('Field list container not found');
+        return;
+      }
 
-// FIND the existing submit button handler and REPLACE/MODIFY it to:
-document.getElementById('submit-btn').addEventListener('click', async function() {
-  if (!currentFieldForRegistration || !selectedCrop) {
-    alert('Please select a field and crop');
-    return;
-  }
-  
-  const plantingDate = new Date(document.getElementById('planting-date-input').value);
-  
-  // REGISTER TO DATABASE FIRST
-  const dbResult = await registerCropToDatabase(
-    currentFieldForRegistration.id, 
-    selectedCrop, 
-    plantingDate
-  );
-  
-  
-});
+      // Update header
+      if (fieldListHeader) {
+        fieldListHeader.textContent = `${fields.length} field${fields.length !== 1 ? 's' : ''}`;
+      }
 
+      // Clear existing fields
+      fieldList.innerHTML = '';
 
+      if (fields.length === 0) {
+        fieldList.innerHTML = `
+          <div class="waiting-card">
+            <div class="waiting-icon">📍</div>
+            <h3>No fields yet</h3>
+            <p>Add your first field to start monitoring</p>
+          </div>
+        `;
+        return;
+      }
 
-   
-  </script>
+      // Render each field
+      fields.forEach(field => {
+        const fieldCard = createFieldCard(field);
+        fieldList.appendChild(fieldCard);
+      });
+    }
+
+    // ========================================
+    // CREATE FIELD CARD ELEMENT
+    // ========================================
+    function createFieldCard(field) {
+      const card = document.createElement('div');
+      card.className = 'field-card';
+      if (selectedFieldId === field.id) {
+        card.classList.add('selected');
+      }
+
+      // Create crop section HTML
+      let cropHTML = '';
+      if (field.crop) {
+        const cropIcon = CROP_TYPES.find(c => c.id === field.crop.type.id)?.icon || '🌱';
+        const daysSincePlanting = Math.floor(
+          (Date.now() - new Date(field.crop.plantingDate).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        
+        cropHTML = `
+          <div class="crop-detail">
+            <div class="crop-icon">${cropIcon}</div>
+            <div class="crop-info">
+              <strong>${field.crop.type.name}</strong>
+              <span>Day ${daysSincePlanting} • ${field.crop.variety || 'Standard'}</span>
+            </div>
+            ${field.crop.status === 'active' ? `
+              <span class="badge badge-success">
+                <span class="badge-dot"></span>
+                Active
+              </span>
+            ` : ''}
+          </div>
+        `;
+      } else {
+        cropHTML = `
+          <div style="padding: 0.75rem; background: hsl(var(--muted) / 0.3); border-radius: 8px; margin-bottom: 1rem; text-align: center;">
+            <span style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">No active crop</span>
+          </div>
+        `;
+      }
+
+      card.innerHTML = `
+        <div class="field-card-header">
+          <div class="field-card-info">
+            <h3>${field.name}</h3>
+            <p>${formatArea(field.area)}</p>
+          </div>
+        </div>
+        ${cropHTML}
+        <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="openRegisterModal(${field.id})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"/><path d="M12 5v14"/>
+          </svg>
+          ${field.crop ? 'Update Crop' : 'Register Crop'}
+        </button>
+      `;
+
+      // Add click handler for field selection
+      card.addEventListener('click', (e) => {
+        if (!e.target.closest('button')) {
+          selectField(field.id);
+        }
+      });
+
+      return card;
+    }
+
+    // ========================================
+    // UPDATE STATS
+    // ========================================
+    function updateStats() {
+      const totalFields = fields.length;
+      const totalArea = fields.reduce((sum, field) => sum + field.area, 0);
+      const activeCrops = fields.filter(field => field.crop && field.crop.status === 'active').length;
+
+      document.getElementById('total-fields').textContent = totalFields;
+      document.getElementById('total-area').textContent = formatArea(totalArea);
+      document.getElementById('active-crops').textContent = activeCrops;
+    }
+
+    // ========================================
+    // SELECT FIELD
+    // ========================================
+    function selectField(fieldId) {
+      selectedFieldId = fieldId;
+      renderFields();
+      
+      // Update map or details view if needed
+      const selectedField = fields.find(f => f.id === fieldId);
+      console.log('Selected field:', selectedField);
+    }
+
+    // ========================================
+    // OPEN REGISTER MODAL
+    // ========================================
+    function openRegisterModal(fieldId) {
+      const field = fields.find(f => f.id === fieldId);
+      if (!field) return;
+
+      currentFieldForRegistration = field;
+      
+      // Open your existing modal
+      const modal = document.getElementById('register-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+      }
+
+      console.log('Opening registration for field:', field);
+    }
+
+    // ========================================
+    // CROP REGISTRATION TO DATABASE
+    // ========================================
+    async function registerCropToDatabase(fieldId, cropType, plantingDate) {
+      const variety = document.getElementById('variety-input')?.value || '';
+      const notes = document.getElementById('notes-input')?.value || '';
+      
+      const payload = {
+        field_id: fieldId,
+        crop_name: cropType.name,
+        planting_date: plantingDate.toISOString(),
+        variety: variety,
+        irrigation_type: selectedIrrigation,
+        notes: notes
+      };
+      
+      try {
+        const response = await fetch('/api/register-crop/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+          console.log('✅ Crop registered in database:', result);
+          
+          // Update local field data
+          const field = fields.find(f => f.id === fieldId);
+          if (field) {
+            field.crop = {
+              type: cropType,
+              plantingDate: plantingDate,
+              variety: variety,
+              irrigation: selectedIrrigation,
+              status: 'active',
+              ndviData: []
+            };
+          }
+          
+          // Show success message
+          showSuccess('Crop monitoring started successfully!');
+          
+          return result;
+        } else {
+          console.error('❌ Registration failed:', result.message);
+          showError('Failed to register crop: ' + result.message);
+          return null;
+        }
+      } catch (error) {
+        console.error('❌ Network error:', error);
+        showError('Failed to connect to server');
+        return null;
+      }
+    }
+
+    // ========================================
+    // UI FEEDBACK FUNCTIONS
+    // ========================================
+    function showSuccess(message) {
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: hsl(var(--success));
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        animation: slideIn 0.3s ease;
+      `;
+      toast.innerHTML = `
+        <span style="font-size: 1.25rem;">tick</span>
+        <span style="font-weight: 500;">${message}</span>
+      `;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function showError(message) {
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: hsl(var(--destructive));
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      `;
+      toast.innerHTML = `
+        <span style="font-size: 1.25rem;">❌</span>
+        <span style="font-weight: 500;">${message}</span>
+      `;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    // ========================================
+    // SUBMIT BUTTON HANDLER
+    // ========================================
+    document.addEventListener('DOMContentLoaded', function() {
+      // Fetch fields when page loads
+      fetchFieldsFromDatabase();
+
+      // Submit button handler
+      const submitBtn = document.getElementById('submit-btn');
+      if (submitBtn) {
+        submitBtn.addEventListener('click', async function() {
+          if (!currentFieldForRegistration || !selectedCrop) {
+            showError('Please select a field and crop');
+            return;
+          }
+          
+          const plantingDateInput = document.getElementById('planting-date-input');
+          if (!plantingDateInput || !plantingDateInput.value) {
+            showError('Please select a planting date');
+            return;
+          }
+          
+          const plantingDate = new Date(plantingDateInput.value);
+          
+          // Disable button during submission
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Registering...';
+          
+          // ✅ REGISTER TO DATABASE FIRST
+          const dbResult = await registerCropToDatabase(
+            currentFieldForRegistration.id, 
+            selectedCrop, 
+            plantingDate
+          );
+          
+          if (dbResult) {
+            // Continue with existing simulation code if you have it
+            const ndviReadings = simulateSatelliteImageProcessing(currentFieldForRegistration, plantingDate);
+            currentFieldForRegistration.crop.ndviData = ndviReadings;
+            
+            // Close modal and update UI
+            const modal = document.getElementById('register-modal');
+            if (modal) {
+              modal.classList.add('hidden');
+            }
+            
+            renderFields();
+            updateStats();
+          }
+          
+          // Re-enable button
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Start Monitoring';
+        });
+      }
+
+      // Cancel button handler
+      const cancelBtn = document.getElementById('cancel-btn');
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+          const modal = document.getElementById('register-modal');
+          if (modal) {
+            modal.classList.add('hidden');
+          }
+          currentFieldForRegistration = null;
+          selectedCrop = null;
+        });
+      }
+    });
+
+    // ========================================
+    // ADD YOUR EXISTING SIMULATION FUNCTIONS HERE
+    // ========================================
+    // (simulateSatelliteImageProcessing, calculateSimulatedNDVI, etc.)
+    
+  </script>  
 </body>
 </html>
