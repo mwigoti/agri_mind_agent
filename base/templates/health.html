@@ -366,6 +366,40 @@
       color: hsl(var(--foreground));
       line-height: 1.3;
     }
+    /* Animations */
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+
+    /* Irrigation button active state */
+    .irrigation-btn.active {
+      background: hsl(var(--primary));
+      color: white;
+      border-color: hsl(var(--primary));
+    }
 
     .field-card-info p {
       font-size: 0.875rem;
@@ -1750,7 +1784,7 @@
        REGISTRATION MODAL
        ======================================== -->
   <div class="modal-overlay hidden" id="modal-overlay">
-    <div class="modal">
+    <div class="modal" id="register-modal>
       <div class="modal-header">
         <div class="modal-header-content">
           <div class="modal-icon">
@@ -2121,19 +2155,228 @@
     // ========================================
     // OPEN REGISTER MODAL
     // ========================================
+    // ========================================
+    // OPEN REGISTER MODAL
+    // ========================================
     function openRegisterModal(fieldId) {
       const field = fields.find(f => f.id === fieldId);
       if (!field) return;
 
       currentFieldForRegistration = field;
       
-      // Open your existing modal
+      // Update modal info
+      updateModalFieldInfo(field);
+      
+      // Reset form
+      selectedCrop = null;
+      selectedIrrigation = '';
+      const selectDisplay = document.getElementById('select-display');
+      if (selectDisplay) {
+        selectDisplay.textContent = 'Select a crop...';
+        selectDisplay.classList.add('select-placeholder');
+      }
+      
+      const plantingDateInput = document.getElementById('planting-date-input');
+      if (plantingDateInput) plantingDateInput.value = '';
+      
+      const varietyInput = document.getElementById('variety-input');
+      if (varietyInput) varietyInput.value = '';
+      
+      const notesInput = document.getElementById('notes-input');
+      if (notesInput) notesInput.value = '';
+      
+      // Clear irrigation selection
+      document.querySelectorAll('.irrigation-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      
+      // Hide advanced section
+      const advancedContent = document.getElementById('advanced-content');
+      if (advancedContent) {
+        advancedContent.classList.add('hidden');
+      }
+      
+      // Open modal
+      const overlay = document.getElementById('modal-overlay');
+      if (overlay) {
+        overlay.classList.remove('hidden');
+      }
+      
       const modal = document.getElementById('register-modal');
       if (modal) {
         modal.classList.remove('hidden');
       }
 
       console.log('Opening registration for field:', field);
+    }
+    // ========================================
+    // MODAL FUNCTIONALITY
+    // ========================================
+
+    // Populate crop options in dropdown
+    function populateCropOptions() {
+      const cropOptions = document.getElementById('crop-options');
+      if (!cropOptions) return;
+      
+      cropOptions.innerHTML = CROP_TYPES.map(crop => `
+        <div class="select-option" data-crop-id="${crop.id}">
+          <span class="option-icon">${crop.icon}</span>
+          <span class="option-name">${crop.name}</span>
+        </div>
+      `).join('');
+      
+      // Add click handlers to options
+      cropOptions.querySelectorAll('.select-option').forEach(option => {
+        option.addEventListener('click', function() {
+          const cropId = this.dataset.cropId;
+          const crop = CROP_TYPES.find(c => c.id === cropId);
+          selectCrop(crop);
+        });
+      });
+    }
+
+    // Select a crop
+    function selectCrop(crop) {
+      selectedCrop = crop;
+      
+      // Update display
+      const selectDisplay = document.getElementById('select-display');
+      if (selectDisplay) {
+        selectDisplay.innerHTML = `
+          <span style="font-size: 1.25rem; margin-right: 0.5rem;">${crop.icon}</span>
+          <span>${crop.name}</span>
+        `;
+        selectDisplay.classList.remove('select-placeholder');
+      }
+      
+      // Close dropdown
+      const dropdown = document.getElementById('select-dropdown');
+      if (dropdown) {
+        dropdown.classList.add('hidden');
+      }
+      
+      // Enable submit button if date is also selected
+      checkFormValidity();
+    }
+
+    // Check if form is valid
+    function checkFormValidity() {
+      const submitBtn = document.getElementById('submit-btn');
+      const plantingDate = document.getElementById('planting-date-input')?.value;
+      
+      if (submitBtn) {
+        submitBtn.disabled = !(selectedCrop && plantingDate);
+      }
+    }
+
+    // Toggle dropdown
+    function setupDropdown() {
+      const trigger = document.getElementById('select-trigger');
+      const dropdown = document.getElementById('select-dropdown');
+      const overlay = document.getElementById('modal-overlay');
+      
+      if (trigger && dropdown) {
+        trigger.addEventListener('click', function(e) {
+          e.stopPropagation();
+          dropdown.classList.toggle('hidden');
+        });
+      }
+      
+      // Close dropdown when clicking outside
+      if (overlay) {
+        overlay.addEventListener('click', function(e) {
+          if (e.target === overlay) {
+            const modal = document.getElementById('register-modal');
+            if (modal) {
+              modal.classList.add('hidden');
+            }
+            overlay.classList.add('hidden');
+          }
+        });
+      }
+    }
+
+    // Setup crop search
+    function setupCropSearch() {
+      const searchInput = document.getElementById('crop-search');
+      if (!searchInput) return;
+      
+      searchInput.addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase();
+        const options = document.querySelectorAll('.select-option');
+        
+        options.forEach(option => {
+          const name = option.querySelector('.option-name').textContent.toLowerCase();
+          if (name.includes(query)) {
+            option.style.display = 'flex';
+          } else {
+            option.style.display = 'none';
+          }
+        });
+      });
+    }
+
+    // Setup advanced toggle
+    function setupAdvancedToggle() {
+      const toggleBtn = document.getElementById('advanced-toggle');
+      const content = document.getElementById('advanced-content');
+      const toggleText = document.getElementById('advanced-toggle-text');
+      
+      if (toggleBtn && content) {
+        toggleBtn.addEventListener('click', function() {
+          content.classList.toggle('hidden');
+          if (content.classList.contains('hidden')) {
+            toggleText.textContent = 'Show advanced options';
+          } else {
+            toggleText.textContent = 'Hide advanced options';
+          }
+        });
+      }
+    }
+
+    // Setup irrigation buttons
+    function setupIrrigationButtons() {
+      const irrigationBtns = document.querySelectorAll('.irrigation-btn');
+      
+      irrigationBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Remove active class from all buttons
+          irrigationBtns.forEach(b => b.classList.remove('active'));
+          
+          // Add active class to clicked button
+          this.classList.add('active');
+          
+          // Store selected irrigation type
+          selectedIrrigation = this.dataset.irrigation;
+          
+          console.log('Selected irrigation:', selectedIrrigation);
+        });
+      });
+    }
+
+    // Setup planting date input
+    function setupPlantingDateInput() {
+      const dateInput = document.getElementById('planting-date-input');
+      if (dateInput) {
+        dateInput.addEventListener('change', function() {
+          checkFormValidity();
+        });
+        
+        // Set max date to today
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.setAttribute('max', today);
+      }
+    }
+
+    // Update modal field info
+    function updateModalFieldInfo(field) {
+      const modalFieldInfo = document.getElementById('modal-field-info');
+      if (modalFieldInfo && field) {
+        modalFieldInfo.textContent = `${field.name} • ${formatArea(field.area)}`;
+      }
     }
 
     // ========================================
@@ -2256,9 +2499,18 @@
     // ========================================
     // SUBMIT BUTTON HANDLER
     // ========================================
+   
     document.addEventListener('DOMContentLoaded', function() {
       // Fetch fields when page loads
       fetchFieldsFromDatabase();
+      
+      // Setup modal components
+      populateCropOptions();
+      setupDropdown();
+      setupCropSearch();
+      setupAdvancedToggle();
+      setupIrrigationButtons();
+      setupPlantingDateInput();
 
       // Submit button handler
       const submitBtn = document.getElementById('submit-btn');
@@ -2279,9 +2531,14 @@
           
           // Disable button during submission
           submitBtn.disabled = true;
-          submitBtn.textContent = 'Registering...';
+          submitBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite; width: 16px; height: 16px;">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </svg>
+            Registering...
+          `;
           
-          // ✅ REGISTER TO DATABASE FIRST
+          // ✅ REGISTER TO DATABASE
           const dbResult = await registerCropToDatabase(
             currentFieldForRegistration.id, 
             selectedCrop, 
@@ -2289,14 +2546,25 @@
           );
           
           if (dbResult) {
-            // Continue with existing simulation code if you have it
-            const ndviReadings = simulateSatelliteImageProcessing(currentFieldForRegistration, plantingDate);
-            currentFieldForRegistration.crop.ndviData = ndviReadings;
+            // Update local field with all details
+            const field = fields.find(f => f.id === currentFieldForRegistration.id);
+            if (field) {
+              field.crop = {
+                type: selectedCrop,
+                plantingDate: plantingDate,
+                variety: document.getElementById('variety-input')?.value || '',
+                irrigation: selectedIrrigation,
+                status: 'active',
+                ndviData: [],
+                activityId: dbResult.data?.activity_id,
+                cropId: dbResult.data?.crop_id
+              };
+            }
             
-            // Close modal and update UI
-            const modal = document.getElementById('register-modal');
-            if (modal) {
-              modal.classList.add('hidden');
+            // Close modal
+            const overlay = document.getElementById('modal-overlay');
+            if (overlay) {
+              overlay.classList.add('hidden');
             }
             
             renderFields();
@@ -2305,7 +2573,12 @@
           
           // Re-enable button
           submitBtn.disabled = false;
-          submitBtn.textContent = 'Start Monitoring';
+          submitBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"/><path d="M12 5v14"/>
+            </svg>
+            Start Monitoring
+          `;
         });
       }
 
@@ -2313,12 +2586,13 @@
       const cancelBtn = document.getElementById('cancel-btn');
       if (cancelBtn) {
         cancelBtn.addEventListener('click', function() {
-          const modal = document.getElementById('register-modal');
-          if (modal) {
-            modal.classList.add('hidden');
+          const overlay = document.getElementById('modal-overlay');
+          if (overlay) {
+            overlay.classList.add('hidden');
           }
           currentFieldForRegistration = null;
           selectedCrop = null;
+          selectedIrrigation = '';
         });
       }
     });
