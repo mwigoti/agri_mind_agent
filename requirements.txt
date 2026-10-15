@@ -53,3 +53,6 @@ uritemplate==4.2.0
 urllib3==2.6.3
 gunicorn
 joblib
+
+mcp>=1.6.0
+mcp-server-sqlite>=2025.4.25
