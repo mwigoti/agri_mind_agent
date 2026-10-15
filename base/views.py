@@ -384,7 +384,8 @@ def res(request):
     return render(request, 'result.html')
 
 
-
+def health(request):
+    return render(request, "health.html")
 
 
 
