@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌱 AgriVision Seasons Dashboard</title>
+    <meta name="description" content="Modern agricultural season insights dashboard with advanced analytics and performance tracking" />
+    <meta name="author" content="AgriVision" />
+    
+    <meta property="og:title" content="AgriVision Seasons Dashboard" />
+    <meta property="og:description" content="Modern agricultural season insights dashboard with advanced analytics and performance tracking" />
+    <meta property="og:type" content="website" />
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js"></script>
+    <link rel="stylesheet" href="{% static 'css/seasons.css' %}">
+</head>
+<body>
+    <div class="dashboard">
+        <header class="header">
+            <h1>🌱 AgriVision Seasons Dashboard</h1>
+            <div class="season-controls">
+                <div class="season-selector">
+                    <button class="season-btn active" data-season="2023">Season 2023</button>
+                    <button class="season-btn" data-season="2024">Season 2024</button>
+                    <button class="season-btn" data-season="2025">Season 2025</button>
+                </div>
+                
+                <div class="compare-toggle">
+                    <span>Compare Seasons</span>
+                    <div class="toggle-switch" id="compareToggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+                
+                <select id="compareSeason" class="compare-select">
+                    <option value="2023">vs Season 2023</option>
+                    <option value="2024">vs Season 2024</option>
+                    <option value="2025">vs Season 2025</option>
+                </select>
+            </div>
+        </header>
+
+        <main>
+            <section class="metrics-grid" id="metricsGrid">
+                <!-- Metrics cards will be generated here -->
+            </section>
+
+            <section class="comparison-section" id="comparisonSection">
+                <h2 class="section-title">Season Comparison</h2>
+                <div class="comparison-grid" id="comparisonGrid">
+                    <!-- Comparison cards will be generated here -->
+                </div>
+            </section>
+
+            <section class="charts-section">
+                <div class="chart-container">
+                    <h3 class="chart-title">📈 Yield Trends Across Seasons</h3>
+                    <canvas id="yieldChart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <h3 class="chart-title">💧 Resource Usage Comparison</h3>
+                    <canvas id="resourceChart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <h3 class="chart-title">🎯 Achievement vs Expectations</h3>
+                    <canvas id="achievementChart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <h3 class="chart-title">🌍 Environmental Impact Distribution</h3>
+                    <canvas id="environmentChart"></canvas>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{% static 'js/seasons.js' %}"></script>
+</body>
+</html>

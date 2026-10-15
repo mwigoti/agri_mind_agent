@@ -1682,7 +1682,7 @@ fn calculate_vegetation_indices(
         projection: red_data.projection.clone(),
     })
 }
-practical mapping  test 
+
 fn calculate_index_stats(valid_pixels: &[f64], total_pixels: usize) -> IndexStats {
     if valid_pixels.is_empty() {
         return IndexStats {

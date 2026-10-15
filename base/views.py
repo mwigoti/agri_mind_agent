@@ -1264,3 +1264,6 @@ def schedule_activity_reminder(user, activity):
         # You can use Celery or Django-Q for scheduling
         # For now, we'll store it in database and check periodically
         pass
+    
+def seasons(request):
+    return render(request, 'seasons.html')

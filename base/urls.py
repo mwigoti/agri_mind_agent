@@ -47,4 +47,5 @@ urlpatterns = [
     
     # USSD integration
     path('ussd/callback/', USSDView.as_view(), name='ussd_callback'),
+    path('seasons/', seasons, name = 'seasons')
 ]

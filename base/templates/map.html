@@ -881,7 +881,10 @@
             <nav>
                 <ul>
                     <li id="infoPanelMenuItem" onclick="InfoPanelManager.toggleInfoPanel()">Hide Info Panel</li>
-                    <li id="season2024">Season</li>
+                    {% url "seasons" as seasons_url %}
+<li id="fieldActivity" onclick='window.location.href="{{ seasons_url|escapejs }}"'>
+    Season Analytics
+</li>
                     <li id="monitoring">Monitoring</li>
                     <li id="weatherMenuItem" onclick="WeatherManager.hideWeatherDashboard()">Hide Weather Dashboard</li>
                     <li id="overview">Overview</li>
