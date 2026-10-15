@@ -24,7 +24,7 @@ import logging
 from django.utils.decorators import method_decorator
 from django.contrib.gis.geos import GEOSGeometry
 
-import stripe.error
+import stripe
 from .models import *
 from django.core.mail import send_mail, BadHeaderError
 from rest_framework.views import APIView
