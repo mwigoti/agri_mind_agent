@@ -12,14 +12,15 @@
     /* ========================================
        CSS RESET & VARIABLES
        ======================================== */
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
 
     :root {
-      /* Colors - HSL */
       --primary: 158 42% 22%;
       --primary-foreground: 0 0% 100%;
       --secondary: 150 15% 93%;
@@ -36,8 +37,6 @@
       --warning: 36 95% 52%;
       --destructive: 4 72% 52%;
       --radius: 0.75rem;
-
-      /* Typography */
       --font-heading: 'Plus Jakarta Sans', system-ui, sans-serif;
       --font-body: 'Inter', system-ui, sans-serif;
     }
@@ -57,16 +56,20 @@
       min-height: 100vh;
     }
 
-    h1, h2, h3, h4, h5, h6 {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
       font-family: var(--font-heading);
       font-weight: 600;
       letter-spacing: -0.02em;
     }
 
-    /* ========================================
-       UTILITY CLASSES
-       ======================================== */
-    .hidden { display: none !important; }
+    .hidden {
+      display: none !important;
+    }
 
     /* ========================================
        HEADER
@@ -204,6 +207,17 @@
       cursor: not-allowed;
     }
 
+    /* PDF Download Button */
+    .btn-pdf {
+      background: #dc2626;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+    }
+    .btn-pdf:hover {
+      background: #b91c1c;
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+    }
+
     /* ========================================
        MAIN CONTENT
        ======================================== */
@@ -213,9 +227,6 @@
       padding: 2rem;
     }
 
-    /* ========================================
-       PAGE HEADER
-       ======================================== */
     .page-header {
       display: flex;
       flex-wrap: wrap;
@@ -311,9 +322,6 @@
       }
     }
 
-    /* ========================================
-       FIELD LIST
-       ======================================== */
     .field-list {
       display: flex;
       flex-direction: column;
@@ -327,9 +335,6 @@
       margin-bottom: 0.5rem;
     }
 
-    /* ========================================
-       FIELD CARD
-       ======================================== */
     .field-card {
       background: hsl(var(--card));
       border: 2px solid hsl(var(--border) / 0.6);
@@ -366,7 +371,6 @@
       color: hsl(var(--foreground));
       line-height: 1.3;
     }
-    
 
     .field-card-info p {
       font-size: 0.875rem;
@@ -375,9 +379,6 @@
       margin-top: 0.125rem;
     }
 
-    /* ========================================
-       BADGES
-       ======================================== */
     .badge {
       display: inline-flex;
       align-items: center;
@@ -408,13 +409,15 @@
     }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
     }
 
-    /* ========================================
-       CROP DETAIL BOX
-       ======================================== */
     .crop-detail {
       display: flex;
       align-items: center;
@@ -460,152 +463,149 @@
       color: hsl(var(--muted-foreground));
     }
 
-    /* Stat Box Styles */
-  .stat-box {
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-    border-radius: 8px;
-    padding: 1rem;
-    text-align: center;
-  }
+    .stat-box {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
 
-  .stat-box-icon {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
-  }
+    .stat-box-icon {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
 
-  .stat-box-label {
-    font-size: 0.75rem;
-    color: hsl(var(--muted-foreground));
-    font-weight: 500;
-    margin-bottom: 0.25rem;
-  }
+    .stat-box-label {
+      font-size: 0.75rem;
+      color: hsl(var(--muted-foreground));
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
 
-  .stat-box-value {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: hsl(var(--foreground));
-  }
+    .stat-box-value {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: hsl(var(--foreground));
+    }
 
-  /* Timeline Styles */
-  .timeline {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
 
-  .timeline-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    position: relative;
-  }
+    .timeline-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      position: relative;
+    }
 
-  .timeline-item:not(:last-child)::before {
-    content: '';
-    position: absolute;
-    left: 7px;
-    top: 24px;
-    bottom: -16px;
-    width: 2px;
-    background: hsl(var(--border));
-  }
+    .timeline-item:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 24px;
+      bottom: -16px;
+      width: 2px;
+      background: hsl(var(--border));
+    }
 
-  .timeline-dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 2px solid hsl(var(--border));
-    background: hsl(var(--card));
-    flex-shrink: 0;
-    margin-top: 2px;
-    z-index: 1;
-    position: relative;
-  }
+    .timeline-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid hsl(var(--border));
+      background: hsl(var(--card));
+      flex-shrink: 0;
+      margin-top: 2px;
+      z-index: 1;
+      position: relative;
+    }
 
-  .timeline-dot.active {
-    background: hsl(var(--success));
-    border-color: hsl(var(--success));
-  }
+    .timeline-dot.active {
+      background: hsl(var(--success));
+      border-color: hsl(var(--success));
+    }
 
-  .timeline-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-  }
+    .timeline-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+    }
 
-  .timeline-content strong {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: hsl(var(--foreground));
-  }
+    .timeline-content strong {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: hsl(var(--foreground));
+    }
 
-  .timeline-content span {
-    font-size: 0.75rem;
-    color: hsl(var(--muted-foreground));
-  }
+    .timeline-content span {
+      font-size: 0.75rem;
+      color: hsl(var(--muted-foreground));
+    }
 
-  /* Growth Stage Tracker */
-  .growth-stage-tracker {
-    display: flex;
-    gap: 0.5rem;
-    overflow-x: auto;
-  }
+    .growth-stage-tracker {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+    }
 
-  .stage-item {
-    flex: 1;
-    min-width: 80px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background: hsl(var(--card));
-    border: 2px solid hsl(var(--border));
-    border-radius: 8px;
-    transition: all 0.2s ease;
-  }
+    .stage-item {
+      flex: 1;
+      min-width: 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: hsl(var(--card));
+      border: 2px solid hsl(var(--border));
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
 
-  .stage-item.active {
-    border-color: hsl(var(--primary));
-    background: hsl(var(--primary) / 0.05);
-  }
+    .stage-item.active {
+      border-color: hsl(var(--primary));
+      background: hsl(var(--primary) / 0.05);
+    }
 
-  .stage-item.completed {
-    border-color: hsl(var(--success));
-    background: hsl(var(--success) / 0.05);
-  }
+    .stage-item.completed {
+      border-color: hsl(var(--success));
+      background: hsl(var(--success) / 0.05);
+    }
 
-  .stage-number {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: hsl(var(--muted));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 0.875rem;
-    color: hsl(var(--muted-foreground));
-  }
+    .stage-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: hsl(var(--muted));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: hsl(var(--muted-foreground));
+    }
 
-  .stage-item.active .stage-number {
-    background: hsl(var(--primary));
-    color: white;
-  }
+    .stage-item.active .stage-number {
+      background: hsl(var(--primary));
+      color: white;
+    }
 
-  .stage-item.completed .stage-number {
-    background: hsl(var(--success));
-    color: white;
-  }
+    .stage-item.completed .stage-number {
+      background: hsl(var(--success));
+      color: white;
+    }
 
-  .stage-name {
-    font-size: 0.75rem;
-    font-weight: 500;
-    text-align: center;
-    color: hsl(var(--foreground));
-  }
+    .stage-name {
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-align: center;
+      color: hsl(var(--foreground));
+    }
 
     .previous-crop {
       display: flex;
@@ -621,9 +621,6 @@
       font-size: 1rem;
     }
 
-    /* ========================================
-       MAP CONTAINER
-       ======================================== */
     .map-container {
       background: hsl(var(--card));
       border: 2px solid hsl(var(--border) / 0.6);
@@ -671,8 +668,7 @@
     .map-bg {
       position: absolute;
       inset: 0;
-      background: 
-        radial-gradient(ellipse at 30% 40%, hsl(152 40% 85% / 0.6) 0%, transparent 50%),
+      background: radial-gradient(ellipse at 30% 40%, hsl(152 40% 85% / 0.6) 0%, transparent 50%),
         radial-gradient(ellipse at 70% 60%, hsl(145 35% 82% / 0.5) 0%, transparent 45%),
         radial-gradient(ellipse at 50% 80%, hsl(40 30% 88% / 0.4) 0%, transparent 40%),
         linear-gradient(180deg, hsl(150 25% 94%) 0%, hsl(145 20% 90%) 100%);
@@ -740,8 +736,14 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .map-info-icon {
@@ -870,8 +872,14 @@
     }
 
     @keyframes slideUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .modal-header {
@@ -993,9 +1001,6 @@
       min-height: 80px;
     }
 
-    /* ========================================
-       CUSTOM SELECT
-       ======================================== */
     .custom-select {
       position: relative;
     }
@@ -1111,9 +1116,6 @@
       color: hsl(var(--primary));
     }
 
-    /* ========================================
-       IRRIGATION OPTIONS
-       ======================================== */
     .irrigation-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -1154,9 +1156,6 @@
       font-weight: 600;
     }
 
-    /* ========================================
-       ADVANCED TOGGLE
-       ======================================== */
     .advanced-toggle {
       display: flex;
       align-items: center;
@@ -1191,9 +1190,6 @@
       animation: fadeIn 0.2s ease;
     }
 
-    /* ========================================
-       INFO BOX
-       ======================================== */
     .info-box {
       display: flex;
       align-items: flex-start;
@@ -1210,9 +1206,6 @@
       font-size: 1.125rem;
     }
 
-    /* ========================================
-       MONITORING VIEW
-       ======================================== */
     .monitoring-view {
       min-height: 100vh;
       display: flex;
@@ -1248,8 +1241,7 @@
     .monitoring-hero {
       height: 240px;
       position: relative;
-      background: 
-        radial-gradient(ellipse at 40% 50%, hsl(var(--primary) / 0.25) 0%, transparent 60%),
+      background: radial-gradient(ellipse at 40% 50%, hsl(var(--primary) / 0.25) 0%, transparent 60%),
         radial-gradient(ellipse at 60% 40%, hsl(var(--success) / 0.2) 0%, transparent 50%),
         linear-gradient(180deg, hsl(150 25% 92%) 0%, hsl(145 20% 88%) 100%);
       display: flex;
@@ -1293,9 +1285,6 @@
       width: 100%;
     }
 
-    /* ========================================
-       PROGRESS CARD
-       ======================================== */
     .progress-card {
       background: hsl(var(--card));
       border: 2px solid hsl(var(--border) / 0.6);
@@ -1381,9 +1370,6 @@
       color: hsl(var(--muted-foreground));
     }
 
-    /* ========================================
-       STATS GRID
-       ======================================== */
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -1432,9 +1418,6 @@
       font-weight: 700;
     }
 
-    /* ========================================
-       HEALTH CARD
-       ======================================== */
     .section-header {
       display: flex;
       align-items: center;
@@ -1562,9 +1545,6 @@
       color: hsl(var(--muted-foreground));
     }
 
-    /* ========================================
-       TREND CHART
-       ======================================== */
     .trend-card {
       background: hsl(var(--card));
       border: 2px solid hsl(var(--border) / 0.6);
@@ -1611,8 +1591,7 @@
       font-weight: 500;
       color: hsl(var(--muted-foreground));
     }
-    
-    /* ── Analysis panel (slides in below the crop-details modal) ── */
+
     .analysis-panel {
       background: hsl(var(--card));
       border-radius: var(--radius);
@@ -1647,7 +1626,9 @@
     }
 
     @media (max-width: 640px) {
-      .analysis-grid { grid-template-columns: repeat(2, 1fr); }
+      .analysis-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
 
     .analysis-metric {
@@ -1679,12 +1660,16 @@
       color: hsl(var(--muted-foreground));
     }
 
-    /* colour variants */
-    .metric-good  .analysis-metric-value { color: hsl(var(--success)); }
-    .metric-warn  .analysis-metric-value { color: hsl(var(--warning)); }
-    .metric-bad   .analysis-metric-value { color: hsl(var(--destructive)); }
+    .metric-good .analysis-metric-value {
+      color: hsl(var(--success));
+    }
+    .metric-warn .analysis-metric-value {
+      color: hsl(var(--warning));
+    }
+    .metric-bad .analysis-metric-value {
+      color: hsl(var(--destructive));
+    }
 
-    /* stress flags */
     .stress-flag-list {
       padding: 0 1.25rem 1rem;
       display: flex;
@@ -1705,7 +1690,10 @@
       line-height: 1.5;
     }
 
-    .stress-flag-icon { flex-shrink: 0; font-size: 1rem; }
+    .stress-flag-icon {
+      flex-shrink: 0;
+      font-size: 1rem;
+    }
 
     .stress-none {
       padding: 0.625rem 0.875rem;
@@ -1717,7 +1705,6 @@
       font-weight: 600;
     }
 
-    /* NDVI mini sparkline */
     .ndvi-sparkline-wrap {
       padding: 0 1.25rem 1rem;
     }
@@ -1743,20 +1730,355 @@
       min-width: 4px;
     }
 
-    /* loading shimmer */
     @keyframes shimmer {
-      0%   { background-position: -400px 0; }
-      100% { background-position: 400px 0; }
+      0% {
+        background-position: -400px 0;
+      }
+      100% {
+        background-position: 400px 0;
+      }
     }
     .shimmer {
-      background: linear-gradient(90deg,
-        hsl(var(--muted)) 25%, hsl(var(--border)) 50%, hsl(var(--muted)) 75%);
+      background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--border)) 50%, hsl(var(--muted)) 75%);
       background-size: 400px 100%;
       animation: shimmer 1.4s infinite;
       border-radius: 6px;
       height: 1rem;
     }
-  </style>
+
+    /* ========================================
+       AI REPORT MODAL STYLES
+       ======================================== */
+    .report-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: hsl(210 15% 12% / 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      padding: 1rem;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .report-modal {
+      background: hsl(var(--card));
+      border-radius: 1.25rem;
+      width: 100%;
+      max-width: 720px;
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: 0 24px 48px hsl(210 15% 12% / 0.25);
+      animation: slideUp 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .report-modal-header {
+      padding: 1.5rem 1.75rem;
+      border-bottom: 1px solid hsl(var(--border));
+      background: linear-gradient(135deg, hsl(var(--primary) / 0.08), hsl(var(--success) / 0.05));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .report-modal-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .report-modal-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: hsl(var(--primary));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+    }
+
+    .report-modal-title h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      line-height: 1.2;
+    }
+
+    .report-modal-title span {
+      font-size: 0.75rem;
+      color: hsl(var(--muted-foreground));
+      font-weight: 500;
+    }
+
+    .report-modal-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: hsl(var(--muted));
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      font-size: 1.125rem;
+      color: hsl(var(--muted-foreground));
+    }
+    .report-modal-close:hover {
+      background: hsl(var(--border));
+      color: hsl(var(--foreground));
+    }
+
+    .report-modal-body {
+      padding: 1.5rem 1.75rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .report-modal-footer {
+      padding: 1rem 1.75rem;
+      border-top: 1px solid hsl(var(--border));
+      background: hsl(var(--muted) / 0.3);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    /* Yield Hero */
+    .report-yield-hero {
+      background: linear-gradient(135deg, hsl(var(--primary) / 0.1), hsl(var(--success) / 0.08));
+      border: 1px solid hsl(var(--primary) / 0.15);
+      border-radius: 1rem;
+      padding: 1.25rem 1.5rem;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .report-yield-main {
+      text-align: center;
+    }
+
+    .report-yield-number {
+      font-family: var(--font-heading);
+      font-size: 3rem;
+      font-weight: 700;
+      color: hsl(var(--primary));
+      line-height: 1;
+    }
+
+    .report-yield-unit {
+      font-size: 0.875rem;
+      color: hsl(var(--muted-foreground));
+      font-weight: 500;
+    }
+
+    .report-yield-divider {
+      width: 1px;
+      height: 50px;
+      background: hsl(var(--border));
+    }
+
+    .report-yield-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      text-align: left;
+    }
+
+    .report-yield-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8125rem;
+      color: hsl(var(--foreground));
+    }
+
+    .report-yield-meta-item .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot.good {
+      background: hsl(var(--success));
+    }
+    .dot.warn {
+      background: hsl(var(--warning));
+    }
+
+    /* Metrics Grid */
+    .report-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.625rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 500px) {
+      .report-metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .report-metric-card {
+      background: hsl(var(--muted) / 0.4);
+      border-radius: 10px;
+      padding: 0.75rem;
+      text-align: center;
+    }
+
+    .report-metric-card .metric-icon {
+      font-size: 1.25rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .report-metric-card .metric-value {
+      font-family: var(--font-heading);
+      font-size: 1rem;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+    }
+
+    .report-metric-card .metric-label {
+      font-size: 0.625rem;
+      color: hsl(var(--muted-foreground));
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-top: 0.125rem;
+    }
+
+    /* Risk Badge */
+    .report-risk-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 0.8125rem;
+      margin-bottom: 1.25rem;
+    }
+    .report-risk-badge.high {
+      background: hsl(var(--destructive) / 0.12);
+      color: hsl(var(--destructive));
+      border: 1px solid hsl(var(--destructive) / 0.25);
+    }
+    .report-risk-badge.medium {
+      background: hsl(var(--warning) / 0.12);
+      color: hsl(var(--warning));
+      border: 1px solid hsl(var(--warning) / 0.25);
+    }
+    .report-risk-badge.low {
+      background: hsl(var(--success) / 0.12);
+      color: hsl(var(--success));
+      border: 1px solid hsl(var(--success) / 0.25);
+    }
+
+    /* Report Section */
+    .report-section {
+      margin-bottom: 1.25rem;
+    }
+    .report-section h4 {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .report-section p,
+    .report-section li {
+      font-size: 0.8125rem;
+      line-height: 1.65;
+      color: hsl(var(--foreground) / 0.85);
+    }
+    .report-section ul,
+    .report-section ol {
+      padding-left: 1.25rem;
+      margin-top: 0.375rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+
+    /* Stress Flags in Report */
+    .report-stress-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .report-stress-tag {
+      font-size: 0.75rem;
+      padding: 0.375rem 0.75rem;
+      border-radius: 6px;
+      background: hsl(var(--warning) / 0.1);
+      border: 1px solid hsl(var(--warning) / 0.3);
+      color: hsl(var(--foreground));
+      font-weight: 500;
+    }
+
+    /* ========================================
+       PRINT STYLES (for PDF download)
+       ======================================== */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      .report-printable,
+      .report-printable * {
+        visibility: visible;
+      }
+      .report-printable {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 1.5rem;
+        background: #fff;
+        color: #000;
+      }
+      .report-printable .report-modal-footer,
+      .report-printable .report-modal-close,
+      .report-printable .btn-pdf {
+        display: none !important;
+      }
+      .report-printable .report-modal-header {
+        border-bottom: 2px solid #000;
+        background: none;
+        padding: 1rem 0;
+        margin-bottom: 1rem;
+      }
+      .report-printable .report-modal-body {
+        padding: 0;
+      }
+      .report-printable .report-yield-hero {
+        border: 2px solid #000;
+        background: none;
+      }
+      .report-printable .report-risk-badge {
+        border: 1px solid #000;
+        background: none;
+      }
+      .report-printable .report-metric-card {
+        border: 1px solid #ccc;
+      }
+      @page {
+        margin: 1cm;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1834,11 +2156,8 @@
       <div class="content-grid">
         <div>
           <p class="field-list-header">0 fields</p>
-          <div class="field-list" id="field-list">
-            <!-- Fields will be dynamically loaded here -->
-          </div>
+          <div class="field-list" id="field-list"></div>
         </div>
-
         <div class="map-container">
           <div class="map-header">
             <div class="map-status">
@@ -1855,8 +2174,6 @@
           <div class="map-content">
             <div style="position: relative;">
               <svg width="380" height="320" viewBox="0 0 380 320" class="map-svg">
-                <!-- Map polygons will be dynamically generated based on your field data -->
-                <!-- These are just placeholder polygons for visual reference -->
                 <polygon id="map-field-1" class="map-polygon inactive" points="50,70 170,45 195,140 75,165" data-field="1" style="display: none;"/>
                 <polygon id="map-field-2" class="map-polygon inactive" points="200,55 320,80 295,175 175,150" data-field="2" style="display: none;"/>
                 <polygon id="map-field-3" class="map-polygon inactive" points="95,195 215,170 240,265 120,290" data-field="3" style="display: none;"/>
@@ -1876,17 +2193,14 @@
           </div>
           <div class="map-legend">
             <div class="legend-item">
-              <div class="legend-color active"></div>
-              <span>Active</span>
+              <div class="legend-color active"></div><span>Active</span>
             </div>
             <div class="legend-item">
-              <div class="legend-color inactive"></div>
-              <span>Inactive</span>
+              <div class="legend-color inactive"></div><span>Inactive</span>
             </div>
           </div>
           <div class="map-scale">
-            <div class="scale-bar"></div>
-            <span>100m</span>
+            <div class="scale-bar"></div><span>100m</span>
           </div>
         </div>
       </div>
@@ -1915,7 +2229,14 @@
         </div>
       </div>
     </header>
-
+    <div id="reportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+      <div style="background:white; padding:2rem; border-radius:12px; max-width:500px; width:90%;">
+        <h3 style="margin-bottom:1rem; color:hsl(var(--primary));">🤖 AI Agronomic Report</h3>
+        <h1 id="modalYieldDisplay" style="margin-bottom:1rem; font-size:2rem; color:#111;"></h1>
+        <p id="modalReportContent" style="line-height:1.6; color:#444; font-size:1.1rem;"></p>
+        <button onclick="document.getElementById('reportModal').style.display='none'" style="margin-top:1.5rem; width:100%; padding:0.75rem; background:hsl(var(--primary)); color:white; border:none; border-radius:6px; cursor:pointer;">Close Report</button>
+      </div>
+    </div>
     <div class="monitoring-hero">
       <svg width="280" height="160" viewBox="0 0 280 160">
         <polygon points="40,25 240,15 260,135 20,145" fill="hsl(158 42% 22% / 0.45)" stroke="hsl(158 42% 22%)" stroke-width="3"/>
@@ -1927,9 +2248,7 @@
         <span id="monitoring-status-text">Healthy</span>
       </div>
     </div>
-
     <div class="monitoring-content">
-      <!-- Growth Progress -->
       <div class="progress-card">
         <div class="progress-header">
           <div class="progress-title">
@@ -1938,105 +2257,22 @@
                 <path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/>
               </svg>
             </div>
-            <div>
-              <h2>Growth Progress</h2>
-              <span id="growth-stage">Maturation stage</span>
-            </div>
+            <div><h2>Growth Progress</h2><span id="growth-stage">Maturation stage</span></div>
           </div>
-          <div class="progress-days">
-            <strong id="days-since-planting">85</strong>
-            <span>days since planting</span>
-          </div>
+          <div class="progress-days"><strong id="days-since-planting">85</strong><span>days since planting</span></div>
         </div>
-        <div class="progress-bar">
-          <div class="progress-fill" id="progress-fill" style="width: 90%;"></div>
-        </div>
-        <div class="progress-labels">
-          <span>Germination</span>
-          <span>Vegetative</span>
-          <span>Flowering</span>
-          <span>Maturation</span>
-        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width: 90%;"></div></div>
+        <div class="progress-labels"><span>Germination</span><span>Vegetative</span><span>Flowering</span><span>Maturation</span></div>
       </div>
-
-      <!-- Stats Grid -->
       <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-card-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
-            </svg>
-            <span>Planting Date</span>
-          </div>
-          <strong id="planting-date">Oct 12, 2025</strong>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>
-            </svg>
-            <span>Irrigation</span>
-          </div>
-          <strong id="irrigation-type">Drip</strong>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-header">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
-            </svg>
-            <span>Variety</span>
-          </div>
-          <strong id="variety">Standard</strong>
-        </div>
+        <div class="stat-card"><div class="stat-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg><span>Planting Date</span></div><strong id="planting-date">Oct 12, 2025</strong></div>
+        <div class="stat-card"><div class="stat-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg><span>Irrigation</span></div><strong id="irrigation-type">Drip</strong></div>
+        <div class="stat-card"><div class="stat-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><span>Variety</span></div><strong id="variety">Standard</strong></div>
       </div>
-
-      <!-- Vegetation Health -->
-      <div class="section-header">
-        <div class="section-icon success">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-          </svg>
-        </div>
-        <h2>Vegetation Health</h2>
-      </div>
-
-      <div class="health-card healthy" id="health-card">
-        <div class="health-card-header">
-          <div>
-            <p class="health-card-label">Current NDVI</p>
-            <p class="health-card-value" id="ndvi-value">0.72</p>
-          </div>
-          <div class="health-status-badge healthy" id="health-status-badge">
-            <span id="health-status-text">healthy</span>
-          </div>
-        </div>
-        <p class="health-card-footer" id="last-capture">Last satellite capture: Sat, Jan 4</p>
-      </div>
-
-      <!-- Waiting Card (hidden by default) -->
-      <div class="waiting-card hidden" id="waiting-card">
-        <div class="waiting-icon">🛰️</div>
-        <h3>Monitoring will begin soon</h3>
-        <p>First satellite update expected in 5–7 days</p>
-      </div>
-
-      <!-- NDVI Trend -->
-      <div id="trend-section">
-        <div class="section-header">
-          <div class="section-icon primary">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
-            </svg>
-          </div>
-          <h2>NDVI Trend</h2>
-        </div>
-
-        <div class="trend-card">
-          <div class="trend-chart" id="trend-chart">
-            <!-- Trend bars will be rendered here -->
-          </div>
-        </div>
-      </div>
+      <div class="section-header"><div class="section-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><h2>Vegetation Health</h2></div>
+      <div class="health-card healthy" id="health-card"><div class="health-card-header"><div><p class="health-card-label">Current NDVI</p><p class="health-card-value" id="ndvi-value">0.72</p></div><div class="health-status-badge healthy" id="health-status-badge"><span id="health-status-text">healthy</span></div></div><p class="health-card-footer" id="last-capture">Last satellite capture: Sat, Jan 4</p></div>
+      <div class="waiting-card hidden" id="waiting-card"><div class="waiting-icon">🛰️</div><h3>Monitoring will begin soon</h3><p>First satellite update expected in 5–7 days</p></div>
+      <div id="trend-section"><div class="section-header"><div class="section-icon primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div><h2>NDVI Trend</h2></div><div class="trend-card"><div class="trend-chart" id="trend-chart"></div></div></div>
     </div>
   </div>
 
@@ -2044,7 +2280,7 @@
        REGISTRATION MODAL
        ======================================== -->
   <div class="modal-overlay hidden" id="modal-overlay">
-    <div class="modal" id="register-modal>
+    <div class="modal" id="register-modal">
       <div class="modal-header">
         <div class="modal-header-content">
           <div class="modal-icon">
@@ -2052,107 +2288,25 @@
               <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>
             </svg>
           </div>
-          <div class="modal-title">
-            <h3>Register New Crop</h3>
-            <p id="modal-field-info">Maize Plot A • 2.4 ha</p>
-          </div>
+          <div class="modal-title"><h3>Register New Crop</h3><p id="modal-field-info">Maize Plot A • 2.4 ha</p></div>
         </div>
       </div>
-
       <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label">Crop Type <span class="required">*</span></label>
-          <div class="custom-select" id="crop-select">
-            <div class="select-trigger" id="select-trigger">
-              <span class="select-placeholder" id="select-display">Select a crop...</span>
-              <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m6 9 6 6 6-6"/>
-              </svg>
-            </div>
-            <div class="select-dropdown hidden" id="select-dropdown">
-              <div class="select-search">
-                <div class="form-input-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
-                  </svg>
-                  <input type="text" class="form-input" placeholder="Search crops..." id="crop-search">
-                </div>
-              </div>
-              <div class="select-options" id="crop-options">
-                <!-- Crop options will be rendered here -->
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Planting Date <span class="required">*</span></label>
-          <div class="form-input-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
-            </svg>
-            <input type="date" class="form-input" id="planting-date-input">
-          </div>
-        </div>
-
-        <button class="advanced-toggle" id="advanced-toggle">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m6 9 6 6 6-6"/>
-          </svg>
-          <span id="advanced-toggle-text">Show advanced options</span>
-        </button>
-
+        <div class="form-group"><label class="form-label">Crop Type <span class="required">*</span></label><div class="custom-select" id="crop-select"><div class="select-trigger" id="select-trigger"><span class="select-placeholder" id="select-display">Select a crop...</span><svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div><div class="select-dropdown hidden" id="select-dropdown"><div class="select-search"><div class="form-input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input type="text" class="form-input" placeholder="Search crops..." id="crop-search"></div></div><div class="select-options" id="crop-options"></div></div></div></div>
+        <div class="form-group"><label class="form-label">Planting Date <span class="required">*</span></label><div class="form-input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg><input type="date" class="form-input" id="planting-date-input"></div></div>
+        <button class="advanced-toggle" id="advanced-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg><span id="advanced-toggle-text">Show advanced options</span></button>
         <div class="advanced-content hidden" id="advanced-content">
-          <div class="form-group">
-            <label class="form-label">Variety</label>
-            <input type="text" class="form-input" placeholder="e.g., Golden Harvest 4567" id="variety-input">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Irrigation Type</label>
-            <div class="irrigation-grid">
-              <button class="irrigation-btn" data-irrigation="rainfed">
-                <span class="emoji">🌧️</span>
-                <span>Rainfed</span>
-              </button>
-              <button class="irrigation-btn" data-irrigation="drip">
-                <span class="emoji">💧</span>
-                <span>Drip</span>
-              </button>
-              <button class="irrigation-btn" data-irrigation="sprinkler">
-                <span class="emoji">🌊</span>
-                <span>Sprinkler</span>
-              </button>
-              <button class="irrigation-btn" data-irrigation="flood">
-                <span class="emoji">🌊</span>
-                <span>Flood</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Notes</label>
-            <textarea class="form-input form-textarea" placeholder="Any additional notes about this crop..." id="notes-input"></textarea>
-          </div>
+          <div class="form-group"><label class="form-label">Variety</label><input type="text" class="form-input" placeholder="e.g., Golden Harvest 4567" id="variety-input"></div>
+          <div class="form-group"><label class="form-label">Irrigation Type</label><div class="irrigation-grid"><button class="irrigation-btn" data-irrigation="rainfed"><span class="emoji">🌧️</span><span>Rainfed</span></button><button class="irrigation-btn" data-irrigation="drip"><span class="emoji">💧</span><span>Drip</span></button><button class="irrigation-btn" data-irrigation="sprinkler"><span class="emoji">🌊</span><span>Sprinkler</span></button><button class="irrigation-btn" data-irrigation="flood"><span class="emoji">🌊</span><span>Flood</span></button></div></div>
+          <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input form-textarea" placeholder="Any additional notes about this crop..." id="notes-input"></textarea></div>
         </div>
-
-        <div class="info-box">
-          <span class="emoji">🛰️</span>
-          <p>Satellite monitoring begins automatically ~7 days after the planting date you select.</p>
-        </div>
+        <div class="info-box"><span class="emoji">🛰️</span><p>Satellite monitoring begins automatically ~7 days after the planting date you select.</p></div>
       </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-outline" id="cancel-btn">Cancel</button>
-        <button class="btn btn-primary" id="submit-btn" disabled>Start Monitoring</button>
-      </div>
+      <div class="modal-footer"><button class="btn btn-outline" id="cancel-btn">Cancel</button><button class="btn btn-primary" id="submit-btn" disabled>Start Monitoring</button></div>
     </div>
   </div>
 
-<script>
-    // ========================================
-    // DATA
-    // ========================================
+  <script>
     const CROP_TYPES = [
       { id: 'maize', name: 'Maize', icon: '🌽' },
       { id: 'wheat', name: 'Wheat', icon: '🌾' },
@@ -2170,11 +2324,9 @@
     let selectedCrop = null;
     let selectedIrrigation = '';
 
-    // ========================================
-    // HELPER FUNCTIONS
-    // ========================================
-    
-    // Helper function to get CSRF token
+    // Global storage for the latest analysis result
+    window._lastAnalysisData = null;
+
     function getCookie(name) {
       let cookieValue = null;
       if (document.cookie && document.cookie !== '') {
@@ -2190,136 +2342,68 @@
       return cookieValue;
     }
 
-    // Format area for display
     function formatArea(area) {
-      if (area >= 10000) {
-        return `${(area / 10000).toFixed(2)} ha`;
-      }
+      if (area >= 10000) return `${(area / 10000).toFixed(2)} ha`;
       return `${area.toFixed(2)} ha`;
     }
 
-    // Format date for display
     function formatDate(dateString) {
       const date = new Date(dateString);
-      const options = { year: 'numeric', month: 'short', day: 'numeric' };
-      return date.toLocaleDateString('en-US', options);
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
-    // ========================================
-    // FETCH FIELDS FROM DATABASE
-    // ========================================
-    // ========================================
-    // FETCH FIELDS FROM DATABASE
-    // ========================================
     async function fetchFieldsFromDatabase() {
       try {
         const response = await fetch('/api/myfields/', {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-          },
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
           credentials: 'same-origin'
         });
-
-        if (response.status === 401) {
-          showError('Please log in to view your fields');
-          return [];
-        }
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
+        if (response.status === 401) { showError('Please log in to view your fields'); return []; }
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
-        console.log('Raw API response:', data);
-        
-        // Handle GeoJSON FeatureCollection format
         let fieldsArray = [];
-        
         if (data.type === 'FeatureCollection' && Array.isArray(data.features)) {
           fieldsArray = data.features;
         } else if (Array.isArray(data)) {
           fieldsArray = data;
         } else {
-          console.error('Unexpected API format:', data);
           showError('Unexpected data format from server');
           return [];
         }
-        
-        console.log('Fields array:', fieldsArray);
-        
-        // Transform GeoJSON features to our fields format
-        fields = fieldsArray.map(feature => {
-          // In GeoJSON format:
-          // - id is at feature level
-          // - other properties are in feature.properties
-          const fieldData = {
-            id: feature.id,  // ← This is the key fix!
-            name: feature.properties.name || 'Unnamed Field',
-            area: feature.properties.area || 0,
-            coordinates: feature.geometry?.coordinates?.[0] || [],
-            crop: null,
-            createdAt: feature.properties.created_at || new Date().toISOString(),
-            owner: feature.properties.owner
-          };
-          
-          console.log('Processed field:', fieldData.name, 'ID:', fieldData.id);
-          
-          return fieldData;
-        });
-
-        console.log('Transformed fields:', fields);
-        
-        // Validate fields have IDs
-        const missingIds = fields.filter(f => !f.id);
-        if (missingIds.length > 0) {
-          console.error('Fields missing IDs:', missingIds);
-          showError('Some fields are missing IDs');
-        }
-        
+        fields = fieldsArray.map(feature => ({
+          id: feature.id,
+          name: feature.properties.name || 'Unnamed Field',
+          area: feature.properties.area || 0,
+          coordinates: feature.geometry?.coordinates?.[0] || [],
+          crop: null,
+          createdAt: feature.properties.created_at || new Date().toISOString(),
+          owner: feature.properties.owner
+        }));
         renderFields();
         updateStats();
-
         await fetchActiveCrops();
-        
         return fields;
       } catch (error) {
-        console.error(' Failed to fetch fields:', error);
         showError('Failed to load fields: ' + error.message);
         return [];
       }
     }
-    // ========================================
-    // FETCH ACTIVE CROPS FOR FIELDS
-    // ========================================
+
     async function fetchActiveCrops() {
       try {
         const response = await fetch('/api/get-active-crops/', {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-          },
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
           credentials: 'same-origin'
         });
-
-        if (!response.ok) {
-          console.warn('Failed to fetch active crops');
-          return;
-        }
-
+        if (!response.ok) return;
         const data = await response.json();
-        console.log('✅ Active crops fetched:', data);
-
-        // Match crops to fields
         if (data.crops && Array.isArray(data.crops)) {
           data.crops.forEach(cropData => {
             const field = fields.find(f => f.id === cropData.field_id);
             if (field) {
-              // Find matching crop type from CROP_TYPES
               const cropType = CROP_TYPES.find(c => c.name.toLowerCase() === cropData.crop_name.toLowerCase());
-              
               field.crop = {
                 type: cropType || { id: cropData.crop_name.toLowerCase(), name: cropData.crop_name, icon: '🌱' },
                 plantingDate: cropData.planting_date,
@@ -2332,707 +2416,469 @@
               };
             }
           });
-
-          // Re-render fields with crop data
           renderFields();
           updateStats();
         }
       } catch (error) {
-        console.error('❌ Failed to fetch active crops:', error);
+        console.error('Failed to fetch active crops:', error);
       }
     }
-    // ========================================
-    // RENDER FIELDS TO UI
-    // ========================================
+
     function renderFields() {
       const fieldList = document.getElementById('field-list');
       const fieldListHeader = document.querySelector('.field-list-header');
-      
-      if (!fieldList) {
-        console.error('Field list container not found');
-        return;
-      }
-
-      // Update header
-      if (fieldListHeader) {
-        fieldListHeader.textContent = `${fields.length} field${fields.length !== 1 ? 's' : ''}`;
-      }
-
-      // Clear existing fields
+      if (fieldListHeader) fieldListHeader.textContent = `${fields.length} field${fields.length !== 1 ? 's' : ''}`;
       fieldList.innerHTML = '';
-
       if (fields.length === 0) {
-        fieldList.innerHTML = `
-          <div class="waiting-card">
-            <div class="waiting-icon">📍</div>
-            <h3>No fields yet</h3>
-            <p>Add your first field to start monitoring</p>
-          </div>
-        `;
+        fieldList.innerHTML = `<div class="waiting-card"><div class="waiting-icon">📍</div><h3>No fields yet</h3><p>Add your first field to start monitoring</p></div>`;
         return;
       }
-
-      // Render each field
-      fields.forEach(field => {
-        const fieldCard = createFieldCard(field);
-        fieldList.appendChild(fieldCard);
-      });
+      fields.forEach(field => { const card = createFieldCard(field); fieldList.appendChild(card); });
     }
 
-    // ========================================
-    // CREATE FIELD CARD ELEMENT
-    // ========================================
-    // ========================================
-    // CREATE FIELD CARD ELEMENT
-    // ========================================
     function createFieldCard(field) {
       const card = document.createElement('div');
       card.className = 'field-card';
-      if (selectedFieldId === field.id) {
-        card.classList.add('selected');
-      }
-
-      // Create crop section HTML
-      let cropHTML = '';
-      let buttonHTML = '';
-      
+      if (selectedFieldId === field.id) card.classList.add('selected');
+      let cropHTML = '', buttonHTML = '';
       if (field.crop) {
         const cropIcon = CROP_TYPES.find(c => c.id === field.crop.type.id)?.icon || '🌱';
-        const daysSincePlanting = Math.floor(
-          (Date.now() - new Date(field.crop.plantingDate).getTime()) / (1000 * 60 * 60 * 24)
-        );
-        
-        cropHTML = `
-          <div class="crop-detail">
-            <div class="crop-icon">${cropIcon}</div>
-            <div class="crop-info">
-              <strong>${field.crop.type.name}</strong>
-              <span>Day ${daysSincePlanting} • ${field.crop.variety || 'Standard'}</span>
-            </div>
-            ${field.crop.status === 'active' ? `
-              <span class="badge badge-success">
-                <span class="badge-dot"></span>
-                Active
-              </span>
-            ` : ''}
-          </div>
-        `;
-        
-        // Two buttons for active crops
-        buttonHTML = `
-          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
-            <button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="viewCropDetails(${field.id})">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              View Crop
-            </button>
-            <button class="btn btn-outline btn-sm" style="flex: 1;" onclick="openRegisterModal(${field.id})">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-              </svg>
-              Update
-            </button>
-          </div>
-        `;
+        const daysSincePlanting = Math.floor((Date.now() - new Date(field.crop.plantingDate).getTime()) / (1000 * 60 * 60 * 24));
+        cropHTML = `<div class="crop-detail"><div class="crop-icon">${cropIcon}</div><div class="crop-info"><strong>${field.crop.type.name}</strong><span>Day ${daysSincePlanting} • ${field.crop.variety || 'Standard'}</span></div>${field.crop.status === 'active' ? '<span class="badge badge-success"><span class="badge-dot"></span>Active</span>' : ''}</div>`;
+        buttonHTML = `<div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;"><button class="btn btn-secondary btn-sm" style="flex: 1;" onclick="viewCropDetails(${field.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>View Crop</button><button class="btn btn-outline btn-sm" style="flex: 1;" onclick="openRegisterModal(${field.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Update</button></div>`;
       } else {
-        cropHTML = `
-          <div style="padding: 0.75rem; background: hsl(var(--muted) / 0.3); border-radius: 8px; margin-bottom: 1rem; text-align: center;">
-            <span style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">No active crop</span>
-          </div>
-        `;
-        
-        // Single button for no crop
-        buttonHTML = `
-          <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="openRegisterModal(${field.id})">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 12h14"/><path d="M12 5v14"/>
-            </svg>
-            Register Crop
-          </button>
-        `;
+        cropHTML = `<div style="padding: 0.75rem; background: hsl(var(--muted) / 0.3); border-radius: 8px; margin-bottom: 1rem; text-align: center;"><span style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">No active crop</span></div>`;
+        buttonHTML = `<button class="btn btn-primary btn-sm" style="width: 100%;" onclick="openRegisterModal(${field.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Register Crop</button>`;
       }
-
-      card.innerHTML = `
-        <div class="field-card-header">
-          <div class="field-card-info">
-            <h3>${field.name}</h3>
-            <p>${formatArea(field.area)}</p>
-          </div>
-        </div>
-        ${cropHTML}
-        ${buttonHTML}
-      `;
-
-      // Add click handler for field selection
-      card.addEventListener('click', (e) => {
-        if (!e.target.closest('button')) {
-          selectField(field.id);
-        }
-      });
-
+      card.innerHTML = `<div class="field-card-header"><div class="field-card-info"><h3>${field.name}</h3><p>${formatArea(field.area)}</p></div></div>${cropHTML}${buttonHTML}`;
+      card.addEventListener('click', (e) => { if (!e.target.closest('button')) selectField(field.id); });
       return card;
     }
 
-    // ========================================
-    // UPDATE STATS
-    // ========================================
     function updateStats() {
-      const totalFields = fields.length;
-      const totalArea = fields.reduce((sum, field) => sum + field.area, 0);
-      const activeCrops = fields.filter(field => field.crop && field.crop.status === 'active').length;
-
-      document.getElementById('total-fields').textContent = totalFields;
-      document.getElementById('total-area').textContent = formatArea(totalArea);
-      document.getElementById('active-crops').textContent = activeCrops;
+      document.getElementById('total-fields').textContent = fields.length;
+      document.getElementById('total-area').textContent = formatArea(fields.reduce((s, f) => s + f.area, 0));
+      document.getElementById('active-crops').textContent = fields.filter(f => f.crop && f.crop.status === 'active').length;
     }
 
-    // ========================================
-    // SELECT FIELD
-    // ========================================
-    function selectField(fieldId) {
-      selectedFieldId = fieldId;
-      renderFields();
-      
-      // Update map or details view if needed
-      const selectedField = fields.find(f => f.id === fieldId);
-      console.log('Selected field:', selectedField);
-    }
+    function selectField(fieldId) { selectedFieldId = fieldId; renderFields(); }
 
-    // ========================================
-    // OPEN REGISTER MODAL
-    // ========================================
-    // ========================================
-    // OPEN REGISTER MODAL
-    // ========================================
     function openRegisterModal(fieldId) {
       const field = fields.find(f => f.id === fieldId);
       if (!field) return;
-
       currentFieldForRegistration = field;
-      
-      // Update modal info
       updateModalFieldInfo(field);
-      
-      // Reset form
-      selectedCrop = null;
-      selectedIrrigation = '';
-      const selectDisplay = document.getElementById('select-display');
-      if (selectDisplay) {
-        selectDisplay.textContent = 'Select a crop...';
-        selectDisplay.classList.add('select-placeholder');
-      }
-      
-      const plantingDateInput = document.getElementById('planting-date-input');
-      if (plantingDateInput) plantingDateInput.value = '';
-      
-      const varietyInput = document.getElementById('variety-input');
-      if (varietyInput) varietyInput.value = '';
-      
-      const notesInput = document.getElementById('notes-input');
-      if (notesInput) notesInput.value = '';
-      
-      // Clear irrigation selection
-      document.querySelectorAll('.irrigation-btn').forEach(btn => {
-        btn.classList.remove('active');
-      });
-      
-      // Hide advanced section
-      const advancedContent = document.getElementById('advanced-content');
-      if (advancedContent) {
-        advancedContent.classList.add('hidden');
-      }
-      
-      // Open modal
-      const overlay = document.getElementById('modal-overlay');
-      if (overlay) {
-        overlay.classList.remove('hidden');
-      }
-      
-      const modal = document.getElementById('register-modal');
-      if (modal) {
-        modal.classList.remove('hidden');
-      }
-
-      console.log('Opening registration for field:', field);
+      selectedCrop = null; selectedIrrigation = '';
+      document.getElementById('select-display').textContent = 'Select a crop...';
+      document.getElementById('select-display').classList.add('select-placeholder');
+      document.getElementById('planting-date-input').value = '';
+      document.getElementById('variety-input').value = '';
+      document.getElementById('notes-input').value = '';
+      document.querySelectorAll('.irrigation-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('advanced-content').classList.add('hidden');
+      document.getElementById('modal-overlay').classList.remove('hidden');
     }
-    // ========================================
-    // VIEW CROP DETAILS
-    // ========================================
+
     function viewCropDetails(fieldId) {
       const field = fields.find(f => f.id === fieldId);
-      if (!field || !field.crop) {
-        showError('No crop data found for this field');
-        return;
-      }
-
-      // Calculate crop stats
+      if (!field || !field.crop) { showError('No crop data found'); return; }
       const plantingDate = new Date(field.crop.plantingDate);
       const daysSincePlanting = Math.floor((Date.now() - plantingDate.getTime()) / (1000 * 60 * 60 * 24));
       const cropIcon = CROP_TYPES.find(c => c.id === field.crop.type.id)?.icon || '🌱';
-      
-      // Create detailed view modal
       const detailsHTML = `
         <div class="modal-overlay" id="crop-details-overlay" style="display: flex;">
           <div class="modal" style="max-width: 600px;">
-            <div class="modal-header">
-              <div class="modal-header-content">
-                <div class="modal-icon">
-                  <span style="font-size: 1.5rem;">${cropIcon}</span>
-                </div>
-                <div class="modal-title">
-                  <h3>${field.crop.type.name} Details</h3>
-                  <p>${field.name} • ${formatArea(field.area)}</p>
-                </div>
+            <div class="modal-header"><div class="modal-header-content"><div class="modal-icon"><span style="font-size:1.5rem;">${cropIcon}</span></div><div class="modal-title"><h3>${field.crop.type.name} Details</h3><p>${field.name} • ${formatArea(field.area)}</p></div></div><button class="btn btn-icon btn-ghost" onclick="closeCropDetails()" style="margin-left:auto;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+            <div class="modal-body" style="max-height:60vh;overflow-y:auto;">
+              <div style="text-align:center;margin-bottom:1.5rem;"><span class="badge badge-success" style="font-size:0.875rem;padding:0.5rem 1rem;"><span class="badge-dot"></span>Active Crop</span></div>
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;margin-bottom:1.5rem;">
+                <div class="stat-box"><div class="stat-box-icon">📅</div><div class="stat-box-label">Planted</div><div class="stat-box-value">${formatDate(field.crop.plantingDate)}</div></div>
+                <div class="stat-box"><div class="stat-box-icon">⏱️</div><div class="stat-box-label">Days Growing</div><div class="stat-box-value">${daysSincePlanting} days</div></div>
+                ${field.crop.variety ? `<div class="stat-box"><div class="stat-box-icon">🌱</div><div class="stat-box-label">Variety</div><div class="stat-box-value">${field.crop.variety}</div></div>` : ''}
+                ${field.crop.irrigation ? `<div class="stat-box"><div class="stat-box-icon">${getIrrigationIcon(field.crop.irrigation)}</div><div class="stat-box-label">Irrigation</div><div class="stat-box-value">${field.crop.irrigation.charAt(0).toUpperCase()+field.crop.irrigation.slice(1)}</div></div>` : ''}
               </div>
-              <button class="btn btn-icon btn-ghost" onclick="closeCropDetails()" style="margin-left: auto;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-                </svg>
-              </button>
+              <div style="background:hsl(var(--muted)/0.3);padding:1rem;border-radius:8px;margin-bottom:1.5rem;"><h4 style="font-size:0.875rem;font-weight:600;margin-bottom:0.75rem;color:hsl(var(--muted-foreground));">Growth Stage</h4><div class="growth-stage-tracker">${generateGrowthStageTracker(daysSincePlanting)}</div></div>
+              <div><h4 style="font-size:0.875rem;font-weight:600;margin-bottom:0.75rem;color:hsl(var(--muted-foreground));">Timeline</h4><div class="timeline">
+                <div class="timeline-item"><div class="timeline-dot active"></div><div class="timeline-content"><strong>Planted</strong><span>${formatDate(field.crop.plantingDate)}</span></div></div>
+                <div class="timeline-item"><div class="timeline-dot ${daysSincePlanting>=30?'active':''}"></div><div class="timeline-content"><strong>Vegetative Growth</strong><span>${daysSincePlanting>=30?'Completed':`In ${30-daysSincePlanting} days`}</span></div></div>
+                <div class="timeline-item"><div class="timeline-dot ${daysSincePlanting>=60?'active':''}"></div><div class="timeline-content"><strong>Flowering</strong><span>${daysSincePlanting>=60?'Completed':`In ${60-daysSincePlanting} days`}</span></div></div>
+                <div class="timeline-item"><div class="timeline-dot ${daysSincePlanting>=90?'active':''}"></div><div class="timeline-content"><strong>Ready for Harvest</strong><span>${daysSincePlanting>=90?'Ready now!':`In ${90-daysSincePlanting} days`}</span></div></div>
+              </div></div>
             </div>
-
-            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
-              <!-- Status Badge -->
-              <div style="text-align: center; margin-bottom: 1.5rem;">
-                <span class="badge badge-success" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
-                  <span class="badge-dot"></span>
-                  Active Crop
-                </span>
-              </div>
-
-              <!-- Key Stats Grid -->
-              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
-                <div class="stat-box">
-                  <div class="stat-box-icon">📅</div>
-                  <div class="stat-box-label">Planted</div>
-                  <div class="stat-box-value">${formatDate(field.crop.plantingDate)}</div>
-                </div>
-                <div class="stat-box">
-                  <div class="stat-box-icon">⏱️</div>
-                  <div class="stat-box-label">Days Growing</div>
-                  <div class="stat-box-value">${daysSincePlanting} days</div>
-                </div>
-                ${field.crop.variety ? `
-                <div class="stat-box">
-                  <div class="stat-box-icon">🌱</div>
-                  <div class="stat-box-label">Variety</div>
-                  <div class="stat-box-value">${field.crop.variety}</div>
-                </div>
-                ` : ''}
-                ${field.crop.irrigation ? `
-                <div class="stat-box">
-                  <div class="stat-box-icon">${getIrrigationIcon(field.crop.irrigation)}</div>
-                  <div class="stat-box-label">Irrigation</div>
-                  <div class="stat-box-value">${field.crop.irrigation.charAt(0).toUpperCase() + field.crop.irrigation.slice(1)}</div>
-                </div>
-                ` : ''}
-              </div>
-
-              <!-- Growth Stage -->
-              <div style="background: hsl(var(--muted) / 0.3); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                <h4 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem; color: hsl(var(--muted-foreground));">Growth Stage</h4>
-                <div class="growth-stage-tracker">
-                  ${generateGrowthStageTracker(daysSincePlanting)}
-                </div>
-              </div>
-
-              <!-- Activity Timeline -->
-              <div>
-                <h4 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem; color: hsl(var(--muted-foreground));">Timeline</h4>
-                <div class="timeline">
-                  <div class="timeline-item">
-                    <div class="timeline-dot active"></div>
-                    <div class="timeline-content">
-                      <strong>Planted</strong>
-                      <span>${formatDate(field.crop.plantingDate)}</span>
-                    </div>
-                  </div>
-                  <div class="timeline-item">
-                    <div class="timeline-dot ${daysSincePlanting >= 30 ? 'active' : ''}"></div>
-                    <div class="timeline-content">
-                      <strong>Vegetative Growth</strong>
-                      <span>${daysSincePlanting >= 30 ? 'Completed' : `In ${30 - daysSincePlanting} days`}</span>
-                    </div>
-                  </div>
-                  <div class="timeline-item">
-                    <div class="timeline-dot ${daysSincePlanting >= 60 ? 'active' : ''}"></div>
-                    <div class="timeline-content">
-                      <strong>Flowering</strong>
-                      <span>${daysSincePlanting >= 60 ? 'Completed' : `In ${60 - daysSincePlanting} days`}</span>
-                    </div>
-                  </div>
-                  <div class="timeline-item">
-                    <div class="timeline-dot ${daysSincePlanting >= 90 ? 'active' : ''}"></div>
-                    <div class="timeline-content">
-                      <strong>Ready for Harvest</strong>
-                      <span>${daysSincePlanting >= 90 ? 'Ready now!' : `In ${90 - daysSincePlanting} days`}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="modal-footer">
-              <button class="btn btn-outline" onclick="closeCropDetails()">Close</button>
-              <button class="btn btn-primary" onclick="analyzeCrop(${fieldId}, ${field.crop.activityId})">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                </svg>
-                Analyze Crop
-              </button>
-            </div>
+            <div class="modal-footer"><button class="btn btn-outline" onclick="closeCropDetails()">Close</button><button class="btn btn-primary" onclick="analyzeCrop(${fieldId},${field.crop.activityId})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Analyze Crop</button></div>
           </div>
-        </div>
-      `;
-
-      // Append to body
+        </div>`;
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = detailsHTML;
       document.body.appendChild(tempDiv.firstElementChild);
-      
-      console.log('Viewing crop details for field:', field);
     }
 
-    // Close crop details modal
-    function closeCropDetails() {
-      const overlay = document.getElementById('crop-details-overlay');
-      if (overlay) {
-        overlay.remove();
-      }
-    }
-
-    // Helper function to get irrigation icon
-    function getIrrigationIcon(type) {
-      const icons = {
-        'rainfed': '🌧️',
-        'drip': '💧',
-        'sprinkler': '🌊',
-        'flood': '🌊'
-      };
-      return icons[type] || '💧';
-    }
-
-    // Generate growth stage tracker
+    function closeCropDetails() { const overlay = document.getElementById('crop-details-overlay'); if (overlay) overlay.remove(); }
+    function getIrrigationIcon(type) { const icons = { rainfed: '🌧️', drip: '💧', sprinkler: '🌊', flood: '🌊' }; return icons[type] || '💧'; }
     function generateGrowthStageTracker(days) {
-      const stages = [
-        { name: 'Germination', start: 0, end: 14 },
-        { name: 'Vegetative', start: 14, end: 45 },
-        { name: 'Flowering', start: 45, end: 75 },
-        { name: 'Maturation', start: 75, end: 90 }
-      ];
-      
+      const stages = [{ name: 'Germination', start: 0, end: 14 },{ name: 'Vegetative', start: 14, end: 45 },{ name: 'Flowering', start: 45, end: 75 },{ name: 'Maturation', start: 75, end: 90 }];
       let currentStage = stages.find(s => days >= s.start && days < s.end) || stages[stages.length - 1];
-      
-      return stages.map((stage, index) => {
-        const isActive = stage.name === currentStage.name;
-        const isCompleted = days > stage.end;
-        
-        return `
-          <div class="stage-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}">
-            <div class="stage-number">${index + 1}</div>
-            <div class="stage-name">${stage.name}</div>
-          </div>
-        `;
-      }).join('');
+      return stages.map((stage, i) => { const isActive = stage.name === currentStage.name; const isCompleted = days > stage.end; return `<div class="stage-item ${isActive?'active':''} ${isCompleted?'completed':''}"><div class="stage-number">${i+1}</div><div class="stage-name">${stage.name}</div></div>`; }).join('');
     }
-    // ========================================
-    // MODAL FUNCTIONALITY
-    // ========================================
 
-    // Populate crop options in dropdown
     function populateCropOptions() {
       const cropOptions = document.getElementById('crop-options');
       if (!cropOptions) return;
-      
-      cropOptions.innerHTML = CROP_TYPES.map(crop => `
-        <div class="select-option" data-crop-id="${crop.id}">
-          <span class="option-icon">${crop.icon}</span>
-          <span class="option-name">${crop.name}</span>
-        </div>
-      `).join('');
-      
-      // Add click handlers to options
-      cropOptions.querySelectorAll('.select-option').forEach(option => {
-        option.addEventListener('click', function() {
-          const cropId = this.dataset.cropId;
-          const crop = CROP_TYPES.find(c => c.id === cropId);
-          selectCrop(crop);
-        });
-      });
+      cropOptions.innerHTML = CROP_TYPES.map(c => `<div class="select-option" data-crop-id="${c.id}"><span class="option-icon">${c.icon}</span><span class="option-name">${c.name}</span></div>`).join('');
+      cropOptions.querySelectorAll('.select-option').forEach(opt => { opt.addEventListener('click', function() { selectCrop(CROP_TYPES.find(c => c.id === this.dataset.cropId)); }); });
     }
 
-    // Select a crop
     function selectCrop(crop) {
       selectedCrop = crop;
-      
-      // Update display
-      const selectDisplay = document.getElementById('select-display');
-      if (selectDisplay) {
-        selectDisplay.innerHTML = `
-          <span style="font-size: 1.25rem; margin-right: 0.5rem;">${crop.icon}</span>
-          <span>${crop.name}</span>
-        `;
-        selectDisplay.classList.remove('select-placeholder');
-      }
-      
-      // Close dropdown
-      const dropdown = document.getElementById('select-dropdown');
-      if (dropdown) {
-        dropdown.classList.add('hidden');
-      }
-      
-      // Enable submit button if date is also selected
+      document.getElementById('select-display').innerHTML = `<span style="font-size:1.25rem;margin-right:0.5rem;">${crop.icon}</span><span>${crop.name}</span>`;
+      document.getElementById('select-display').classList.remove('select-placeholder');
+      document.getElementById('select-dropdown').classList.add('hidden');
       checkFormValidity();
     }
 
-    // Check if form is valid
     function checkFormValidity() {
       const submitBtn = document.getElementById('submit-btn');
       const plantingDate = document.getElementById('planting-date-input')?.value;
-      
-      if (submitBtn) {
-        submitBtn.disabled = !(selectedCrop && plantingDate);
-      }
+      if (submitBtn) submitBtn.disabled = !(selectedCrop && plantingDate);
     }
 
-    // Toggle dropdown
     function setupDropdown() {
       const trigger = document.getElementById('select-trigger');
       const dropdown = document.getElementById('select-dropdown');
-      const overlay = document.getElementById('modal-overlay');
-      
-      if (trigger && dropdown) {
-        trigger.addEventListener('click', function(e) {
-          e.stopPropagation();
-          dropdown.classList.toggle('hidden');
-        });
-      }
-      
-      // Close dropdown when clicking outside
-      if (overlay) {
-        overlay.addEventListener('click', function(e) {
-          if (e.target === overlay) {
-            const modal = document.getElementById('register-modal');
-            if (modal) {
-              modal.classList.add('hidden');
-            }
-            overlay.classList.add('hidden');
-          }
-        });
-      }
+      if (trigger && dropdown) trigger.addEventListener('click', e => { e.stopPropagation(); dropdown.classList.toggle('hidden'); });
+      document.getElementById('modal-overlay')?.addEventListener('click', function(e) { if (e.target === this) { this.classList.add('hidden'); } });
     }
 
-    // Setup crop search
     function setupCropSearch() {
-      const searchInput = document.getElementById('crop-search');
-      if (!searchInput) return;
-      
-      searchInput.addEventListener('input', function(e) {
-        const query = e.target.value.toLowerCase();
-        const options = document.querySelectorAll('.select-option');
-        
-        options.forEach(option => {
-          const name = option.querySelector('.option-name').textContent.toLowerCase();
-          if (name.includes(query)) {
-            option.style.display = 'flex';
-          } else {
-            option.style.display = 'none';
-          }
-        });
+      document.getElementById('crop-search')?.addEventListener('input', function(e) {
+        const q = e.target.value.toLowerCase();
+        document.querySelectorAll('.select-option').forEach(opt => { opt.style.display = opt.querySelector('.option-name').textContent.toLowerCase().includes(q) ? 'flex' : 'none'; });
       });
     }
 
-    // Setup advanced toggle
     function setupAdvancedToggle() {
-      const toggleBtn = document.getElementById('advanced-toggle');
+      const btn = document.getElementById('advanced-toggle');
       const content = document.getElementById('advanced-content');
-      const toggleText = document.getElementById('advanced-toggle-text');
-      
-      if (toggleBtn && content) {
-        toggleBtn.addEventListener('click', function() {
-          content.classList.toggle('hidden');
-          if (content.classList.contains('hidden')) {
-            toggleText.textContent = 'Show advanced options';
-          } else {
-            toggleText.textContent = 'Hide advanced options';
-          }
-        });
-      }
+      const txt = document.getElementById('advanced-toggle-text');
+      if (btn && content) btn.addEventListener('click', () => { content.classList.toggle('hidden'); txt.textContent = content.classList.contains('hidden') ? 'Show advanced options' : 'Hide advanced options'; });
     }
 
-    // Setup irrigation buttons
     function setupIrrigationButtons() {
-      const irrigationBtns = document.querySelectorAll('.irrigation-btn');
-      
-      irrigationBtns.forEach(btn => {
-        btn.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          // Remove active class from all buttons
-          irrigationBtns.forEach(b => b.classList.remove('active'));
-          
-          // Add active class to clicked button
-          this.classList.add('active');
-          
-          // Store selected irrigation type
-          selectedIrrigation = this.dataset.irrigation;
-          
-          console.log('Selected irrigation:', selectedIrrigation);
-        });
-      });
+      document.querySelectorAll('.irrigation-btn').forEach(btn => { btn.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); document.querySelectorAll('.irrigation-btn').forEach(b => b.classList.remove('active')); this.classList.add('active'); selectedIrrigation = this.dataset.irrigation; }); });
     }
 
-    // Setup planting date input
     function setupPlantingDateInput() {
-      const dateInput = document.getElementById('planting-date-input');
-      if (dateInput) {
-        dateInput.addEventListener('change', function() {
-          checkFormValidity();
-        });
-        
-        // Set max date to today
-        const today = new Date().toISOString().split('T')[0];
-        dateInput.setAttribute('max', today);
-      }
+      const inp = document.getElementById('planting-date-input');
+      if (inp) { inp.addEventListener('change', checkFormValidity); inp.setAttribute('max', new Date().toISOString().split('T')[0]); }
     }
 
-    // Update modal field info
     function updateModalFieldInfo(field) {
-      const modalFieldInfo = document.getElementById('modal-field-info');
-      if (modalFieldInfo && field) {
-        modalFieldInfo.textContent = `${field.name} • ${formatArea(field.area)}`;
-      }
+      const el = document.getElementById('modal-field-info');
+      if (el && field) el.textContent = `${field.name} • ${formatArea(field.area)}`;
     }
 
-    // ========================================
-    // CROP REGISTRATION TO DATABASE
-    // ========================================
     async function registerCropToDatabase(fieldId, cropType, plantingDate) {
       const variety = document.getElementById('variety-input')?.value || '';
       const notes = document.getElementById('notes-input')?.value || '';
-      
-      const payload = {
-        field_id: fieldId,
-        crop_name: cropType.name,
-        planting_date: plantingDate.toISOString(),
-        variety: variety,
-        irrigation_type: selectedIrrigation,
-        notes: notes
-      };
-      
       try {
-        const response = await fetch('/api/register-crop/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-          },
-          body: JSON.stringify(payload)
-        });
-        
-        const result = await response.json();
-        
+        const res = await fetch('/api/register-crop/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ field_id: fieldId, crop_name: cropType.name, planting_date: plantingDate.toISOString(), variety, irrigation_type: selectedIrrigation, notes }) });
+        const result = await res.json();
         if (result.status === 'success') {
-          console.log('Crop registered in database:', result);
-          
-          // Update local field data
           const field = fields.find(f => f.id === fieldId);
-          if (field) {
-            field.crop = {
-              type: cropType,
-              plantingDate: plantingDate,
-              variety: variety,
-              irrigation: selectedIrrigation,
-              status: 'active',
-              ndviData: []
-            };
-          }
-          
-          // Show success message
+          if (field) field.crop = { type: cropType, plantingDate, variety, irrigation: selectedIrrigation, status: 'active', ndviData: [] };
           showSuccess('Crop monitoring started successfully!');
-          
           return result;
-        } else {
-          console.error('Registration failed:', result.message);
-          showError('Failed to register crop: ' + result.message);
-          return null;
-        }
-      } catch (error) {
-        console.error('Network error:', error);
-        showError('Failed to connect to server');
-        return null;
-      }
+        } else { showError('Failed: ' + result.message); return null; }
+      } catch (e) { showError('Network error'); return null; }
     }
 
-    // ========================================
-    // UI FEEDBACK FUNCTIONS
-    // ========================================
-    function showSuccess(message) {
+    function showSuccess(msg) {
       const toast = document.createElement('div');
-      toast.style.cssText = `
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        background: hsl(var(--success));
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 1000;
-        display: flex;
-        gap: 0.5rem;
-        align-items: center;
-        animation: slideIn 0.3s ease;
-      `;
-      toast.innerHTML = `
-        <span style="font-size: 1.25rem;">tick</span>
-        <span style="font-weight: 500;">${message}</span>
-      `;
+      toast.style.cssText = 'position:fixed;top:80px;right:20px;background:hsl(var(--success));color:#fff;padding:1rem 1.5rem;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;display:flex;gap:0.5rem;align-items:center;animation:slideIn 0.3s ease;';
+      toast.innerHTML = `<span style="font-size:1.25rem;">✓</span><span style="font-weight:500;">${msg}</span>`;
       document.body.appendChild(toast);
-      
-      setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-      }, 3000);
+      setTimeout(() => { toast.style.animation = 'slideOut 0.3s ease'; setTimeout(() => toast.remove(), 300); }, 3000);
     }
 
-    function showError(message) {
+    function showError(msg) {
       const toast = document.createElement('div');
-      toast.style.cssText = `
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        background: hsl(var(--destructive));
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 1000;
-        display: flex;
-        gap: 0.5rem;
-        align-items: center;
-      `;
-      toast.innerHTML = `
-        <span style="font-size: 1.25rem;">❌</span>
-        <span style="font-weight: 500;">${message}</span>
-      `;
+      toast.style.cssText = 'position:fixed;top:80px;right:20px;background:hsl(var(--destructive));color:#fff;padding:1rem 1.5rem;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;display:flex;gap:0.5rem;align-items:center;';
+      toast.innerHTML = `<span style="font-size:1.25rem;">❌</span><span style="font-weight:500;">${msg}</span>`;
       document.body.appendChild(toast);
-      
       setTimeout(() => toast.remove(), 4000);
     }
 
     // ========================================
-    // SUBMIT BUTTON HANDLER
+    // ANALYSIS FUNCTIONS
     // ========================================
-   
+    const _analysisPolls = {};
+
+    async function analyzeCrop(fieldId, activityId) {
+      if (!activityId) { showError('No activity ID found'); return; }
+      const modalBody = document.querySelector('#crop-details-overlay .modal-body');
+      if (!modalBody) return;
+      const panelId = `analysis-panel-${fieldId}`;
+      const old = document.getElementById(panelId);
+      if (old) old.remove();
+      const panel = document.createElement('div');
+      panel.id = panelId;
+      panel.className = 'analysis-panel';
+      panel.innerHTML = _loadingPanelHTML();
+      modalBody.appendChild(panel);
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      let resultId;
+      try {
+        const res = await fetch('/api/analyze-crop/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }, body: JSON.stringify({ field_id: fieldId, activity_id: activityId }), credentials: 'same-origin' });
+        const data = await res.json();
+        if (data.status === 'error') { _setAnalysisPanelError(panelId, data.message); return; }
+        resultId = data.result_id;
+      } catch (err) { _setAnalysisPanelError(panelId, 'Network error'); return; }
+
+      let attempts = 0;
+      const MAX_ATTEMPTS = 60;
+      _analysisPolls[resultId] = setInterval(async () => {
+        attempts++;
+        if (attempts > MAX_ATTEMPTS) { clearInterval(_analysisPolls[resultId]); _setAnalysisPanelError(panelId, 'Analysis timed out'); return; }
+        try {
+          const res = await fetch(`/api/analysis-status/${resultId}/`, { credentials: 'same-origin' });
+          const data = await res.json();
+          if (data.status === 'done') { clearInterval(_analysisPolls[resultId]); _renderAnalysisPanel(panelId, data); }
+          else if (data.status === 'error') { clearInterval(_analysisPolls[resultId]); _setAnalysisPanelError(panelId, data.message || 'Pipeline error'); }
+        } catch (err) { console.warn('Poll error:', err); }
+      }, 4000);
+    }
+
+    function _loadingPanelHTML() {
+      return `<div class="analysis-panel-header"><h4>🤖 AI Yield Forecaster</h4></div><div style="padding:2.5rem;text-align:center;"><div style="width:30px;height:30px;border:3px solid #ddd;border-top-color:hsl(var(--primary));border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 1rem;"></div><p style="font-weight:600;color:hsl(var(--primary));">Analyzing Satellite & Climate Data...</p></div><style>@keyframes spin{100%{transform:rotate(360deg);}}</style>`;
+    }
+
+    function _setAnalysisPanelError(panelId, message) {
+      const panel = document.getElementById(panelId);
+      if (!panel) return;
+      panel.innerHTML = `<div class="analysis-panel-header"><h4>🛰️ Satellite Analysis</h4></div><div style="padding:1.25rem;text-align:center;color:hsl(var(--destructive));"><div style="font-size:1.5rem;margin-bottom:0.5rem;">❌</div><div style="font-weight:600;margin-bottom:0.25rem;">Analysis failed</div><div style="font-size:0.8125rem;color:hsl(var(--muted-foreground));">${message}</div></div>`;
+    }
+
+    // ── RENDER ANALYSIS PANEL (called when polling returns "done") ──
+    function _renderAnalysisPanel(panelId, data) {
+      window._lastAnalysisData = data;
+      const panel = document.getElementById(panelId);
+      if (!panel) return;
+
+      const yieldVal = data.ml_yield_t_ha || data.regression_model_t_ha || data.simple_model_t_ha || '—';
+      const confidence = data.prediction_confidence_pct || null;
+      const riskLevel = data.risk_level || 'Unknown';
+      const riskClass = riskLevel.toLowerCase().includes('high') ? 'high' : riskLevel.toLowerCase().includes('medium') ? 'medium' : 'low';
+
+      panel.innerHTML = `
+        <div class="analysis-panel-header"><h4>✅ Analysis Complete</h4></div>
+        <div style="padding:1.25rem 1.5rem;text-align:center;">
+          <div class="report-yield-hero" style="margin-bottom:1rem;">
+            <div class="report-yield-main">
+              <div class="report-yield-number">${yieldVal}</div>
+              <div class="report-yield-unit">t/ha estimated</div>
+            </div>
+            ${confidence ? `<div class="report-yield-divider"></div><div class="report-yield-meta"><div class="report-yield-meta-item"><span class="dot good"></span>Confidence: ${confidence}%</div><div class="report-yield-meta-item"><span class="dot ${riskClass==='high'?'warn':'good'}"></span>Risk: ${riskLevel}</div></div>` : ''}
+          </div>
+          <button onclick="openReportModal()" style="background:hsl(var(--primary));color:#fff;padding:12px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.9375rem;width:100%;">
+            📋 View Full AI Agronomic Report
+          </button>
+        </div>`;
+    }
+
+    // ── OPEN THE FULL REPORT MODAL ──
+    function openReportModal() {
+      const d = window._lastAnalysisData;
+      if (!d) { showError('No analysis data available. Please run the analysis first.'); return; }
+
+      // Remove any existing report modal
+      const existing = document.getElementById('aiFullReportOverlay');
+      if (existing) existing.remove();
+
+      const yieldVal = d.ml_yield_t_ha || d.regression_model_t_ha || d.simple_model_t_ha || '—';
+      const confidence = d.prediction_confidence_pct || '—';
+      const riskLevel = d.risk_level || 'Unknown';
+      const riskClass = riskLevel.toLowerCase().includes('high') ? 'high' : riskLevel.toLowerCase().includes('medium') ? 'medium' : 'low';
+      const ndvi = d.ndvi_latest != null ? Number(d.ndvi_latest).toFixed(3) : '—';
+      const evi = d.evi_latest != null ? Number(d.evi_latest).toFixed(3) : '—';
+      const rainfall = d.total_rainfall_mm != null ? d.total_rainfall_mm + ' mm' : '—';
+      const gdd = d.cumulative_gdd != null ? Number(d.cumulative_gdd).toFixed(1) + ' °C·d' : '—';
+      const soilPh = d.soil_ph != null ? d.soil_ph : '—';
+      const soc = d.soc_gkg != null ? d.soc_gkg + ' g/kg' : '—';
+      const indices = d.scientific_indices || {};
+      const stressFlags = d.stress_flags || [];
+      const reportText = d.ai_agronomic_report || '';
+
+      // Parse the AI report into sections
+      const sections = parseAIReport(reportText);
+
+      const overlay = document.createElement('div');
+      overlay.id = 'aiFullReportOverlay';
+      overlay.className = 'report-modal-overlay';
+      overlay.innerHTML = `
+        <div class="report-modal report-printable" id="reportPrintArea">
+          <div class="report-modal-header">
+            <div class="report-modal-header-left">
+              <div class="report-modal-icon">🤖</div>
+              <div class="report-modal-title"><h2>AI Agronomic Report</h2><span>Satellite & Climate Analysis</span></div>
+            </div>
+            <button class="report-modal-close" onclick="document.getElementById('aiFullReportOverlay').remove()">✕</button>
+          </div>
+          <div class="report-modal-body">
+            <!-- Yield Hero -->
+            <div class="report-yield-hero">
+              <div class="report-yield-main">
+                <div class="report-yield-number">${yieldVal}</div>
+                <div class="report-yield-unit">Estimated Yield (t/ha)</div>
+              </div>
+              <div class="report-yield-divider"></div>
+              <div class="report-yield-meta">
+                <div class="report-yield-meta-item"><span class="dot good"></span> Confidence: <strong>${confidence}%</strong></div>
+                <div class="report-yield-meta-item"><span class="dot ${riskClass==='high'?'warn':'good'}"></span> Risk Level: <strong>${riskLevel}</strong></div>
+                ${d.yield_anomaly_pct != null ? `<div class="report-yield-meta-item"><span class="dot ${d.yield_anomaly_pct<0?'warn':'good'}"></span> Anomaly: <strong>${d.yield_anomaly_pct > 0 ? '+' : ''}${d.yield_anomaly_pct}%</strong></div>` : ''}
+              </div>
+            </div>
+
+            <!-- Key Metrics -->
+            <div class="report-metrics-grid">
+              <div class="report-metric-card"><div class="metric-icon">🌿</div><div class="metric-value">${ndvi}</div><div class="metric-label">NDVI</div></div>
+              <div class="report-metric-card"><div class="metric-icon">📊</div><div class="metric-value">${evi}</div><div class="metric-label">EVI</div></div>
+              <div class="report-metric-card"><div class="metric-icon">🌧️</div><div class="metric-value">${rainfall}</div><div class="metric-label">Rainfall</div></div>
+              <div class="report-metric-card"><div class="metric-icon">🌡️</div><div class="metric-value">${gdd}</div><div class="metric-label">GDD</div></div>
+              <div class="report-metric-card"><div class="metric-icon">🧪</div><div class="metric-value">${soilPh}</div><div class="metric-label">Soil pH</div></div>
+              <div class="report-metric-card"><div class="metric-icon">🪴</div><div class="metric-value">${soc}</div><div class="metric-label">Soil Org. Carbon</div></div>
+              ${indices.chi != null ? `<div class="report-metric-card"><div class="metric-icon">💚</div><div class="metric-value">${Number(indices.chi).toFixed(1)}%</div><div class="metric-label">Crop Health</div></div>` : ''}
+              ${indices.vhi != null ? `<div class="report-metric-card"><div class="metric-icon">📈</div><div class="metric-value">${Number(indices.vhi).toFixed(1)}%</div><div class="metric-label">Veg. Health</div></div>` : ''}
+            </div>
+
+            <!-- Risk Badge -->
+            <div style="text-align:center;">
+              <span class="report-risk-badge ${riskClass}">⚠️ Risk Level: ${riskLevel}</span>
+            </div>
+
+            <!-- Stress Flags -->
+            ${stressFlags.length > 0 ? `
+            <div class="report-stress-tags">
+              ${stressFlags.map(f => `<span class="report-stress-tag">⚠️ ${f}</span>`).join('')}
+            </div>` : ''}
+
+            <!-- AI Report Sections -->
+            ${sections.map(s => `
+              <div class="report-section">
+                <h4>${s.icon} ${s.title}</h4>
+                ${s.content}
+              </div>
+            `).join('')}
+          </div>
+          <div class="report-modal-footer">
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('aiFullReportOverlay').remove()">Close</button>
+            <button class="btn btn-pdf btn-sm" onclick="downloadReportPDF()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+              Download PDF
+            </button>
+          </div>
+        </div>`;
+      overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
+    }
+
+    // ── PARSE AI REPORT TEXT INTO SECTIONS ──
+    function parseAIReport(text) {
+      if (!text) return [{ icon: '📝', title: 'Report', content: '<p>No report available.</p>' }];
+      const sections = [];
+      // The report uses **TITLE:** format
+      const lines = text.split('\n');
+      let currentSection = null;
+      let currentContent = [];
+
+      for (let line of lines) {
+        const boldMatch = line.match(/^\*\*(.+?):\*\*\s*(.*)/);
+        if (boldMatch) {
+          if (currentSection) {
+            sections.push({ icon: getSectionIcon(currentSection.title), title: currentSection.title, content: formatSectionContent(currentContent) });
+          }
+          currentSection = { title: boldMatch[1].trim() };
+          currentContent = boldMatch[2] ? [boldMatch[2].trim()] : [];
+        } else if (currentSection) {
+          currentContent.push(line.trim());
+        } else {
+          // Lines before any section header
+          if (!sections.length && line.trim()) {
+            currentSection = { title: 'Summary' };
+            currentContent = [line.trim()];
+          }
+        }
+      }
+      if (currentSection) {
+        sections.push({ icon: getSectionIcon(currentSection.title), title: currentSection.title, content: formatSectionContent(currentContent) });
+      }
+      if (sections.length === 0) {
+        sections.push({ icon: '📝', title: 'Report', content: `<p>${text.replace(/\n/g, '<br>')}</p>` });
+      }
+      return sections;
+    }
+
+    function getSectionIcon(title) {
+      const t = title.toLowerCase();
+      if (t.includes('yield')) return '🌾';
+      if (t.includes('health') || t.includes('crop health')) return '💚';
+      if (t.includes('climate') || t.includes('rainfall')) return '🌧️';
+      if (t.includes('soil')) return '🧪';
+      if (t.includes('risk')) return '⚠️';
+      if (t.includes('recommend')) return '📋';
+      return '📌';
+    }
+
+    function formatSectionContent(contentLines) {
+      const filtered = contentLines.filter(l => l !== '');
+      if (filtered.length === 0) return '<p>—</p>';
+      let html = '';
+      let inList = false;
+      for (let line of filtered) {
+        // Bold markers within lines
+        let processed = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        // Numbered list items
+        const numMatch = processed.match(/^(\d+)\.\s+(.*)/);
+        if (numMatch) {
+          if (!inList) { html += '<ol>'; inList = true; }
+          html += `<li>${numMatch[2]}</li>`;
+          continue;
+        } else if (inList) {
+          html += '</ol>';
+          inList = false;
+        }
+        // Bullet points
+        const bulletMatch = processed.match(/^[-•]\s+(.*)/);
+        if (bulletMatch) {
+          if (!inList) { html += '<ul>'; inList = true; }
+          html += `<li>${bulletMatch[1]}</li>`;
+          continue;
+        } else if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
+        html += `<p>${processed}</p>`;
+      }
+      if (inList) html += '</ol>'; // close any open list
+      return html;
+    }
+
+    // ── DOWNLOAD REPORT AS PDF ──
+    function downloadReportPDF() {
+      const printArea = document.getElementById('reportPrintArea');
+      if (!printArea) { showError('No report to download'); return; }
+      // Add a temporary class to isolate printing
+      printArea.classList.add('report-printable');
+      window.print();
+      // Remove the class after print dialog
+      setTimeout(() => { printArea.classList.remove('report-printable'); }, 500);
+    }
+
+    // ========================================
+    // INITIALIZATION
+    // ========================================
     document.addEventListener('DOMContentLoaded', function() {
-      // Fetch fields when page loads
       fetchFieldsFromDatabase();
-      
-      // Setup modal components
       populateCropOptions();
       setupDropdown();
       setupCropSearch();
@@ -3040,359 +2886,33 @@
       setupIrrigationButtons();
       setupPlantingDateInput();
 
-      // Submit button handler
       const submitBtn = document.getElementById('submit-btn');
       if (submitBtn) {
         submitBtn.addEventListener('click', async function() {
-          if (!currentFieldForRegistration || !selectedCrop) {
-            showError('Please select a field and crop');
-            return;
-          }
-          
+          if (!currentFieldForRegistration || !selectedCrop) { showError('Please select a field and crop'); return; }
           const plantingDateInput = document.getElementById('planting-date-input');
-          if (!plantingDateInput || !plantingDateInput.value) {
-            showError('Please select a planting date');
-            return;
-          }
-          
+          if (!plantingDateInput || !plantingDateInput.value) { showError('Please select a planting date'); return; }
           const plantingDate = new Date(plantingDateInput.value);
-          
-          // Disable button during submission
           submitBtn.disabled = true;
-          submitBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite; width: 16px; height: 16px;">
-              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-            </svg>
-            Registering...
-          `;
-          
-          // ✅ REGISTER TO DATABASE
-          const dbResult = await registerCropToDatabase(
-            currentFieldForRegistration.id, 
-            selectedCrop, 
-            plantingDate
-          );
-          
+          submitBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite;width:16px;height:16px;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Registering...`;
+          const dbResult = await registerCropToDatabase(currentFieldForRegistration.id, selectedCrop, plantingDate);
           if (dbResult) {
-            // Update local field with all details
             const field = fields.find(f => f.id === currentFieldForRegistration.id);
-            if (field) {
-              field.crop = {
-                type: selectedCrop,
-                plantingDate: plantingDate,
-                variety: document.getElementById('variety-input')?.value || '',
-                irrigation: selectedIrrigation,
-                status: 'active',
-                ndviData: [],
-                activityId: dbResult.data?.activity_id,
-                cropId: dbResult.data?.crop_id
-              };
-            }
-            
-            // Close modal
-            const overlay = document.getElementById('modal-overlay');
-            if (overlay) {
-              overlay.classList.add('hidden');
-            }
-            
+            if (field) field.crop = { type: selectedCrop, plantingDate, variety: document.getElementById('variety-input')?.value || '', irrigation: selectedIrrigation, status: 'active', ndviData: [], activityId: dbResult.data?.activity_id, cropId: dbResult.data?.crop_id };
+            document.getElementById('modal-overlay').classList.add('hidden');
             renderFields();
             updateStats();
           }
-          
-          // Re-enable button
           submitBtn.disabled = false;
-          submitBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 12h14"/><path d="M12 5v14"/>
-            </svg>
-            Start Monitoring
-          `;
+          submitBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Start Monitoring`;
         });
       }
 
-      // Cancel button handler
-      const cancelBtn = document.getElementById('cancel-btn');
-      if (cancelBtn) {
-        cancelBtn.addEventListener('click', function() {
-          const overlay = document.getElementById('modal-overlay');
-          if (overlay) {
-            overlay.classList.add('hidden');
-          }
-          currentFieldForRegistration = null;
-          selectedCrop = null;
-          selectedIrrigation = '';
-        });
-      }
-    });
-
-    
-const _analysisPolls = {};
-
-/**
- * Called by the "Analyze Crop" button in viewCropDetails().
- * 1. POSTs to /api/analyze-crop/  → receives result_id
- * 2. Injects a loading panel into the crop-details modal
- * 3. Polls /api/analysis-status/<result_id>/ every 4 s
- * 4. Populates the panel when done
- */
-async function analyzeCrop(fieldId, activityId) {
-  if (!activityId) {
-    showError('No activity ID found — please register the crop first');
-    return;
-  }
-
-  // ── Inject panel placeholder into details modal ──────────
-  const modalBody = document.querySelector('#crop-details-overlay .modal-body');
-  if (!modalBody) return;
-
-  const panelId = `analysis-panel-${fieldId}`;
-
-  // Remove old panel if re-running
-  const old = document.getElementById(panelId);
-  if (old) old.remove();
-
-  const panel = document.createElement('div');
-  panel.id        = panelId;
-  panel.className = 'analysis-panel';
-  panel.innerHTML = _loadingPanelHTML();
-  modalBody.appendChild(panel);
-  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-  // ── POST to kick off pipeline ────────────────────────────
-  let resultId;
-  try {
-    const res  = await fetch('/api/analyze-crop/', {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken':  getCookie('csrftoken'),
-      },
-      body: JSON.stringify({ field_id: fieldId, activity_id: activityId }),
-      credentials: 'same-origin',
-    });
-    const data = await res.json();
-
-    if (data.status === 'error') {
-      _setAnalysisPanelError(panelId, data.message);
-      return;
-    }
-    resultId = data.result_id;
-  } catch (err) {
-    _setAnalysisPanelError(panelId, 'Network error — could not start analysis');
-    return;
-  }
-
-  // ── Poll for result ──────────────────────────────────────
-  let attempts = 0;
-  const MAX_ATTEMPTS = 60;   // 60 × 4 s = 4 min timeout
-
-  _analysisPolls[resultId] = setInterval(async () => {
-    attempts++;
-    if (attempts > MAX_ATTEMPTS) {
-      clearInterval(_analysisPolls[resultId]);
-      _setAnalysisPanelError(panelId, 'Analysis timed out — GEE may be busy. Try again shortly.');
-      return;
-    }
-
-    try {
-      const res  = await fetch(`/api/analysis-status/${resultId}/`, {
-        credentials: 'same-origin',
+      document.getElementById('cancel-btn')?.addEventListener('click', function() {
+        document.getElementById('modal-overlay').classList.add('hidden');
+        currentFieldForRegistration = null; selectedCrop = null; selectedIrrigation = '';
       });
-      const data = await res.json();
-
-      if (data.status === 'done') {
-        clearInterval(_analysisPolls[resultId]);
-        _renderAnalysisPanel(panelId, data);
-      } else if (data.status === 'error') {
-        clearInterval(_analysisPolls[resultId]);
-        _setAnalysisPanelError(panelId, data.message || 'Pipeline error');
-      }
-      // 'queued' / 'running' → keep polling
-    } catch (err) {
-      console.warn('Poll error:', err);
-    }
-  }, 4000);
-}
-
-
-// ── Loading placeholder ───────────────────────────────────────
-function _loadingPanelHTML() {
-  return `
-    <div class="analysis-panel-header">
-      <h4>
-        🛰️ Satellite Analysis
-        <span style="font-size:0.75rem; font-weight:500; color:hsl(var(--muted-foreground));">
-          — running…
-        </span>
-      </h4>
-      <span style="font-size:0.75rem; color:hsl(var(--muted-foreground));">
-        Querying GEE, CHIRPS, ERA5…
-      </span>
-    </div>
-    <div class="analysis-grid">
-      ${['NDVI','NDRE','Rainfall','GDD','Heat Stress','SOC'].map(l => `
-        <div class="analysis-metric">
-          <div class="analysis-metric-label">${l}</div>
-          <div class="shimmer" style="height:1.5rem; margin-top:0.25rem;"></div>
-          <div class="shimmer" style="height:0.75rem; margin-top:0.25rem; width:60%;"></div>
-        </div>
-      `).join('')}
-    </div>`;
-}
-
-
-// ── Render completed results ──────────────────────────────────
-function _renderAnalysisPanel(panelId, d) {
-  const panel = document.getElementById(panelId);
-  if (!panel) return;
-
-  const ndvi        = d.ndvi_latest;
-  const ndre        = d.ndre_latest;
-  const ndviClass   = ndvi == null ? '' : ndvi >= 0.55 ? 'metric-good' : ndvi >= 0.35 ? 'metric-warn' : 'metric-bad';
-  const ndreClass   = ndre == null ? '' : ndre >= 0.30 ? 'metric-good' : ndre >= 0.18 ? 'metric-warn' : 'metric-bad';
-  const hsFrac      = d.heat_stress_frac || 0;
-  const hsClass     = hsFrac < 0.10 ? 'metric-good' : hsFrac < 0.25 ? 'metric-warn' : 'metric-bad';
-
-  const fmt   = v => v == null ? '—' : v.toFixed(2);
-  const fmtMm = v => v == null ? '—' : `${Math.round(v)} mm`;
-  const fmtGdd= v => v == null ? '—' : `${Math.round(v)} °C·d`;
-
-  // NDVI sparkline
-  const scenes   = d.scenes || [];
-  const sparkHTML = scenes.length > 0
-    ? `<div class="ndvi-bar-track" title="NDVI over time (oldest → newest)">
-        ${scenes.map(s => {
-          const pct   = Math.max(0, Math.min(1, s.ndvi)) * 100;
-          const color = s.ndvi >= 0.55 ? 'hsl(var(--success))' :
-                        s.ndvi >= 0.35 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))';
-          return `<div class="ndvi-bar" style="height:${pct}%; background:${color};"
-                       title="${s.date}: NDVI ${s.ndvi.toFixed(3)}"></div>`;
-        }).join('')}
-      </div>`
-    : '<span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">No scenes yet</span>';
-
-  // Stress flags
-  const flags = d.stress_flags || [];
-  const flagsHTML = flags.length === 0
-    ? `<div class="stress-none">✅ No major stress signals detected</div>`
-    : flags.map(f =>
-        `<div class="stress-flag"><span class="stress-flag-icon">⚠️</span><span>${f}</span></div>`
-      ).join('');
-
-  panel.innerHTML = `
-    <div class="analysis-panel-header">
-      <h4>🛰️ Satellite Analysis
-        <span style="font-size:0.7rem;font-weight:500;color:hsl(var(--muted-foreground));">
-          — ${d.scene_count} scene${d.scene_count !== 1 ? 's' : ''}
-          ${d.latest_scene_date ? `· last ${d.latest_scene_date}` : ''}
-        </span>
-      </h4>
-      <span style="font-size:0.7rem;color:hsl(var(--muted-foreground));">
-        ${d.ready_for_ml ? '✓ Ready for yield model' : '⚠ More data needed'}
-      </span>
-    </div>
-
-    <div class="analysis-grid">
-      <div class="analysis-metric ${ndviClass}">
-        <div class="analysis-metric-label">NDVI</div>
-        <div class="analysis-metric-value">${fmt(ndvi)}</div>
-        <div class="analysis-metric-sub">Canopy greenness</div>
-      </div>
-      <div class="analysis-metric ${ndreClass}">
-        <div class="analysis-metric-label">NDRE</div>
-        <div class="analysis-metric-value">${fmt(ndre)}</div>
-        <div class="analysis-metric-sub">Chlorophyll / N</div>
-      </div>
-      <div class="analysis-metric">
-        <div class="analysis-metric-label">EVI</div>
-        <div class="analysis-metric-value">${fmt(d.evi_latest)}</div>
-        <div class="analysis-metric-sub">Canopy structure</div>
-      </div>
-      <div class="analysis-metric">
-        <div class="analysis-metric-label">Rainfall</div>
-        <div class="analysis-metric-value">${fmtMm(d.total_rainfall_mm)}</div>
-        <div class="analysis-metric-sub">Season total (CHIRPS)</div>
-      </div>
-      <div class="analysis-metric">
-        <div class="analysis-metric-label">GDD</div>
-        <div class="analysis-metric-value">${fmtGdd(d.cumulative_gdd)}</div>
-        <div class="analysis-metric-sub">Thermal time (ERA5)</div>
-      </div>
-      <div class="analysis-metric ${hsClass}">
-        <div class="analysis-metric-label">Heat Stress</div>
-        <div class="analysis-metric-value">${Math.round(hsFrac * 100)}%</div>
-        <div class="analysis-metric-sub">Days above threshold</div>
-      </div>
-      <div class="analysis-metric">
-        <div class="analysis-metric-label">Soil OC</div>
-        <div class="analysis-metric-value">${d.soc_gkg != null ? d.soc_gkg.toFixed(1) + ' g/kg' : '—'}</div>
-        <div class="analysis-metric-sub">Organic carbon</div>
-      </div>
-      <div class="analysis-metric">
-        <div class="analysis-metric-label">Soil pH</div>
-        <div class="analysis-metric-value">${d.soil_ph != null ? d.soil_ph.toFixed(1) : '—'}</div>
-        <div class="analysis-metric-sub">SoilGrids 250 m</div>
-      </div>
-      <div class="analysis-metric">
-        <div class="analysis-metric-label">Temp (recent)</div>
-        <div class="analysis-metric-value">${d.recent_tmax_c != null ? d.recent_tmax_c + '°C' : '—'}</div>
-        <div class="analysis-metric-sub">7-day max · ERA5</div>
-      </div>
-    </div>
-
-    <div class="ndvi-sparkline-wrap">
-      <div class="ndvi-sparkline-label">NDVI trend (${scenes.length} scenes)</div>
-      ${sparkHTML}
-    </div>
-
-    <div style="padding: 0 1.25rem 0.5rem;">
-      <div style="font-size:0.75rem;font-weight:600;color:hsl(var(--muted-foreground));margin-bottom:0.5rem;">
-        AGRONOMIC FLAGS
-      </div>
-      <div class="stress-flag-list" style="padding:0;">
-        ${flagsHTML}
-      </div>
-    </div>
-
-    <div style="padding: 0.75rem 1.25rem 1rem; border-top: 1px solid hsl(var(--border)); margin-top: 0.75rem;">
-      <button class="btn btn-primary btn-sm" style="width:100%;"
-              onclick="requestYieldForecast(${d.result_id})"
-              ${d.ready_for_ml ? '' : 'disabled title="Need at least 2 clear satellite scenes"'}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
-          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-        </svg>
-        ${d.ready_for_ml ? 'Run Yield Forecast →' : 'Yield Forecast (needs more data)'}
-      </button>
-    </div>
-  `;
-}
-
-
-// ── Error state ───────────────────────────────────────────────
-function _setAnalysisPanelError(panelId, message) {
-  const panel = document.getElementById(panelId);
-  if (!panel) return;
-  panel.innerHTML = `
-    <div class="analysis-panel-header">
-      <h4>🛰️ Satellite Analysis</h4>
-    </div>
-    <div style="padding:1.25rem; text-align:center; color:hsl(var(--destructive));">
-      <div style="font-size:1.5rem; margin-bottom:0.5rem;">❌</div>
-      <div style="font-weight:600; margin-bottom:0.25rem;">Analysis failed</div>
-      <div style="font-size:0.8125rem; color:hsl(var(--muted-foreground));">${message}</div>
-    </div>
-  `;
-}
-
-
-// ── Hook for Pipeline 3 (ML yield model — add later) ─────────
-function requestYieldForecast(resultId) {
-  // Pipeline 3 entry point — POST /api/yield-forecast/ with result_id
-  // Implemented in the next pipeline phase
-  showSuccess('Yield forecast queued (Pipeline 3 — coming soon)');
-  console.log('[Pipeline 3 hook] result_id =', resultId);
-}
-    
-  </script>  
+    });
+  </script>
 </body>
 </html>
