@@ -17,6 +17,7 @@ import requests
 import stripe
 
 # Django Core
+from django.apps import apps
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import (
@@ -2126,14 +2127,35 @@ REQUIREMENTS:
 
 def _app_label() -> str:
     """
-    Read Django app label from env so the views work regardless of app name.
-    Default: 'fields'  — set DJANGO_APP_LABEL in your environment.
+    Prefer the configured environment label when it matches an installed app,
+    but fall back to the real app label used by this project.
     """
-    return os.environ.get('DJANGO_APP_LABEL', 'base')
- 
- 
+    configured = os.environ.get('DJANGO_APP_LABEL')
+    candidates = []
+    if configured:
+        candidates.append(configured)
+    candidates.extend(['base', 'fields'])
+
+    for label in candidates:
+        if label and label in apps.app_configs:
+            return label
+
+    return 'base'
+
+
 def _get_model(name: str):
-    return apps.get_model(_app_label(), name)
+    label = _app_label()
+    try:
+        return apps.get_model(label, name)
+    except LookupError:
+        for fallback in ['base', 'fields']:
+            if fallback == label:
+                continue
+            try:
+                return apps.get_model(fallback, name)
+            except LookupError:
+                continue
+        raise
  
  
 def _result_to_frontend(ar) -> Dict[str, Any]:

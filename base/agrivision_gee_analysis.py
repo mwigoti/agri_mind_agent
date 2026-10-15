@@ -1276,11 +1276,21 @@ class Command(BaseCommand):
 
     def _app_label(self) -> str:
         """
-        Read the Django app label from the environment so this command
-        works regardless of what the app is called in INSTALLED_APPS.
-        Default: 'fields'  ← change to your actual app label if different.
+        Prefer the configured environment label when it matches an installed app,
+        but fall back to the real app label used by this project.
         """
-        return os.environ.get('DJANGO_APP_LABEL', 'base')  # ← your app is 'base'
+        configured = os.environ.get('DJANGO_APP_LABEL')
+        candidates = []
+        if configured:
+            candidates.append(configured)
+        candidates.extend(['base', 'fields'])
+
+        from django.apps import apps
+        for label in candidates:
+            if label and label in apps.app_configs:
+                return label
+
+        return 'base'
 
     def _get_activities(self, options):
         """
