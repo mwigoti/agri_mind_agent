@@ -1,3 +1,4 @@
+from __future__ import annotations
 from django.shortcuts import render, redirect
 from django.core.mail import send_mail
 from django.contrib import messages
@@ -5,6 +6,19 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login
 import json
+
+
+import ee
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.core.files.base import ContentFile
+import json
+from datetime import datetime
+import traceback
+
+from .agrivision_gee_analysis import *
+from .report_generator import AgrivisionReportGenerator
 
 from django.shortcuts import render, get_object_or_404, redirect
 
@@ -15,6 +29,32 @@ from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 from django.db.models import Q, Avg, Count, Max, Min
 from django.core.paginator import Paginator
+
+
+
+import json
+import logging
+import os
+import threading
+import traceback
+from datetime import datetime
+from typing import Any, Dict
+
+import numpy as np
+
+from django.apps import apps
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import JsonResponse
+from django.utils import timezone
+from django.views import View
+
+logger = logging.getLogger(__name__)
+
+# ── import pipeline classes from the management command ────────────────────
+# Adjust the import path to wherever you placed agrivision_pipeline.py.
+# If it lives at  yourapp/management/commands/agrivision_pipeline.py  use:
+from .agrivision_gee_analysis import *
+
 
 from datetime import datetime, timedelta
 
@@ -1408,21 +1448,7 @@ def seasons(request):
     return render(request, 'seasons.html')
 
 
-"""
-Agrivision Django Views
-Handles API requests and report generation
-"""
 
-from django.http import JsonResponse, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-from django.core.files.base import ContentFile
-import json
-from datetime import datetime
-import traceback
-
-from .agrivision_gee_analysis import *
-from .report_generator import AgrivisionReportGenerator
 
 
 @csrf_exempt
@@ -2073,3 +2099,547 @@ def _run_synchronous(field_id: int, activity_id: int, result_id: int):
         result.pipeline_status = "error"
         result.error_message   = str(exc)
         result.save(update_fields=["pipeline_status", "error_message"])
+
+
+"""
+agrivision_api_views.py
+=======================
+Two API endpoints consumed by the "Analyze Crop" button in the frontend.
+
+  POST /api/analyze-crop/
+      Body: { "field_id": 5, "activity_id": 12 }
+      → Creates / resets an AnalysisResult row (status = "queued")
+      → Spawns a background thread that runs the full GEE pipeline
+      → Returns: { "status": "queued", "result_id": 42 }
+
+  GET  /api/analysis-status/<result_id>/
+      → Reads AnalysisResult and returns the flat dict the frontend
+        JS function _renderAnalysisPanel() expects.
+
+PLACEMENT:
+    yourapp/agrivision_api_views.py
+
+ADD TO urls.py:
+    from .agrivision_api_views import AnalyzeCropView, AnalysisStatusView
+
+    urlpatterns += [
+        path('api/analyze-crop/',            AnalyzeCropView.as_view(),   name='analyze_crop'),
+        path('api/analysis-status/<int:pk>/', AnalysisStatusView.as_view(), name='analysis_status'),
+    ]
+
+REQUIREMENTS:
+    Same as agrivision_pipeline.py — earthengine-api, numpy, requests, joblib, pandas
+    No Celery needed — uses stdlib threading.
+"""
+
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# HELPERS
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _app_label() -> str:
+    """
+    Read Django app label from env so the views work regardless of app name.
+    Default: 'fields'  — set DJANGO_APP_LABEL in your environment.
+    """
+    return os.environ.get('DJANGO_APP_LABEL', 'base')
+ 
+ 
+def _get_model(name: str):
+    return apps.get_model(_app_label(), name)
+ 
+ 
+def _result_to_frontend(ar) -> Dict[str, Any]:
+    """
+    Flatten an AnalysisResult row into the dict shape expected by
+    _renderAnalysisPanel() in the frontend JS.
+ 
+    AnalysisResult field          → JSON key
+    ─────────────────────────────────────────────────────────────────
+    id                            → result_id
+    pipeline_status               → status
+    error_message                 → message  (only on error)
+    ndvi_latest                   → ndvi_latest
+    ndre_latest                   → ndre_latest
+    scene_count                   → scene_count
+    latest_scene_date             → latest_scene_date
+    total_rainfall_mm             → total_rainfall_mm
+    cumulative_gdd                → cumulative_gdd
+    heat_stress_frac              → heat_stress_frac
+    soc_gkg                       → soc_gkg
+    soil_ph                       → soil_ph
+    vh_latest                     → (inside full_bundle)
+    vv_latest                     → (inside full_bundle)
+    stress_flags                  → stress_flags
+    full_bundle.soil.organic_carbon → (backup for soc_gkg)
+    full_bundle._scenes           → scenes  (list of {date, ndvi})
+    full_bundle._recent_tmax_c    → recent_tmax_c
+    full_bundle._evi_latest       → evi_latest
+    """
+    bundle = ar.full_bundle or {}
+ 
+    def _f(v):
+        """Decimal → float or None."""
+        return float(v) if v is not None else None
+ 
+    # ── NDVI sparkline scenes from full_bundle ─────────────────────────────
+    scenes = bundle.get('_scenes', [])   # list of {"date": "YYYY-MM-DD", "ndvi": 0.72}
+ 
+    # ── ready_for_ml: need at least 2 cloud-free scenes ───────────────────
+    ready_for_ml = (ar.scene_count or 0) >= 2
+ 
+    payload: Dict[str, Any] = {
+        'status':             ar.pipeline_status,
+        'result_id':          ar.pk,
+ 
+        # Sentinel-2
+        'ndvi_latest':        _f(ar.ndvi_latest),
+        'ndre_latest':        _f(ar.ndre_latest),
+        'evi_latest':         bundle.get('_evi_latest'),
+        'scene_count':        ar.scene_count or 0,
+        'latest_scene_date':  ar.latest_scene_date,
+        'scenes':             scenes,
+ 
+        # Climate
+        'total_rainfall_mm':  _f(ar.total_rainfall_mm),
+        'cumulative_gdd':     _f(ar.cumulative_gdd),
+        'heat_stress_frac':   _f(ar.heat_stress_frac),
+        'recent_tmax_c':      bundle.get('_recent_tmax_c'),
+ 
+        # Soil
+        'soc_gkg':            _f(ar.soc_gkg),
+        'soil_ph':            _f(ar.soil_ph),
+ 
+        # Advisory
+        'stress_flags':       ar.stress_flags or [],
+        'ready_for_ml':       ready_for_ml,
+    }
+ 
+    if ar.pipeline_status == 'error' and ar.error_message:
+        payload['message'] = ar.error_message
+ 
+    return payload
+ 
+ 
+# ──────────────────────────────────────────────────────────────────────────────
+# BACKGROUND RUNNER  (executes in a daemon thread)
+# ──────────────────────────────────────────────────────────────────────────────
+ 
+def _run_pipeline_in_background(result_id: int) -> None:
+    """
+    Runs the full AgriVision pipeline for one AnalysisResult record.
+    Called in a daemon thread; writes back to the DB when done.
+    """
+    # Lazy import avoids circular-import issues at module load time
+    import django
+    django.setup() if not apps.ready else None          # safe no-op if already set up
+ 
+    AnalysisResult = _get_model('AnalysisResult')
+ 
+    try:
+        ar = AnalysisResult.objects.select_related(
+            'field', 'field__owner', 'activity', 'activity__crop'
+        ).prefetch_related(
+            'field__growth_stages',
+            'field__weather_data',
+        ).get(pk=result_id)
+    except AnalysisResult.DoesNotExist:
+        logger.error("AnalysisResult #%s not found in background thread", result_id)
+        return
+ 
+    field    = ar.field
+    activity = ar.activity
+ 
+    try:
+        # ── mark running ──────────────────────────────────────────────────
+        ar.pipeline_status = 'running'
+        ar.error_message   = None
+        ar.save(update_fields=['pipeline_status', 'error_message', 'updated_at'])
+ 
+        # ── resolve inputs ────────────────────────────────────────────────
+        coords = polygon_to_coords(field.geometry)   # Field.geometry = PolygonField
+        lons   = [c[0] for c in coords]
+        lats   = [c[1] for c in coords]
+        lat    = float(np.mean(lats))
+        lon    = float(np.mean(lons))
+ 
+        county    = (field.owner.location or 'Unknown').strip()   # CustomUser.location
+        crop_obj  = activity.crop                                  # Crop FK
+        crop_name = (crop_obj.name or 'maize').lower()
+ 
+        # Growth stages — CropGrowthStage rows → fallback to derivation
+        db_stages_qs = (
+            field.growth_stages
+            .filter(crop=crop_obj)
+            .order_by('start_date')
+        )
+        stages = stages_from_growth_stage_qs(db_stages_qs)
+        if len(stages) < 3:
+            stages = derive_growth_stages(
+                activity.date.strftime('%Y-%m-%d'),   # FieldActivity.date
+                crop_name,
+                crop_obj.growing_season_days or None,  # Crop.growing_season_days
+            )
+ 
+        # Soil — FieldSoilData → fallback SoilGrids API
+        preloaded_soil    = soil_context_from_db(field)
+        # Weather — WeatherData rows → fallback OpenWeather API
+        preloaded_weather = weather_from_db(field)
+ 
+        use_gee = os.environ.get('AGRIVISION_DISABLE_GEE', '').lower() not in ('1', 'true', 'yes')
+ 
+        # ── initialise analyzers ──────────────────────────────────────────
+        analyzer = AgrivisionCompleteAnalyzer(
+            openweather_api_key=os.environ.get('OPENWEATHER_API_KEY'),
+            use_gee=use_gee,
+        )
+        ml_pipeline = AgrivisionProductionPipeline(
+            ml_model_path=os.environ.get(
+                'AGRIVISION_ML_MODEL_PATH',
+                'agrivision_ULTIMATE_voting_ensemble.pkl',
+            ),
+            hf_token=os.environ.get('HUGGINGFACE_API_TOKEN', ''),
+            use_gee=use_gee,
+        )
+ 
+        # ── Pipeline 1: 18 scientific indices ────────────────────────────
+        scientific = analyzer.analyze_field(
+            coords=coords,
+            crop_type=crop_name,
+            growth_stages=stages,
+            lat=lat,
+            lon=lon,
+            preloaded_soil=preloaded_soil,
+            preloaded_weather=preloaded_weather,
+        )
+ 
+        # ── Pipeline 2: ML + HuggingFace report ──────────────────────────
+        ml_result = ml_pipeline.run(
+            coords=coords,
+            county=county,
+            growth_stages=stages,
+            soil_context=scientific.get('soil'),
+        )
+ 
+        combined = {**scientific, **ml_result}
+ 
+        # ── derive extra keys the frontend needs ──────────────────────────
+        grain_indices = combined.get('_stage_indices_grain', {})
+        combined['_evi_latest'] = grain_indices.get('EVI')
+ 
+        stage_ndvi_snapshots = combined.get('_stage_ndvi_snapshots', [])
+        combined['_scenes'] = stage_ndvi_snapshots
+ 
+        weather_series = combined.get('_weather_tmax_series', [])
+        combined['_recent_tmax_c'] = (
+            round(float(np.mean(weather_series[-7:])), 1)
+            if len(weather_series) >= 7 else None
+        )
+ 
+        # ── derive stress_flags ───────────────────────────────────────────
+        sci_idx = combined.get('scientific_indices', {})
+        flags   = []
+        if combined.get('risk_level') in ('High', 'Very High'):
+            flags.append(f"Crop health risk: {combined['risk_level']}")
+        if sci_idx.get('wsi', 0) > 50:
+            flags.append('Water stress detected (WSI > 50 %)')
+        if sci_idx.get('vhi', 100) < 40:
+            flags.append('Vegetation health below normal (VHI < 40 %)')
+        if sci_idx.get('csi', 100) < 40:
+            flags.append('Climate suitability below optimal (CSI < 40 %)')
+ 
+        # ── DB-FIRST MERGE — never overwrite a real value with None ───────
+        #
+        # Rule: for every AnalysisResult column, use the new pipeline value
+        # if it is a real (non-None, non-zero-count) result.  If the new run
+        # produced None (e.g. GEE was offline, SoilGrids timed out), keep
+        # whatever is already stored in the row so the frontend always gets
+        # the best known value rather than a blank.
+        #
+        # full_bundle is merged at the key level: new keys win, existing
+        # keys that the new run did not produce are preserved.
+        #
+        # AnalysisResult field      new source              fallback (existing)
+        # ───────────────────────── ──────────────────────  ───────────────────
+        # ndvi_latest               combined['_grain_ndvi'] ar.ndvi_latest
+        # ndvi_auc                  ml_features ndvi_auc_full  ar.ndvi_auc
+        # scene_count               combined['_s2_scene_count'] ar.scene_count
+        # latest_scene_date         combined['_latest_scene_date'] ar.latest_scene_date
+        # vh_latest / vv_latest     sar dict               ar.vh/vv_latest
+        # sar_scene_count           combined['_s1_scene_count'] ar.sar_scene_count
+        # total_rainfall_mm         climate dict           ar.total_rainfall_mm
+        # cumulative_gdd            climate dict           ar.cumulative_gdd
+        # soc_gkg                   soil dict              ar.soc_gkg
+        # soil_ph                   soil dict              ar.soil_ph
+        # stress_flags              derived above          ar.stress_flags (merged)
+        # full_bundle               combined               ar.full_bundle (merged)
+ 
+        def _coal(new_val, existing_val):
+            """Return new_val when it carries real data, else keep existing."""
+            if new_val is None:
+                return existing_val
+            # Treat 0 scene counts as "no new data"
+            if isinstance(new_val, (int, float)) and new_val == 0 and existing_val:
+                return existing_val
+            # Treat empty strings / empty lists as "no new data"
+            if isinstance(new_val, (str, list, dict)) and not new_val and existing_val:
+                return existing_val
+            return new_val
+ 
+        climate  = combined.get('climate', {})
+        soil     = combined.get('soil', {})
+        sar      = combined.get('_sar_raw', {})
+        ml_feats = combined.get('ml_features_used', {})
+ 
+        # Sentinel-2
+        ar.ndvi_latest       = _coal(combined.get('_grain_ndvi'),              ar.ndvi_latest)
+        ar.ndre_latest       = _coal(None,                                     ar.ndre_latest)   # not yet in pipeline
+        ar.ndvi_auc          = _coal(ml_feats.get('ndvi_auc_full'),            ar.ndvi_auc)
+        ar.ndre_peak         = _coal(None,                                     ar.ndre_peak)
+        ar.scene_count       = _coal(combined.get('_s2_scene_count'),          ar.scene_count)
+        ar.latest_scene_date = _coal(combined.get('_latest_scene_date'),       ar.latest_scene_date)
+ 
+        # SAR
+        ar.vh_latest         = _coal(sar.get('VH'),                            ar.vh_latest)
+        ar.vv_latest         = _coal(sar.get('VV'),                            ar.vv_latest)
+        ar.sar_scene_count   = _coal(combined.get('_s1_scene_count'),          ar.sar_scene_count)
+ 
+        # Climate
+        ar.total_rainfall_mm = _coal(climate.get('total_season_rainfall_mm'),  ar.total_rainfall_mm)
+        ar.cumulative_gdd    = _coal(climate.get('gdd'),                       ar.cumulative_gdd)
+        ar.heat_stress_frac  = _coal(None,                                     ar.heat_stress_frac)   # future
+ 
+        # Soil — prefer FieldSoilData (already pre-loaded) else pipeline result
+        # Only update soc_gkg / soil_ph from pipeline if FieldSoilData absent
+        ar.soc_gkg  = _coal(soil.get('organic_carbon'), ar.soc_gkg)
+        ar.soil_ph  = _coal(soil.get('ph'),             ar.soil_ph)
+ 
+        # stress_flags — merge: keep old unique flags + add new ones
+        old_flags   = ar.stress_flags or []
+        merged_flags = list({f for f in (old_flags + flags)})   # deduplicate
+        ar.stress_flags = merged_flags if merged_flags else old_flags
+ 
+        # full_bundle — deep merge: existing keys preserved, new keys win
+        old_bundle   = ar.full_bundle or {}
+        ar.full_bundle = {**old_bundle, **combined}   # new run overwrites matching keys
+ 
+        # status
+        ar.pipeline_status = 'done'
+        ar.error_message   = None
+ 
+        ar.save()
+        logger.info(
+            "AnalysisResult #%s saved — NDVI=%.3f rain=%.0f GDD=%.0f pH=%.1f",
+            result_id,
+            float(ar.ndvi_latest)       if ar.ndvi_latest       else 0,
+            float(ar.total_rainfall_mm) if ar.total_rainfall_mm else 0,
+            float(ar.cumulative_gdd)    if ar.cumulative_gdd    else 0,
+            float(ar.soil_ph)           if ar.soil_ph           else 0,
+        )
+ 
+    except Exception as exc:
+        logger.error(
+            "Pipeline failed for AnalysisResult #%s: %s\n%s",
+            result_id, exc, traceback.format_exc()
+        )
+        try:
+            ar.pipeline_status = 'error'
+            ar.error_message   = str(exc)[:500]
+            ar.save(update_fields=['pipeline_status', 'error_message', 'updated_at'])
+        except Exception:
+            pass
+ 
+ 
+# ──────────────────────────────────────────────────────────────────────────────
+# VIEW 1 — POST /api/analyze-crop/
+# ──────────────────────────────────────────────────────────────────────────────
+ 
+class AnalyzeCropView(LoginRequiredMixin, View):
+    """
+    Triggered by the "Analyze Crop" button.
+ 
+    Request body (JSON):
+        { "field_id": 5, "activity_id": 12 }
+ 
+    Success response:
+        { "status": "queued", "result_id": 42 }
+ 
+    Error response:
+        { "status": "error", "message": "..." }
+ 
+    What it does:
+    1. Validates field ownership (Field.owner == request.user)
+    2. Validates the FieldActivity exists and belongs to that field
+    3. Creates / resets the AnalysisResult row to status='queued'
+    4. Spawns a daemon thread that runs _run_pipeline_in_background(result_id)
+    5. Returns immediately with result_id so the frontend can start polling
+    """
+ 
+    http_method_names = ['post']
+ 
+    def post(self, request, *args, **kwargs):
+        # ── parse body ────────────────────────────────────────────────────
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON body'}, status=400)
+ 
+        field_id    = body.get('field_id')
+        activity_id = body.get('activity_id')
+ 
+        if not field_id or not activity_id:
+            return JsonResponse(
+                {'status': 'error', 'message': 'field_id and activity_id are required'},
+                status=400,
+            )
+ 
+        # ── load models ───────────────────────────────────────────────────
+        Field         = _get_model('Field')
+        FieldActivity = _get_model('FieldActivity')
+        AnalysisResult = _get_model('AnalysisResult')
+ 
+        # ── validate field ownership ──────────────────────────────────────
+        # Field.owner is a FK to CustomUser
+        try:
+            field = Field.objects.get(
+                pk=field_id,
+                owner=request.user,         # ← Field.owner = ForeignKey(CustomUser)
+            )
+        except Field.DoesNotExist:
+            return JsonResponse(
+                {'status': 'error', 'message': 'Field not found or access denied'},
+                status=404,
+            )
+ 
+        # ── validate activity ─────────────────────────────────────────────
+        # FieldActivity.field FK, activity_type='planting', crop must be set
+        try:
+            activity = FieldActivity.objects.select_related('crop').get(
+                pk=activity_id,
+                field=field,                 # ← FieldActivity.field FK
+                activity_type='planting',    # ← FieldActivity.ACTIVITY_TYPES
+                crop__isnull=False,          # ← Crop FK must exist
+            )
+        except FieldActivity.DoesNotExist:
+            return JsonResponse(
+                {
+                    'status':  'error',
+                    'message': (
+                        'No planting activity found for this field. '
+                        'Register a crop first.'
+                    ),
+                },
+                status=404,
+            )
+ 
+        # ── prevent duplicate simultaneous runs ───────────────────────────
+        existing = AnalysisResult.objects.filter(
+            field=field,
+            activity=activity,
+            pipeline_status='running',       # ← AnalysisResult.pipeline_status
+        ).first()
+        if existing:
+            return JsonResponse(
+                {
+                    'status':    'running',
+                    'result_id': existing.pk,
+                    'message':   'Analysis already running for this activity',
+                }
+            )
+ 
+        # ── create / reset AnalysisResult ─────────────────────────────────
+        # unique_together = ['field', 'activity']
+        ar, _ = AnalysisResult.objects.update_or_create(
+            field=field,                     # ← AnalysisResult.field FK
+            activity=activity,               # ← AnalysisResult.activity FK
+            defaults={
+                'pipeline_status': 'queued', # ← AnalysisResult.pipeline_status
+                'error_message':   None,     # ← AnalysisResult.error_message
+                'full_bundle':     {},       # ← AnalysisResult.full_bundle (JSONField)
+                'stress_flags':    [],       # ← AnalysisResult.stress_flags (JSONField)
+                'scene_count':     0,        # ← AnalysisResult.scene_count
+            },
+        )
+ 
+        # ── spawn background thread ───────────────────────────────────────
+        t = threading.Thread(
+            target=_run_pipeline_in_background,
+            args=(ar.pk,),
+            daemon=True,
+            name=f'agrivision-pipeline-{ar.pk}',
+        )
+        t.start()
+        logger.info(
+            "Spawned pipeline thread for AnalysisResult #%s "
+            "(field=%s, activity=%s, crop=%s)",
+            ar.pk, field.pk, activity.pk, activity.crop.name,
+        )
+ 
+        return JsonResponse({'status': 'queued', 'result_id': ar.pk})
+ 
+ 
+# ──────────────────────────────────────────────────────────────────────────────
+# VIEW 2 — GET /api/analysis-status/<pk>/
+# ──────────────────────────────────────────────────────────────────────────────
+ 
+class AnalysisStatusView(LoginRequiredMixin, View):
+    """
+    Polled every 4 seconds by the frontend JS until status = 'done' | 'error'.
+ 
+    URL parameter:
+        pk  — AnalysisResult primary key (returned by AnalyzeCropView)
+ 
+    Response shape (matches _renderAnalysisPanel JS function):
+    {
+        "status":             "done" | "running" | "queued" | "error",
+        "result_id":          42,
+        "ndvi_latest":        0.72,
+        "ndre_latest":        null,
+        "evi_latest":         0.55,
+        "scene_count":        8,
+        "latest_scene_date":  "2024-06-15",
+        "scenes":             [{"date": "2024-06-15", "ndvi": 0.72}, ...],
+        "total_rainfall_mm":  450.0,
+        "cumulative_gdd":     1200.0,
+        "heat_stress_frac":   0.05,
+        "recent_tmax_c":      28.4,
+        "soc_gkg":            22.5,
+        "soil_ph":            6.2,
+        "stress_flags":       ["Water stress detected (WSI > 50 %)"],
+        "ready_for_ml":       true
+    }
+    """
+ 
+    http_method_names = ['get']
+ 
+    def get(self, request, pk: int, *args, **kwargs):
+        AnalysisResult = _get_model('AnalysisResult')
+ 
+        try:
+            ar = AnalysisResult.objects.select_related(
+                'field',
+                'field__owner',
+            ).get(
+                pk=pk,
+                field__owner=request.user,   # ← ownership check: Field.owner = CustomUser FK
+            )
+        except AnalysisResult.DoesNotExist:
+            return JsonResponse(
+                {'status': 'error', 'message': 'Result not found or access denied'},
+                status=404,
+            )
+ 
+        # While queued / running, return a lightweight response so the
+        # frontend doesn't try to render half-filled data.
+        if ar.pipeline_status in ('queued', 'running'):
+            return JsonResponse({
+                'status':    ar.pipeline_status,
+                'result_id': ar.pk,
+            })
+ 
+        # Done or error — return full payload
+        payload = _result_to_frontend(ar)
+        return JsonResponse(payload)
+ 
+

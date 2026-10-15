@@ -3,6 +3,19 @@ from .views import *
 from .views import SaveFieldView, DeleteFieldView, VRAAnalysisView, USSDView
 
 urlpatterns = [
+        path(
+        'api/analyze-crop/',
+        AnalyzeCropView.as_view(),
+        name='analyze_crop',
+    ),
+ 
+    # Polled every 4 s by the frontend JS  →  GET  returns pipeline status + metrics
+    path(
+        'api/analysis-status/<int:pk>/',
+        AnalysisStatusView.as_view(),
+        name='analysis_status',
+    ),
+
     # Basic pages
     path('', home, name='home'),
     path('services/', services, name='services'),
