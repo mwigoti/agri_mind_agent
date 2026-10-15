@@ -1,77 +1,2013 @@
+
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
-    <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css"
-    />
-    <title>AgriVision-Home</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AgriVision - Transforming agriculture with innovative technology and data-driven solutions. Crop monitoring, soil analysis, weather forecasting, and irrigation management.">
+    <title>AgriVision - Where Agriculture Meets Innovation</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    
+    <style>
+        /* ========================================
+           CSS VARIABLES / DESIGN SYSTEM
+        ======================================== */
+        :root {
+            /* Colors */
+            --color-primary: #1a472a;
+            --color-primary-light: #2d6a4f;
+            --color-primary-dark: #0d2818;
+            --color-secondary: #40916c;
+            --color-accent: #74c69d;
+            --color-accent-light: #b7e4c7;
+            
+            --color-slate-dark: #1e293b;
+            --color-slate: #334155;
+            --color-slate-light: #64748b;
+            
+            --color-surface: #ffffff;
+            --color-surface-alt: #f8fafc;
+            --color-surface-dark: #0f172a;
+            
+            --color-text-primary: #1e293b;
+            --color-text-secondary: #64748b;
+            --color-text-light: #f8fafc;
+            --color-text-muted: #94a3b8;
+            
+            --color-border: #e2e8f0;
+            --color-border-light: #f1f5f9;
+            
+            /* Gradients */
+            --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+            --gradient-hero: linear-gradient(180deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.9) 100%);
+            --gradient-card: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 100%);
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            --shadow-glow: 0 0 40px rgba(64, 145, 108, 0.3);
+            
+            /* Typography */
+            --font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            
+            /* Spacing */
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --spacing-2xl: 3rem;
+            --spacing-3xl: 4rem;
+            --spacing-4xl: 6rem;
+            
+            /* Container */
+            --container-max: 1200px;
+            --container-padding: 1.5rem;
+            
+            /* Transitions */
+            --transition-fast: 150ms ease;
+            --transition-base: 300ms ease;
+            --transition-slow: 500ms ease;
+            
+            /* Border Radius */
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            --radius-full: 9999px;
+        }
+
+        /* ========================================
+           BASE STYLES
+        ======================================== */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-family);
+            font-size: 1rem;
+            line-height: 1.6;
+            color: var(--color-text-primary);
+            background-color: var(--color-surface);
+            overflow-x: hidden;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+            transition: color var(--transition-fast);
+        }
+
+        ul, ol {
+            list-style: none;
+        }
+
+        button {
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+
+        /* ========================================
+           UTILITY CLASSES
+        ======================================== */
+        .container {
+            max-width: var(--container-max);
+            margin: 0 auto;
+            padding: 0 var(--container-padding);
+        }
+
+        .section {
+            padding: var(--spacing-4xl) 0;
+        }
+
+        .section-alt {
+            background-color: var(--color-surface-alt);
+        }
+
+        .section-dark {
+            background-color: var(--color-surface-dark);
+            color: var(--color-text-light);
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ========================================
+           TYPOGRAPHY
+        ======================================== */
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 600;
+            line-height: 1.2;
+            color: var(--color-text-primary);
+        }
+
+        .section-dark h1, .section-dark h2, .section-dark h3 {
+            color: var(--color-text-light);
+        }
+
+        h1 { font-size: clamp(2.5rem, 5vw, 4rem); }
+        h2 { font-size: clamp(2rem, 4vw, 3rem); }
+        h3 { font-size: clamp(1.5rem, 3vw, 2rem); }
+        h4 { font-size: 1.25rem; }
+
+        .section-title {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .section-subtitle {
+            font-size: 1.125rem;
+            color: var(--color-text-secondary);
+            max-width: 700px;
+            margin: 0 auto var(--spacing-3xl);
+        }
+
+        .section-dark .section-subtitle {
+            color: var(--color-text-muted);
+        }
+
+        .overline {
+            font-size: 0.875rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--color-secondary);
+            margin-bottom: var(--spacing-sm);
+            display: block;
+        }
+
+        /* ========================================
+           BUTTONS
+        ======================================== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            padding: 0.875rem 1.75rem;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: var(--radius-md);
+            transition: all var(--transition-base);
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: var(--color-text-light);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg), var(--shadow-glow);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--color-text-light);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--color-primary);
+            border: 2px solid var(--color-primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--color-primary);
+            color: var(--color-text-light);
+        }
+
+        .btn-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            padding: 0;
+            border-radius: var(--radius-full);
+        }
+
+        /* ========================================
+           HEADER / NAVIGATION
+        ======================================== */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: var(--spacing-lg) 0;
+            transition: all var(--transition-base);
+        }
+
+        .header.scrolled {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            padding: var(--spacing-md) 0;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-text-light);
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .nav-menu {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xl);
+        }
+
+        .nav-link {
+            color: var(--color-text-light);
+            font-weight: 500;
+            opacity: 0.9;
+            position: relative;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--color-accent);
+            transition: width var(--transition-base);
+        }
+
+        .nav-link:hover::after,
+        .nav-link.active::after {
+            width: 100%;
+        }
+
+        .nav-link:hover {
+            opacity: 1;
+        }
+
+        .nav-cta {
+            margin-left: var(--spacing-lg);
+        }
+
+        .mobile-toggle {
+            display: none;
+            color: var(--color-text-light);
+            font-size: 1.5rem;
+            padding: var(--spacing-sm);
+        }
+
+        .mobile-close {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .nav-menu {
+                position: fixed;
+                top: 0;
+                right: -100%;
+                width: 280px;
+                height: 100vh;
+                background: var(--color-surface-dark);
+                flex-direction: column;
+                align-items: flex-start;
+                padding: var(--spacing-4xl) var(--spacing-xl);
+                transition: right var(--transition-base);
+                box-shadow: var(--shadow-xl);
+            }
+
+            .nav-menu.active {
+                right: 0;
+            }
+
+            .nav-cta {
+                margin-left: 0;
+                margin-top: var(--spacing-lg);
+            }
+
+            .mobile-toggle {
+                display: block;
+            }
+
+            .mobile-close {
+                display: block;
+                position: absolute;
+                top: var(--spacing-lg);
+                right: var(--spacing-lg);
+                font-size: 1.5rem;
+                color: var(--color-text-light);
+                background: none;
+                border: none;
+                cursor: pointer;
+            }
+        }
+
+        /* ========================================
+           HERO SECTION
+        ======================================== */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+        }
+
+        .hero-bg img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: var(--gradient-hero);
+        }
+
+        .hero-content {
+            text-align: center;
+            color: var(--color-text-light);
+            max-width: 800px;
+            padding: var(--spacing-4xl) var(--container-padding);
+        }
+
+        .hero-overline {
+            font-size: 1rem;
+            font-weight: 500;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--color-accent);
+            margin-bottom: var(--spacing-lg);
+            display: block;
+        }
+
+        .hero-title {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 700;
+            margin-bottom: var(--spacing-lg);
+            line-height: 1.1;
+            color: var(--color-text-light);
+        }
+
+        .hero-title span {
+            display: block;
+            background: linear-gradient(135deg, var(--color-accent-light) 0%, var(--color-accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-description {
+            font-size: 1.125rem;
+            opacity: 0.9;
+            margin-bottom: var(--spacing-2xl);
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero-scroll {
+            position: absolute;
+            bottom: var(--spacing-2xl);
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--color-text-light);
+            opacity: 0.7;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+            40% { transform: translateX(-50%) translateY(-10px); }
+            60% { transform: translateX(-50%) translateY(-5px); }
+        }
+
+        /* ========================================
+           ABOUT SECTION
+        ======================================== */
+        .about-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-4xl);
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .about-grid {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-2xl);
+            }
+        }
+
+        .about-image {
+            position: relative;
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .about-image::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(26, 71, 42, 0.2) 0%, transparent 50%);
+            z-index: 1;
+        }
+
+        .about-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .about-content {
+            padding: var(--spacing-lg) 0;
+        }
+
+        .about-content p {
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-lg);
+            margin-top: var(--spacing-2xl);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: var(--spacing-lg);
+            background: var(--color-surface-alt);
+            border-radius: var(--radius-lg);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--color-primary);
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ========================================
+           SERVICES SECTION
+        ======================================== */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-xl);
+        }
+
+        .service-card {
+            background: var(--color-surface);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+            transition: all var(--transition-base);
+        }
+
+        .service-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .service-image {
+            height: 200px;
+            overflow: hidden;
+        }
+
+        .service-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform var(--transition-slow);
+        }
+
+        .service-card:hover .service-image img {
+            transform: scale(1.05);
+        }
+
+        .service-content {
+            padding: var(--spacing-xl);
+        }
+
+        .service-icon {
+            width: 50px;
+            height: 50px;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .service-content h3 {
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .service-content p {
+            color: var(--color-text-secondary);
+            font-size: 0.9375rem;
+        }
+
+        /* ========================================
+           RESEARCH SECTION
+        ======================================== */
+        .research-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: var(--spacing-xl);
+        }
+
+        .research-card {
+            background: var(--color-surface);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+            transition: all var(--transition-base);
+        }
+
+        .research-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .research-image {
+            height: 200px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .research-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform var(--transition-slow);
+        }
+
+        .research-card:hover .research-image img {
+            transform: scale(1.05);
+        }
+
+        .research-category {
+            position: absolute;
+            top: var(--spacing-md);
+            left: var(--spacing-md);
+            background: var(--color-primary);
+            color: var(--color-text-light);
+            padding: var(--spacing-xs) var(--spacing-md);
+            border-radius: var(--radius-full);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .research-content {
+            padding: var(--spacing-xl);
+        }
+
+        .research-content h4 {
+            margin-bottom: var(--spacing-sm);
+            line-height: 1.4;
+        }
+
+        .research-description {
+            color: var(--color-text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .research-link {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            color: var(--color-primary);
+            font-weight: 600;
+            font-size: 0.9375rem;
+        }
+
+        .research-link:hover {
+            color: var(--color-secondary);
+        }
+
+        .research-link i {
+            transition: transform var(--transition-fast);
+        }
+
+        .research-link:hover i {
+            transform: translateX(4px);
+        }
+
+        /* ========================================
+           CONTACT SECTION
+        ======================================== */
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: var(--spacing-4xl);
+        }
+
+        @media (max-width: 768px) {
+            .contact-grid {
+                grid-template-columns: 1fr;
+                gap: var(--spacing-2xl);
+            }
+        }
+
+        .contact-info h2 {
+            color: var(--color-text-light);
+        }
+
+        .contact-info p {
+            color: var(--color-text-muted);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .contact-details {
+            margin-top: var(--spacing-2xl);
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .contact-item-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(116, 198, 157, 0.2);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-accent);
+            flex-shrink: 0;
+        }
+
+        .contact-item-text span {
+            display: block;
+            font-size: 0.875rem;
+            color: var(--color-text-muted);
+            margin-bottom: 2px;
+        }
+
+        .contact-item-text a,
+        .contact-item-text p {
+            color: var(--color-text-light);
+            font-weight: 500;
+        }
+
+        .social-links {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-2xl);
+        }
+
+        .social-link {
+            width: 44px;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-text-light);
+            transition: all var(--transition-base);
+        }
+
+        .social-link:hover {
+            background: var(--color-accent);
+            color: var(--color-primary-dark);
+        }
+
+        .contact-form-wrapper {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-2xl);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .contact-form-wrapper h3 {
+            color: var(--color-text-light);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+        }
+
+        @media (max-width: 480px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--color-text-light);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: var(--spacing-md);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: var(--radius-md);
+            color: var(--color-text-light);
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all var(--transition-fast);
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: var(--color-text-muted);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--color-accent);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .form-group textarea {
+            min-height: 140px;
+            resize: vertical;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: var(--spacing-lg);
+            font-size: 1rem;
+        }
+
+        /* ========================================
+           FOOTER
+        ======================================== */
+        .footer {
+            background: var(--color-surface-dark);
+            padding: var(--spacing-2xl) 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: var(--spacing-lg);
+        }
+
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            color: var(--color-text-light);
+            font-weight: 600;
+        }
+
+        .footer-copyright {
+            color: var(--color-text-muted);
+            font-size: 0.875rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: var(--spacing-xl);
+        }
+
+        .footer-links a {
+            color: var(--color-text-muted);
+            font-size: 0.875rem;
+            transition: color var(--transition-fast);
+        }
+
+        .footer-links a:hover {
+            color: var(--color-accent);
+        }
+
+        @media (max-width: 768px) {
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        /* ========================================
+           CTA BANNER
+        ======================================== */
+        .cta-banner {
+            background: var(--gradient-primary);
+            padding: var(--spacing-4xl) 0;
+            text-align: center;
+        }
+
+        .cta-banner h2 {
+            color: var(--color-text-light);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .cta-banner p {
+            color: rgba(255, 255, 255, 0.9);
+            max-width: 600px;
+            margin: 0 auto var(--spacing-xl);
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: var(--spacing-md);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .cta-btn-primary {
+            background: white;
+            color: var(--color-primary);
+        }
+
+        .cta-btn-primary:hover {
+            background: var(--color-accent-light);
+        }
+
+        /* ========================================
+           SUCCESS MESSAGE
+        ======================================== */
+        .form-success {
+            display: none;
+            background: rgba(116, 198, 157, 0.2);
+            border: 1px solid var(--color-accent);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            text-align: center;
+            color: var(--color-accent);
+            margin-top: var(--spacing-lg);
+        }
+
+        .form-success.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ========================================
+           FIELD ANALYSIS MAP SECTION
+        ======================================== */
+        .map-section {
+            padding: var(--spacing-4xl) 0;
+            background: var(--color-surface-alt);
+        }
+
+        .map-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: var(--spacing-xl);
+            margin-top: var(--spacing-2xl);
+        }
+
+        @media (max-width: 1024px) {
+            .map-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .map-wrapper {
+            height: 500px;
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+
+        #fieldMap {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .map-sidebar {
+            background: var(--color-surface);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-xl);
+            box-shadow: var(--shadow-md);
+        }
+
+        .map-sidebar h3 {
+            margin-bottom: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .map-sidebar h3 i {
+            color: var(--color-secondary);
+        }
+
+        .field-stats {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .field-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--spacing-md);
+            background: var(--color-surface-alt);
+            border-radius: var(--radius-md);
+            transition: all var(--transition-fast);
+        }
+
+        .field-stat:hover {
+            background: rgba(64, 145, 108, 0.1);
+        }
+
+        .field-stat-label {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            color: var(--color-text-secondary);
+            font-size: 0.9375rem;
+        }
+
+        .field-stat-label i {
+            color: var(--color-secondary);
+            width: 20px;
+        }
+
+        .field-stat-value {
+            font-weight: 600;
+            color: var(--color-primary);
+        }
+
+        .field-stat-value.good {
+            color: #22c55e;
+        }
+
+        .field-stat-value.warning {
+            color: #f59e0b;
+        }
+
+        .field-stat-value.critical {
+            color: #ef4444;
+        }
+
+        .map-legend {
+            margin-top: var(--spacing-xl);
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid var(--color-border);
+        }
+
+        .map-legend h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-text-secondary);
+        }
+
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-md);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-size: 0.8125rem;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .legend-color.healthy {
+            background: #22c55e;
+        }
+
+        .legend-color.moderate {
+            background: #f59e0b;
+        }
+
+        .legend-color.attention {
+            background: #ef4444;
+        }
+
+        .map-actions {
+            margin-top: var(--spacing-xl);
+        }
+
+        .map-actions .btn {
+            width: 100%;
+        }
+
+        /* Custom Leaflet Popup */
+        .leaflet-popup-content-wrapper {
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .leaflet-popup-content {
+            margin: var(--spacing-md);
+        }
+
+        .popup-title {
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+            color: var(--color-primary);
+        }
+
+        .popup-info {
+            font-size: 0.875rem;
+            color: var(--color-text-secondary);
+        }
+    </style>
 </head>
 <body>
-    <header>
+    <!-- Header -->
+    <header class="header" id="header">
         <div class="container">
-            <div class="navbar">
-                <div class="logo">
-                    <img src="{% static 'images/result.webp' %}" alt="Logo" />
-                </div>
-                <nav>
-                   
-                    <li><a href="/">Home</a></li>
-                    <li><a href="{% url 'research' %}">Research</a></li>
-                    <li><a href="{% url 'services' %}">Services</a></li>
-                    <li><a href="{% url 'contact' %}">Contact Us</a></li>
-                    {% if user.is_authenticated %}
-                    <li><a href="{% url 'logout' %}">Logout</a></li>
-                    {% else %}
-                    <li><a href="{% url 'login' %}">Account</a></li>
-                    {% endif %}
-                </nav>
+            <nav class="nav">
+                <a href="#home" class="logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-leaf"></i>
+                    </div>
+                    AgriVision
+                </a>
                 
-                <div class="btn">
-                    <i class="fa fa-bars menu-btn"></i>
-                </div>
-            </div>
+                <ul class="nav-menu" id="navMenu">
+                    <button class="mobile-close" id="mobileClose">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <li><a href="#home" class="nav-link active">Home</a></li>
+                    <li><a href="#about" class="nav-link">About</a></li>
+                    <li><a href="#services" class="nav-link">Services</a></li>
+                    
+                    <li><a href="#research" class="nav-link">Research</a></li>
+                    <li><a href="#field-map" class="nav-link">Field Map</a></li>
+                    <li><a href="#contact" class="nav-link">Contact</a></li>
+                    <li class="nav-cta">
+                        <a href="{% url 'login' %}" class="btn btn-primary">Get Started</a>
+                    </li>
+                </ul>
+                
+                <button class="mobile-toggle" id="mobileToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </nav>
         </div>
     </header>
-    <section>
-       
-        
 
-        
-        <div class="container">
-            <div class="background-image">
-            <img src="{% static "images/hero.webp" %}" width= "100%" , height="100%", />
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="hero-bg">
+            <img src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=1920&q=80" alt="Agricultural technology monitoring crops from aerial view">
+            <div class="hero-overlay"></div>
+        </div>
+        <div class="hero-content fade-in">
+            <span class="hero-overline">Welcome to AgriVision</span>
+            <h1 class="hero-title">
+                Where Agriculture
+                <span>Meets Innovation</span>
+            </h1>
+            <p class="hero-description">
+                Transforming agriculture with innovative technology and data-driven solutions. 
+                Monitor crop health, detect diseases, and predict yields with precision.
+            </p>
+            <div class="hero-buttons">
+                <a href="#services" class="btn btn-primary">Explore Services</a>
+                <a href="#contact" class="btn btn-secondary">Contact Us</a>
             </div>
-            <div class="content">
-                <h4>AgriVision</h4>
-                <h4>Where Agriculture</h4>
-                <h4>meets innovation.</h4>
-                <p>
+        </div>
+        <a href="#about" class="hero-scroll">
+            <i class="fas fa-chevron-down"></i>
+        </a>
+    </section>
 
-AgriVision is transforming agriculture with innovative technology and data-driven solutions. Our platform uses advanced satellite imagery to monitor crop health, detect diseases, and predict yields, helping farmers make informed decisions and boost productivity.
-
-AgriVision offers tools for crop monitoring, soil analysis, weather forecasting, and irrigation management, all designed to enhance farm efficiency and sustainability. By integrating these insights, we support farmers in optimizing resources and improving overall farm performance.
-
-Our mission extends beyond individual farms; we aim to promote sustainable practices and contribute to global food security. AgriVision empowers farmers with cutting-edge technology to ensure a prosperous and environmentally friendly future for agriculture.
-
-                </p>
-                <a href="{% url 'map' %}">
-                    <button>Analyze Field</button>
-                </a>
-                <div class="social_icons">
-                    <i class="fa fa-brands fa-facebook"></i>
-                    <i class="fa fa-brands fa-twitter"></i>
-                    <i class="fa fa-brands fa-instagram"></i>
-                    <i class="fa fa-brands fa-pinterest"></i>
+    <!-- About Section -->
+    <section class="section" id="about">
+        <div class="container">
+            <div class="about-grid">
+                <div class="about-image fade-in">
+                    <img src="https://images.unsplash.com/photo-1586771107445-d3ca888129ff?w=800&q=80" alt="Drone monitoring agricultural fields with advanced technology">
+                </div>
+                <div class="about-content fade-in">
+                    <span class="overline">About Us</span>
+                    <h2 class="section-title">Empowering Farmers with Technology</h2>
+                    <p>
+                        AgriVision is transforming agriculture with innovative technology and data-driven solutions. 
+                        Our platform uses advanced satellite imagery to monitor crop health, detect diseases, 
+                        and predict yields, helping farmers make informed decisions and boost productivity.
+                    </p>
+                    <p>
+                        We offer comprehensive tools for crop monitoring, soil analysis, weather forecasting, 
+                        and irrigation management, all designed to enhance farm efficiency and sustainability. 
+                        Our mission extends beyond individual farms — we aim to promote sustainable practices 
+                        and contribute to global food security.
+                    </p>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number">1K+</span>
+                            <span class="stat-label">Farmers Served</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">98%</span>
+                            <span class="stat-label">Accuracy Rate</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">30%</span>
+                            <span class="stat-label">Yield Increase</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
-    <script src="{% static 'js/script.js' %}"></script>
+
+    <!-- Services Section -->
+    <section class="section section-alt" id="services">
+        <div class="container">
+            <div class="text-center fade-in">
+                <span class="overline">Our Services</span>
+                <h2 class="section-title">Comprehensive Agricultural Solutions</h2>
+                <p class="section-subtitle">
+                    From crop monitoring to irrigation management, we provide all the tools 
+                    you need to optimize your farm's performance and sustainability.
+                </p>
+            </div>
+            
+            <div class="services-grid">
+                <div class="service-card fade-in">
+                    <div class="service-image">
+                        <img src="https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=600&q=80" alt="Crop monitoring dashboard on tablet">
+                    </div>
+                    <div class="service-content">
+                        <div class="service-icon">
+                            <i class="fas fa-seedling"></i>
+                        </div>
+                        <h3>Crop Monitoring</h3>
+                        <p>
+                            Real-time monitoring of crop health using satellite imagery and AI-powered 
+                            analytics. Detect diseases early and track growth patterns efficiently.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="service-card fade-in">
+                    <div class="service-image">
+                        <img src="https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80" alt="Soil analysis with seedling emerging">
+                    </div>
+                    <div class="service-content">
+                        <div class="service-icon">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <h3>Soil Analysis</h3>
+                        <p>
+                            Comprehensive soil health assessments to understand nutrient levels, 
+                            pH balance, and organic matter content for optimal crop planning.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="service-card fade-in">
+                    <div class="service-image">
+                        <img src="https://images.unsplash.com/photo-1504386106331-3e4e71712b38?w=600&q=80" alt="Weather monitoring station in agricultural field">
+                    </div>
+                    <div class="service-content">
+                        <div class="service-icon">
+                            <i class="fas fa-cloud-sun"></i>
+                        </div>
+                        <h3>Weather Forecasting</h3>
+                        <p>
+                            Accurate, localized weather predictions to help you plan planting, 
+                            harvesting, and protection measures with confidence.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="service-card fade-in">
+                    <div class="service-image">
+                        <img src="https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?w=600&q=80" alt="Smart irrigation system watering crops">
+                    </div>
+                    <div class="service-content">
+                        <div class="service-icon">
+                            <i class="fas fa-tint"></i>
+                        </div>
+                        <h3>Irrigation Management</h3>
+                        <p>
+                            Smart irrigation solutions that optimize water usage based on 
+                            real-time soil moisture data and weather conditions.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Research Section -->
+    <section class="section" id="research">
+        <div class="container">
+            <div class="text-center fade-in">
+                <span class="overline">Research & News</span>
+                <h2 class="section-title">Latest Insights in AgriTech</h2>
+                <p class="section-subtitle">
+                    Stay informed with the latest updates, breakthroughs, and insights 
+                    in agricultural technology and sustainable farming practices.
+                </p>
+            </div>
+            
+            <div class="research-grid">
+                <article class="research-card fade-in">
+                    <a href="https://intellias.com/artificial-intelligence-in-agriculture/" target="_blank" rel="noopener" class="research-image">
+                        <img src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=600&q=80" alt="AI in agriculture concept">
+                        <span class="research-category">Agriculture & AI</span>
+                    </a>
+                    <div class="research-content">
+                        <h4>The Future of Agriculture: AI-Powered Farming</h4>
+                        <p class="research-description">Discover how machine learning and computer vision are transforming crop monitoring, pest detection, and yield prediction for modern farms.</p>
+                        <a href="https://intellias.com/artificial-intelligence-in-agriculture/" target="_blank" rel="noopener" class="research-link">
+                            Read More <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </article>
+                
+                <article class="research-card fade-in">
+                    <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8388655/" target="_blank" rel="noopener" class="research-image">
+                        <img src="https://images.unsplash.com/photo-1560493676-04071c5f467b?w=600&q=80" alt="Precision farming with GPS tractor">
+                        <span class="research-category">Precision Farming</span>
+                    </a>
+                    <div class="research-content">
+                        <h4>How Precision Farming is Revolutionizing Agriculture</h4>
+                        <p class="research-description">GPS-guided equipment and variable rate technology are enabling farmers to optimize inputs and maximize efficiency across every acre.</p>
+                        <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8388655/" target="_blank" rel="noopener" class="research-link">
+                            Read More <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </article>
+                
+                <article class="research-card fade-in">
+                    <a href="https://www.nationalgeographic.com/environment/article/paid-content-why-soil-matters-and-what-we-can-do-to-save-it" target="_blank" rel="noopener" class="research-image">
+                        <img src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&q=80" alt="Soil health analysis">
+                        <span class="research-category">Soil Health</span>
+                    </a>
+                    <div class="research-content">
+                        <h4>Maintain Optimal Soil Health for Better Yields</h4>
+                        <p class="research-description">Learn essential practices for building healthy soil ecosystems that improve water retention, nutrient availability, and long-term productivity.</p>
+                        <a href="https://www.nationalgeographic.com/environment/article/paid-content-why-soil-matters-and-what-we-can-do-to-save-it" target="_blank" rel="noopener" class="research-link">
+                            Read More <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </article>
+                
+                <article class="research-card fade-in">
+                    <a href="https://www.agfoundation.org/news/how-does-weather-affect-farming" target="_blank" rel="noopener" class="research-image">
+                        <img src="https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=600&q=80" alt="Weather patterns over farmland">
+                        <span class="research-category">Weather Trends</span>
+                    </a>
+                    <div class="research-content">
+                        <h4>Understanding Weather Patterns for Farm Operations</h4>
+                        <p class="research-description">Advanced forecasting tools help farmers anticipate weather changes and make informed decisions about planting, irrigation, and harvesting.</p>
+                        <a href="https://www.agfoundation.org/news/how-does-weather-affect-farming" target="_blank" rel="noopener" class="research-link">
+                            Read More <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </article>
+                
+                <article class="research-card fade-in">
+                    <a href="https://www.agweb.com/" target="_blank" rel="noopener" class="research-image">
+                        <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&q=80" alt="Agricultural market prices">
+                        <span class="research-category">Market Prices</span>
+                    </a>
+                    <div class="research-content">
+                        <h4>Global Crop Market Trends and Analysis</h4>
+                        <p class="research-description">Stay updated on commodity prices, trade policies, and market dynamics that impact agricultural profitability worldwide.</p>
+                        <a href="https://www.agweb.com/" target="_blank" rel="noopener" class="research-link">
+                            Read More <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </article>
+                
+                <article class="research-card fade-in">
+                    <a href="https://www.yourarticlelibrary.com/crops/crop-seasons-crops-of-various-seasons-and-cash-crops/60685" target="_blank" rel="noopener" class="research-image">
+                        <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&q=80" alt="Different crop seasons">
+                        <span class="research-category">Crop Seasons</span>
+                    </a>
+                    <div class="research-content">
+                        <h4>Maximizing Profits with Seasonal Crop Planning</h4>
+                        <p class="research-description">Strategic crop rotation and timing can significantly boost yields while maintaining soil health and reducing pest pressure throughout the year.</p>
+                        <a href="https://www.yourarticlelibrary.com/crops/crop-seasons-crops-of-various-seasons-and-cash-crops/60685" target="_blank" rel="noopener" class="research-link">
+                            Read More <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- Field Analysis Map Section -->
+    <section class="map-section" id="field-map">
+        <div class="container">
+            <div class="text-center fade-in">
+                <span class="overline">Field Analysis</span>
+                <h2 class="section-title">Interactive Farm Monitoring</h2>
+                <p class="section-subtitle">
+                    Explore our real-time field analysis map showing crop health indicators, 
+                    soil conditions, and irrigation zones across monitored agricultural areas.
+                </p>
+            </div>
+            
+            <div class="map-container fade-in">
+                <div class="map-wrapper">
+                    <div id="fieldMap"></div>
+                </div>
+                
+                <div class="map-sidebar">
+                    <h3><i class="fas fa-chart-pie"></i> Field Statistics</h3>
+                    
+                    <div class="field-stats">
+                        <div class="field-stat">
+                            <span class="field-stat-label">
+                                <i class="fas fa-leaf"></i> Crop Health Index
+                            </span>
+                            <span class="field-stat-value good">87%</span>
+                        </div>
+                        <div class="field-stat">
+                            <span class="field-stat-label">
+                                <i class="fas fa-tint"></i> Soil Moisture
+                            </span>
+                            <span class="field-stat-value good">72%</span>
+                        </div>
+                        <div class="field-stat">
+                            <span class="field-stat-label">
+                                <i class="fas fa-thermometer-half"></i> Temperature
+                            </span>
+                            <span class="field-stat-value">24°C</span>
+                        </div>
+                        <div class="field-stat">
+                            <span class="field-stat-label">
+                                <i class="fas fa-sun"></i> UV Index
+                            </span>
+                            <span class="field-stat-value warning">6.2</span>
+                        </div>
+                        <div class="field-stat">
+                            <span class="field-stat-label">
+                                <i class="fas fa-wind"></i> Wind Speed
+                            </span>
+                            <span class="field-stat-value">12 km/h</span>
+                        </div>
+                        <div class="field-stat">
+                            <span class="field-stat-label">
+                                <i class="fas fa-cloud-rain"></i> Precipitation
+                            </span>
+                            <span class="field-stat-value good">15mm</span>
+                        </div>
+                    </div>
+                    
+                    <div class="map-legend">
+                        <h4>Field Health Legend</h4>
+                        <div class="legend-items">
+                            <div class="legend-item">
+                                <span class="legend-color healthy"></span>
+                                Healthy
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-color moderate"></span>
+                                Moderate
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-color attention"></span>
+                                Needs Attention
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="map-actions">
+                        <a href="#contact" class="btn btn-primary">
+                            <i class="fas fa-satellite"></i> Request Full Analysis
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Banner -->
+    <section class="cta-banner">
+        <div class="container fade-in">
+            <h2>Ready to Transform Your Farm?</h2>
+            <p>
+                Join thousands of farmers who are already using AgriVision to boost productivity, 
+                reduce costs, and practice sustainable agriculture.
+            </p>
+            <div class="cta-buttons">
+                <a href="#contact" class="btn cta-btn-primary">Get Started Today</a>
+                <a href="#services" class="btn btn-secondary">Learn More</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="section section-dark" id="contact">
+        <div class="container">
+            <div class="contact-grid">
+                <div class="contact-info fade-in">
+                    <span class="overline">Contact Us</span>
+                    <h2>Let's Work Together</h2>
+                    <p>
+                        At AgriVision, we are dedicated to revolutionizing agriculture through 
+                        cutting-edge technology and innovative solutions. Whether you need assistance 
+                        with our crop monitoring systems or want to explore our latest AI-driven features, 
+                        we're here to help.
+                    </p>
+                    
+                    <div class="contact-details">
+                        <div class="contact-item">
+                            <div class="contact-item-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="contact-item-text">
+                                <span>Email</span>
+                                <a href="mailto:info@agrivision.com">info@agrivision.com</a>
+                            </div>
+                        </div>
+                        
+                        <div class="contact-item">
+                            <div class="contact-item-icon">
+                                <i class="fas fa-phone"></i>
+                            </div>
+                            <div class="contact-item-text">
+                                <span>Phone</span>
+                                <a href="tel:+1234567890">+1 (234) 567-890</a>
+                            </div>
+                        </div>
+                        
+                        <div class="contact-item">
+                            <div class="contact-item-icon">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </div>
+                            <div class="contact-item-text">
+                                <span>Location</span>
+                                <p>Agricultural Innovation Hub, Tech Valley</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="social-links">
+                        <a href="#" class="social-link" aria-label="Facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="Twitter">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="social-link" aria-label="LinkedIn">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="contact-form-wrapper fade-in">
+                    <h3>How Can We Help?</h3>
+                    <form id="contactForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="name">Name *</label>
+                                <input type="text" id="name" name="name" placeholder="Your name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="organization">Organization</label>
+                                <input type="text" id="organization" name="organization" placeholder="Your organization">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">Email *</label>
+                            <input type="email" id="email" name="email" placeholder="Your email address" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="message">Project Description *</label>
+                            <textarea id="message" name="message" placeholder="Tell us about your project or inquiry..." required></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-submit">
+                            Send Message <i class="fas fa-paper-plane"></i>
+                        </button>
+                        
+                        <div class="form-success" id="formSuccess">
+                            <i class="fas fa-check-circle"></i>
+                            Your message was sent successfully! We'll get back to you soon.
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <div class="logo-icon" style="width: 32px; height: 32px; font-size: 0.875rem;">
+                        <i class="fas fa-leaf"></i>
+                    </div>
+                    AgriVision
+                </div>
+                
+                <p class="footer-copyright">
+                    &copy; 2025 AgriVision. All rights reserved.
+                </p>
+                
+                <div class="footer-links">
+                    <a href="#home">Home</a>
+                    <a href="#services">Services</a>
+                    <a href="#field-map">Field Map</a>
+                    <a href="#research">Research</a>
+                    <a href="#contact">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // ========================================
+        // HEADER SCROLL EFFECT
+        // ========================================
+        const header = document.getElementById('header');
+        
+        function handleScroll() {
+            if (window.scrollY > 100) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        }
+        
+        window.addEventListener('scroll', handleScroll);
+
+        // ========================================
+        // MOBILE NAVIGATION
+        // ========================================
+        const mobileToggle = document.getElementById('mobileToggle');
+        const mobileClose = document.getElementById('mobileClose');
+        const navMenu = document.getElementById('navMenu');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        mobileToggle.addEventListener('click', () => {
+            navMenu.classList.add('active');
+        });
+
+        mobileClose.addEventListener('click', () => {
+            navMenu.classList.remove('active');
+        });
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('active');
+            });
+        });
+
+        // ========================================
+        // ACTIVE NAV LINK ON SCROLL
+        // ========================================
+        const sections = document.querySelectorAll('section[id]');
+
+        function setActiveNavLink() {
+            const scrollY = window.scrollY;
+
+            sections.forEach(section => {
+                const sectionHeight = section.offsetHeight;
+                const sectionTop = section.offsetTop - 150;
+                const sectionId = section.getAttribute('id');
+                const navLink = document.querySelector(`.nav-link[href="#${sectionId}"]`);
+
+                if (scrollY > sectionTop && scrollY <= sectionTop + sectionHeight) {
+                    navLinks.forEach(link => link.classList.remove('active'));
+                    if (navLink) navLink.classList.add('active');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', setActiveNavLink);
+
+        // ========================================
+        // SMOOTH SCROLL FOR ANCHOR LINKS
+        // ========================================
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                
+                if (targetElement) {
+                    const headerHeight = header.offsetHeight;
+                    const targetPosition = targetElement.offsetTop - headerHeight;
+                    
+                    window.scrollTo({
+                        top: targetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // ========================================
+        // FADE IN ON SCROLL
+        // ========================================
+        const fadeElements = document.querySelectorAll('.fade-in');
+
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+
+        const fadeObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    fadeObserver.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        fadeElements.forEach(element => {
+            fadeObserver.observe(element);
+        });
+
+        // ========================================
+        // CONTACT FORM SUBMISSION
+        // ========================================
+        const contactForm = document.getElementById('contactForm');
+        const formSuccess = document.getElementById('formSuccess');
+
+        contactForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Simulate form submission
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            submitBtn.disabled = true;
+            
+            setTimeout(() => {
+                formSuccess.classList.add('show');
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                this.reset();
+                
+                setTimeout(() => {
+                    formSuccess.classList.remove('show');
+                }, 5000);
+            }, 1500);
+        });
+
+        // ========================================
+        // INITIAL LOAD ANIMATIONS
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Trigger fade in for hero content
+            setTimeout(() => {
+                document.querySelector('.hero-content').classList.add('visible');
+            }, 300);
+        });
+    </script>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Field Map Initialization -->
+    <script>
+        // ========================================
+        // FIELD ANALYSIS MAP - KIAMBU COUNTY, KENYA
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize the map centered on Kiambu County, Kenya
+            const map = L.map('fieldMap').setView([-1.1714, 36.8314], 12);
+
+            // Add satellite tile layer
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri | Kiambu County, Kenya',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Custom icons for different field conditions
+            const healthyIcon = L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background:#22c55e;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            const moderateIcon = L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background:#f59e0b;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            const attentionIcon = L.divIcon({
+                className: 'custom-marker',
+                html: '<div style="background:#ef4444;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            // Kiambu County crop fields data
+            const fields = [
+                {
+                    coords: [-1.1450, 36.8350],
+                    name: 'Limuru Tea Plantation',
+                    status: 'healthy',
+                    health: '94%',
+                    moisture: '78%',
+                    area: '120 hectares',
+                    crop: 'Tea'
+                },
+                {
+                    coords: [-1.1620, 36.8480],
+                    name: 'Kikuyu Coffee Estate',
+                    status: 'healthy',
+                    health: '91%',
+                    moisture: '72%',
+                    area: '85 hectares',
+                    crop: 'Coffee'
+                },
+                {
+                    coords: [-1.1850, 36.8200],
+                    name: 'Kabete Maize Farm',
+                    status: 'moderate',
+                    health: '76%',
+                    moisture: '58%',
+                    area: '45 hectares',
+                    crop: 'Maize'
+                },
+                {
+                    coords: [-1.1380, 36.8150],
+                    name: 'Tigoni Potato Fields',
+                    status: 'healthy',
+                    health: '88%',
+                    moisture: '82%',
+                    area: '65 hectares',
+                    crop: 'Potatoes'
+                },
+                {
+                    coords: [-1.1980, 36.8550],
+                    name: 'Kiambu Vegetable Garden',
+                    status: 'attention',
+                    health: '52%',
+                    moisture: '38%',
+                    area: '28 hectares',
+                    crop: 'Mixed Vegetables'
+                },
+                {
+                    coords: [-1.1550, 36.7950],
+                    name: 'Ndumberi Dairy Pastures',
+                    status: 'healthy',
+                    health: '85%',
+                    moisture: '70%',
+                    area: '95 hectares',
+                    crop: 'Napier Grass'
+                },
+                {
+                    coords: [-1.1280, 36.8620],
+                    name: 'Ruiru Flower Farm',
+                    status: 'healthy',
+                    health: '96%',
+                    moisture: '85%',
+                    area: '35 hectares',
+                    crop: 'Cut Flowers'
+                },
+                {
+                    coords: [-1.2050, 36.8080],
+                    name: 'Banana Hill Plantation',
+                    status: 'moderate',
+                    health: '68%',
+                    moisture: '55%',
+                    area: '42 hectares',
+                    crop: 'Bananas'
+                }
+            ];
+
+            // Add markers for each field
+            fields.forEach(field => {
+                let icon;
+                if (field.status === 'healthy') icon = healthyIcon;
+                else if (field.status === 'moderate') icon = moderateIcon;
+                else icon = attentionIcon;
+
+                const marker = L.marker(field.coords, { icon: icon }).addTo(map);
+                
+                marker.bindPopup(`
+                    <div class="popup-title">${field.name}</div>
+                    <div class="popup-info">
+                        <p><strong>Crop:</strong> ${field.crop}</p>
+                        <p><strong>Health Index:</strong> ${field.health}</p>
+                        <p><strong>Soil Moisture:</strong> ${field.moisture}</p>
+                        <p><strong>Area:</strong> ${field.area}</p>
+                    </div>
+                `);
+            });
+
+            // Add field polygons for Kiambu County farms
+            const fieldPolygons = [
+                {
+                    coords: [[-1.1400, 36.8300], [-1.1400, 36.8420], [-1.1520, 36.8420], [-1.1520, 36.8300]],
+                    color: '#22c55e',
+                    name: 'Limuru Tea Zone'
+                },
+                {
+                    coords: [[-1.1570, 36.8430], [-1.1570, 36.8550], [-1.1680, 36.8550], [-1.1680, 36.8430]],
+                    color: '#22c55e',
+                    name: 'Kikuyu Coffee Zone'
+                },
+                {
+                    coords: [[-1.1800, 36.8150], [-1.1800, 36.8280], [-1.1920, 36.8280], [-1.1920, 36.8150]],
+                    color: '#f59e0b',
+                    name: 'Kabete Maize Zone'
+                },
+                {
+                    coords: [[-1.1330, 36.8100], [-1.1330, 36.8220], [-1.1450, 36.8220], [-1.1450, 36.8100]],
+                    color: '#22c55e',
+                    name: 'Tigoni Potato Zone'
+                },
+                {
+                    coords: [[-1.1930, 36.8500], [-1.1930, 36.8620], [-1.2050, 36.8620], [-1.2050, 36.8500]],
+                    color: '#ef4444',
+                    name: 'Kiambu Vegetable Zone'
+                }
+            ];
+
+            fieldPolygons.forEach(poly => {
+                L.polygon(poly.coords, {
+                    color: poly.color,
+                    fillColor: poly.color,
+                    fillOpacity: 0.3,
+                    weight: 2
+                }).addTo(map);
+            });
+        });
+    </script>
 </body>
 </html>
