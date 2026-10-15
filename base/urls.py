@@ -52,7 +52,8 @@ urlpatterns = [
     path('ussd/callback/', USSDView.as_view(), name='ussd_callback'),
     path('seasons/', seasons, name = 'seasons'),
     path('api/analyze-crop/', analyze_crop, name='analyze_crop'),
-    path('api/analysis-status/<int:result_id>/', analysis_status, name='analysis_status'),
+    path('api/analysis-status/<int:result_id>/', 
+         analysis_status, name='analysis_status'),
     
     # Report generation
     path('api/report/', generate_report, name='generate_report'),
