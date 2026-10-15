@@ -1955,25 +1955,7 @@ document.getElementById('submit-btn').addEventListener('click', async function()
     plantingDate
   );
   
-  if (dbResult) {
-    // Continue with existing simulation code
-    currentFieldForRegistration.crop = {
-      type: selectedCrop,
-      plantingDate: plantingDate,
-      variety: document.getElementById('variety-input').value,
-      irrigation: selectedIrrigation,
-      status: 'active',
-      ndviData: []
-    };
-    
-    // Existing NDVI simulation code continues here...
-    const ndviReadings = simulateSatelliteImageProcessing(currentFieldForRegistration, plantingDate);
-    currentFieldForRegistration.crop.ndviData = ndviReadings;
-    
-    // Close modal and update UI
-    document.getElementById('register-modal').classList.add('hidden');
-    renderFields();
-  }
+  
 });
 
 
