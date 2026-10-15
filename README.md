@@ -290,3 +290,4 @@ Outputs should be validated through field inspection, agronomic knowledge, and l
 AgriVision is a field intelligence platform for agricultural monitoring, crop health analysis, and agronomic decision support. Its main value is the combination of remote sensing, soil and weather inputs, and crop-stage-aware logic to estimate maize crop condition and yield potential. It gives farmers and advisors a practical way to diagnose risk, improve timing of operations, and plan for better production outcomes.
 
 The maize-specific workflow is documented in detail in [MAIZE_HEALTH_YIELD_README.md](MAIZE_HEALTH_YIELD_README.md).# agri_mind_agent
+# agri_mind_agent
