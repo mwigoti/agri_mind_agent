@@ -1960,15 +1960,15 @@
         const hasCrop = !!field.crop;
         const isActive = field.crop?.status === 'active';
         const isEnded = field.crop?.status === 'harvested' || field.crop?.status === 'failed';
-        const isSelected = selectedFieldId === field.properties.name;
+        const isSelected = selectedFieldId === field.name;
         const stage = isActive ? getGrowthStage(field.crop.plantingDate) : null;
 
         return `
           <div class="field-card ${isSelected ? 'selected' : ''}" data-field-id="${field.id}">
             <div class="field-card-header">
               <div class="field-card-info">
-                <h3>${field.properties.name}</h3>
-                <p>${field.properties.area.toFixed(2)} hectares</p>
+                <h3>${field.name}</h3>
+                <p>${field.area.toFixed(2)} hectares</p>
               </div>
               ${!hasCrop ? '<span class="badge badge-muted">No crop</span>' : ''}
               ${isActive ? '<span class="badge badge-success"><span class="badge-dot"></span>Active</span>' : ''}
@@ -2380,7 +2380,7 @@
           id: feature.id?.toString(),
           name: props.name || `Field ${feature.id}`,
           area: parseFloat(props.area) || 0,
-          geometry: feature.geometry, // ✅ ALWAYS here in GeoJSON
+          geometry: feature.geometry, 
 
           crop: props.has_active_crop
             ? {
