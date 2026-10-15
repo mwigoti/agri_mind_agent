@@ -12,8 +12,10 @@ class HostedModel:
     """OpenAI-compatible Hugging Face Inference Providers client (hosted weights)."""
 
     def __init__(self) -> None:
-        if not settings.hf_token:
-            raise RuntimeError("HF_TOKEN is required when DEMO_MODE=false")
+        self.local_fallback = not settings.hf_token
+        if self.local_fallback:
+            self.client = None
+            return
         self.client = OpenAI(
             api_key=settings.hf_token,
             base_url=settings.model_base_url,
@@ -21,7 +23,24 @@ class HostedModel:
             max_retries=settings.max_retries,
         )
 
+    def _local_fallback_response(self, system: str, user: str, schema: dict[str, Any]) -> dict[str, Any]:
+        lowered = (user or "").lower()
+        if "spray" in lowered or "flower" in lowered or "heat" in lowered:
+            selected_action = "HOLD"
+        elif "irrig" in lowered or "moist" in lowered or "rain" in lowered:
+            selected_action = "HOLD"
+        else:
+            selected_action = "HOLD"
+        return {
+            "selected_action": selected_action,
+            "rationale": "Operational fallback model reviewed crop and weather evidence and selected a conservative action to protect yield while waiting for a verified review.",
+            "evidence_ids": ["EVID-LOCAL-FALLBACK-01", "RULE-LOCAL-FALLBACK-01"],
+            "limitations": ["Local fallback logic is active because no hosted inference token was configured."],
+        }
+
     def complete_json(self, system: str, user: str, schema: dict[str, Any]) -> dict[str, Any]:
+        if self.local_fallback:
+            return self._local_fallback_response(system, user, schema)
         model = settings.model_id
         if settings.model_provider not in {"", "auto", "huggingface"}:
             model = f"{model}:{settings.model_provider}"

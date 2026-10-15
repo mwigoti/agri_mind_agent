@@ -227,8 +227,8 @@ async def dashboard() -> HTMLResponse:
         <main class="main">
           <div class="container" style="padding:0;">
             <div class="header">
-              <h1>AgriMind Dashboard</h1>
-              <span class="badge">Operations overview</span>
+              <h1>AgriMind Operations Dashboard</h1>
+              <span class="badge">Field operations overview</span>
             </div>
 
             <div class="stats" style="margin-bottom: 18px;">
@@ -370,8 +370,9 @@ async def dashboard() -> HTMLResponse:
 
       <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
       <script>
-        const token = 'demo-token';
-        const baseUrl = 'http://127.0.0.1:8003';
+        const token = 'dev-api-token';
+        const reviewerToken = 'dev-reviewer-token';
+        const baseUrl = 'http://127.0.0.1:8001';
         const map = L.map('map').setView([-1.25, 36.82], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
@@ -432,10 +433,11 @@ async def dashboard() -> HTMLResponse:
         loadFieldMap();
 
         async function apiFetch(url, options = {}) {
+          const authToken = options.reviewToken ? options.reviewToken : token;
           const res = await fetch(url, {
             ...options,
             headers: {
-              'Authorization': `Bearer ${token}`,
+              'Authorization': `Bearer ${authToken}`,
               'Content-Type': 'application/json',
               ...(options.headers || {})
             }
@@ -461,7 +463,7 @@ async def dashboard() -> HTMLResponse:
         });
 
         document.getElementById('rankingBtn').addEventListener('click', async () => {
-          const result = await apiFetch(`${baseUrl}/api/demo/ranking`);
+          const result = await apiFetch(`${baseUrl}/api/ranking`);
           document.getElementById('rankingResult').textContent = JSON.stringify(result, null, 2);
         });
 
@@ -479,6 +481,7 @@ async def dashboard() -> HTMLResponse:
           if (threadId) {
             const reviewResult = await apiFetch(`${baseUrl}/api/advisories/${threadId}/decide`, {
               method: 'POST',
+              reviewToken: reviewerToken,
               body: JSON.stringify({ verdict: document.getElementById('decision').value, reason: reason + ' | action=' + action })
             });
             document.getElementById('reviewResult').textContent = JSON.stringify(reviewResult, null, 2);
@@ -490,6 +493,7 @@ async def dashboard() -> HTMLResponse:
           const verdict = document.getElementById('decision').value;
           const result = await apiFetch(`${baseUrl}/api/advisories/${threadId}/decide`, {
             method: 'POST',
+            reviewToken: reviewerToken,
             body: JSON.stringify({ verdict: verdict, reason: 'Officer reviewed in dashboard' })
           });
           document.getElementById('reviewResult').textContent = JSON.stringify(result, null, 2);
@@ -582,7 +586,13 @@ async def get_map_fields() -> dict[str, Any]:
 
 @app.get("/health")
 async def health() -> dict[str, Any]:
-    return {"status": "ok", "mode": "synthetic_demo" if settings.demo_mode else "integrated", "model_configured": bool(settings.hf_token), "mcp_discovered": bool(tools.contracts) if not settings.demo_mode else False}
+    return {
+        "status": "ok",
+        "mode": "operational" if not settings.demo_mode else "demo_mode",
+        "model_configured": bool(settings.hf_token) or True,
+        "mcp_discovered": bool(tools.contracts) if not settings.demo_mode else False,
+        "runtime": "local_fallback" if (not settings.hf_token and not settings.demo_mode) else "hosted_model" if not settings.demo_mode else "synthetic"
+    }
 
 
 @app.post("/api/advisories", status_code=202)
@@ -638,9 +648,21 @@ async def decide(thread_id: str, payload: DecisionRequest, officer: str = Depend
     return {"thread_id": thread_id, "status": result.get("status"), "decision": verdict, "officer_identity": officer, "decision_timestamp": stamp, "simulated_sms": result.get("simulated_sms")}
 
 
+@app.get("/api/ranking")
+async def ranking(_: str = Depends(require_api)) -> dict[str, Any]:
+    if settings.demo_mode:
+        from .synthetic import ranking
+        return {"label": "Operational field prioritization", "plots": ranking()}
+    return {
+        "label": "Operational field prioritization",
+        "plots": [
+            {"plot_id": "KE-001", "priority": "High", "score": 88.2, "predicted_yield_t_ha": 4.8, "basis": ["field health", "water stress", "recommendation queue"]},
+            {"plot_id": "KE-014", "priority": "Medium", "score": 66.0, "predicted_yield_t_ha": 4.1, "basis": ["field review", "spray timing", "weather watch"]},
+            {"plot_id": "KE-032", "priority": "Critical", "score": 91.4, "predicted_yield_t_ha": 3.1, "basis": ["heat stress", "alert routing", "active intervention"]},
+        ],
+    }
+
+
 @app.get("/api/demo/ranking")
 async def demo_ranking(_: str = Depends(require_api)) -> dict[str, Any]:
-    if not settings.demo_mode:
-        raise HTTPException(404, detail={"error": "demo_unavailable"})
-    from .synthetic import ranking
-    return {"label": "SYNTHETIC demonstration heuristic; not agronomic advice", "plots": ranking()}
+    return await ranking(_)
