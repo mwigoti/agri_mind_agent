@@ -1195,7 +1195,7 @@ class AgrivisionProductionPipeline:
                             f"season. Number them 1, 2, 3.\n\n"
                             f"Field Data ({status}):\n"
                             f"{data_block}\n\n"
-                            f"Write the report now. Use clear headings for each paragraph in bold."
+                            f"Write the report now. Use clear headings for each paragraph in bold. Then present the report in swahili"
                         )
                     }
                 ],
