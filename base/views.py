@@ -1271,7 +1271,66 @@ def schedule_activity_reminder(user, activity):
         # You can use Celery or Django-Q for scheduling
         # For now, we'll store it in database and check periodically
         pass
-
+@login_required
+@require_http_methods(["GET"])
+def get_active_crops(request):
+    """Get all active crops for user's fields"""
+    try:
+        # Get user's fields
+        user_fields = Field.objects.filter(owner=request.user)
+        
+        # Get the most recent planting activity for each field
+        active_crops = []
+        
+        for field in user_fields:
+            # Get the most recent planting activity that has a crop
+            latest_planting = FieldActivity.objects.filter(
+                field=field,
+                activity_type='planting',
+                crop__isnull=False
+            ).select_related('crop').order_by('-date').first()
+            
+            if latest_planting:
+                # Extract variety and irrigation from notes or weather_conditions
+                variety = ''
+                irrigation_type = ''
+                
+                # Try to get from weather_conditions JSON field
+                if latest_planting.weather_conditions:
+                    variety = latest_planting.weather_conditions.get('variety', '')
+                    irrigation_type = latest_planting.weather_conditions.get('irrigation_type', '')
+                
+                # If not in weather_conditions, try parsing from notes
+                if not variety and latest_planting.notes:
+                    if 'Variety:' in latest_planting.notes:
+                        variety = latest_planting.notes.split('Variety:')[1].split('|')[0].strip()
+                
+                if not irrigation_type and latest_planting.notes:
+                    if 'Irrigation:' in latest_planting.notes:
+                        irrigation_type = latest_planting.notes.split('Irrigation:')[1].split('|')[0].strip()
+                
+                active_crops.append({
+                    'field_id': field.id,
+                    'field_name': field.name,
+                    'crop_id': latest_planting.crop.id,
+                    'crop_name': latest_planting.crop.name,
+                    'planting_date': latest_planting.date.isoformat(),
+                    'activity_id': latest_planting.id,
+                    'variety': variety,
+                    'irrigation_type': irrigation_type,
+                    'notes': latest_planting.notes
+                })
+        
+        return JsonResponse({
+            'status': 'success',
+            'crops': active_crops
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
 @login_required
 @csrf_exempt
 @require_http_methods(["POST"])
