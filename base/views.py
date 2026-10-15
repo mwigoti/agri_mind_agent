@@ -232,7 +232,8 @@ def analyze_field_view(request, id):
         analyzer = IntegratedSoilAnalyzer()
         
         # Get the raw analysis result (this contains the AI response)
-        raw_result = analyzer.analyze_combined_data(soil_data=id, climate_data=id)
+        # Note: climate_data is ignored when soil_data is an int (field ID)
+        raw_result = analyzer.analyze_combined_data(soil_data=id)
         
         if not raw_result.get("success", False):
             error_msg = raw_result.get("error", "Analysis failed")
@@ -246,7 +247,7 @@ def analyze_field_view(request, id):
         
         # Extract the analysis text from the raw result
         analysis_text = raw_result.get("analysis", "")
-        from .import DataExtractor
+        from base.analysis import DataExtractor
         
         extractor = DataExtractor()
         extracted_soil_data = extractor.extract_soil_data(analysis_text)
@@ -255,14 +256,16 @@ def analyze_field_view(request, id):
         
         # Get the original soil and climate data from the analyzer
         field_center = analyzer.get_field_center(id)
-        original_soil_data = analyzer.get_soilgrid_data(field_center['lat'], field_center['lon'])
+        original_soil_data = analyzer.get_isric_soil_data(field_center['lat'], field_center['lon'])
         raw_climate = analyzer.get_climate_data(field_center['lat'], field_center['lon'])
         original_climate_data = analyzer.format_weather_predictions(raw_climate) if raw_climate else {}
         
         # Merge original data with extracted data (extracted data takes precedence if available)
         merged_soil_data = {}
-        if original_soil_data is not None and not original_soil_data.empty:
-            merged_soil_data = original_soil_data.to_dict(orient='records')[0]
+        
+        # ✅ FIX: Check if original_soil_data is a dict (not DataFrame)
+        if original_soil_data is not None and isinstance(original_soil_data, dict):
+            merged_soil_data = original_soil_data.copy()
         
         # Override with extracted values where available
         for key, value in extracted_soil_data.items():
@@ -314,6 +317,8 @@ def analyze_field_view(request, id):
     except Exception as e:
         error_msg = f"Error analyzing field: {str(e)}"
         print(f"DEBUG: {error_msg}")  # For debugging
+        import traceback
+        traceback.print_exc()  # Print full stack trace for debugging
         
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({"success": False, "error": error_msg}, status=500)
@@ -336,8 +341,8 @@ def get_field_data_view(request, id):
         # Get field center coordinates
         field_center = analyzer.get_field_center(id)
         
-        # Get soil data from SoilGrids
-        soil_data = analyzer.get_soilgrid_data(field_center['lat'], field_center['lon'])
+        # Get soil data from ISRIC (returns dict)
+        soil_data = analyzer.get_isric_soil_data(field_center['lat'], field_center['lon'])
         
         # Get climate data from Open-Meteo
         raw_climate = analyzer.get_climate_data(field_center['lat'], field_center['lon'])
@@ -351,19 +356,20 @@ def get_field_data_view(request, id):
                 "area": field.area,
                 "center": field_center
             },
-            "soil_properties": soil_data.to_dict(orient='records')[0] if soil_data is not None and not soil_data.empty else {},
+            # ✅ FIX: soil_data is already a dict, no need to convert
+            "soil_properties": soil_data if soil_data is not None else {},
             "climate_conditions": climate_data
         }
         
         return JsonResponse(response_data)
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()  # Print full stack trace for debugging
         return JsonResponse({
             "success": False,
             "error": str(e)
         }, status=500)
-
-
 
         
 def load(request):
