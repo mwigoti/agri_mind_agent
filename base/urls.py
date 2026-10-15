@@ -11,6 +11,7 @@ urlpatterns = [
     path('register/', register, name='register'),
     path('map/', map, name='map'),
     path('health/', health, name='health'),
+    path('api/register-crop/', register_crop_monitoring, name='register_crop_monitoring'),
     
     # Auth and pricing
     path('login/', login_view, name="login"),
