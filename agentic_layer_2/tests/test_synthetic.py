@@ -1,4 +1,4 @@
-from layer_2.synthetic import ranking
+from agentic_layer_2.synthetic import ranking
 
 
 def test_paper_demo_rank_and_interval_caveat():

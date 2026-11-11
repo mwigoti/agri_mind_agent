@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 class AfricasTalkingSMSService:
     def __init__(self):
-        self.username = config('AFRICAS_TALKING_USERNAME')
-        self.api_key = config('AFRICAS_TALKING_API_KEY')
-        self.sandbox = config('AFRICAS_TALKING_SANDBOX', default=False, cast=bool)
+        self.username = config('AFRICAS_TALKING_USERNAME', default='sandbox')
+        self.api_key = config('AFRICAS_TALKING_API_KEY', default='')
+        self.sandbox = config('AFRICAS_TALKING_SANDBOX', default=True, cast=bool)
         
         if self.sandbox:
             self.base_url = 'https://api.sandbox.africastalking.com/version1/messaging'

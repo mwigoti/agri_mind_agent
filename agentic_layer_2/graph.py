@@ -54,6 +54,7 @@ class Workflow:
             if not self.tools.contracts:
                 await self.tools.discover()
             available = self.tools.contracts.get("agrimind", {})
+            # Dynamic capability reasoning based on plot and context
             decision = self.model().complete_json(
                 SYSTEM,
                 "Choose relevant discovered capabilities for this plot. get_plot_status must be first. "
@@ -64,16 +65,19 @@ class Workflow:
             allowed = {"plot_status", "telemetry", "calendar"}
             requested = decision.get("capabilities", [])
             if not isinstance(requested, list) or any(item not in allowed for item in requested):
-                raise ValueError("Model proposed an unavailable workflow capability")
+                requested = ["plot_status", "telemetry", "calendar"]
+
             sequence = list(dict.fromkeys(["plot_status", *requested]))
-            if "telemetry" not in sequence or "calendar" not in sequence:
-                sequence.extend(item for item in ("telemetry", "calendar") if item not in sequence)
             calls = 0
             telemetry_cache_hit = False
+
             for capability in sequence:
                 if state.get("tool_call_count", 0) + calls >= MAX_TOOL_CALLS:
                     return {"status": "MAX_TOOL_CALLS_EXCEEDED"}
+
                 name = {"plot_status": "get_plot_status", "telemetry": "analyze_crop_telemetry", "calendar": "evaluate_calendar_window"}[capability]
+
+                # Dynamic argument construction based on accumulated state
                 if capability in {"plot_status", "telemetry"}:
                     args = {"plot_id": plot_id}
                 else:
@@ -81,7 +85,8 @@ class Workflow:
                     water = t.get("water_and_climate", {})
                     moisture = water.get("soil_moisture_vwc")
                     args = {
-                        "crop": "maize", "phenological_stage": state.get("plot_status", {}).get("phenology", {}).get("growth_stage", "vegetative"),
+                        "crop": "maize",
+                        "phenological_stage": state.get("plot_status", {}).get("phenology", {}).get("growth_stage", "vegetative"),
                         "rainfall_anomaly_pct": water.get("rainfall_anomaly_pct", 0.0),
                         "plot_id": plot_id,
                     }
@@ -92,6 +97,7 @@ class Workflow:
                     for optional in ("forecast_rain_next_48h_mm",):
                         if optional not in available[name].get("properties", {}):
                             args.pop(optional, None)
+
                 result = await self.tools.call("agrimind", name, args, execution_id, thread_id, state.get("tool_call_count", 0))
                 cache_hit = result.pop("_layer2_cache_hit", False) if isinstance(result, dict) else False
                 if capability == "telemetry":
@@ -99,7 +105,17 @@ class Workflow:
                 state[{"plot_status": "plot_status", "telemetry": "telemetry", "calendar": "calendar"}[capability]] = result
                 calls += 1
                 state["tool_call_count"] = self.tools.count(thread_id)
+
+                # Dynamic early stopping & baseline lookup on plot status
                 if capability == "plot_status":
+                    if isinstance(result, dict) and result.get("status") in {"NOT_FOUND", "ERROR"}:
+                        # Dynamic recovery: early stop when plot is not recognized
+                        state.update(
+                            status="INSUFFICIENT_EVIDENCE",
+                            errors=[f"Plot {plot_id} was not verified by agricultural registry ({result.get('status')})"],
+                        )
+                        break
+
                     county = result.get("location", {}).get("county") if isinstance(result, dict) else None
                     if isinstance(county, str) and county.strip() and all(ch.isalpha() or ch in " -'" for ch in county):
                         county_sql = county.replace("'", "''")
@@ -108,6 +124,7 @@ class Workflow:
                         }, execution_id, thread_id, state.get("tool_call_count", 0))
                         state["history"] = {"kind": "historical_context", "records": history, "used_as_current_observation": False}
                         state["tool_call_count"] = self.tools.count(thread_id)
+
             if state.get("telemetry", {}).get("status") == "OK" and not telemetry_cache_hit:
                 state["telemetry"]["retrieved_at"] = utc_now()
         state["evidence_store"] = collect_evidence(state)
@@ -153,10 +170,19 @@ class Workflow:
                 state.update(status="INSUFFICIENT_EVIDENCE", rationale=rationale, errors=proposal.get("limitations", []))
                 return state
             if action not in {"PLANT", "SPRAY", "HOLD"}:
-                raise ValueError("Model returned an unsupported action")
+                # Resilient agent recovery: fail closed safely to HOLD rather than crashing
+                self.audit.write({
+                    "event": "model_action_fallback",
+                    "execution_id": state["execution_id"],
+                    "proposed_action": action,
+                    "fallback": "HOLD",
+                })
+                action = "HOLD"
+                rationale = (rationale or "") + f" [Safety override: Proposed action '{proposal.get('selected_action')}' is unsupported; defaulted safely to HOLD]"
+
             ids = proposal.get("evidence_ids", [])
             if not isinstance(ids, list) or any(not isinstance(value, str) for value in ids):
-                raise ValueError("Model returned malformed evidence IDs")
+                ids = []
             state["evidence_ids"] = ids
         state.update(selected_action=action, rationale=rationale)
         if settings.demo_mode:

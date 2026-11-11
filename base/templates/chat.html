@@ -1,0 +1,502 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgriMind AI Assistant - AgriVision</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #16a34a;
+      --primary-hover: #15803d;
+      --primary-light: #dcfce7;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --user-bubble: #16a34a;
+      --bot-bubble: #f1f5f9;
+      --shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* Header */
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+
+    .brand-title h1 {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .brand-title p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .lang-toggle {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .nav-btn {
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .nav-btn:hover {
+      background: var(--border);
+      color: var(--text-main);
+    }
+
+    /* Chat Container */
+    .chat-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1rem;
+      overflow: hidden;
+    }
+
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .msg-row {
+      display: flex;
+      gap: 0.75rem;
+      max-width: 80%;
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-row.bot {
+      align-self: flex-start;
+    }
+
+    .msg-row.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .msg-row.bot .avatar {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .msg-row.user .avatar {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    .bubble {
+      padding: 0.875rem 1rem;
+      border-radius: 12px;
+      font-size: 0.9375rem;
+      line-height: 1.45;
+      position: relative;
+    }
+
+    .msg-row.bot .bubble {
+      background: var(--bot-bubble);
+      color: var(--text-main);
+      border-bottom-left-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .msg-row.user .bubble {
+      background: var(--primary);
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .bubble-meta {
+      font-size: 0.7rem;
+      margin-top: 0.35rem;
+      opacity: 0.75;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .tools-tag {
+      background: rgba(0,0,0,0.06);
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.68rem;
+    }
+
+    /* Quick Chips */
+    .quick-chips {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding: 0.5rem 0;
+      scrollbar-width: none;
+    }
+    .quick-chips::-webkit-scrollbar { display: none; }
+
+    .chip-btn {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .chip-btn:hover {
+      background: var(--primary-light);
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    /* Input Bar */
+    .input-bar {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.5rem 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: var(--shadow);
+    }
+
+    .input-bar input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 0.9375rem;
+      background: transparent;
+      padding: 0.35rem;
+    }
+
+    .send-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .send-btn:hover { background: var(--primary-hover); }
+    .send-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+    /* Typing Dots */
+    .typing-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+    }
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-5px); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="{% url 'health' %}" class="brand">
+      <div class="brand-icon">🌱</div>
+      <div class="brand-title">
+        <h1>AgriMind Assistant</h1>
+        <p>Autonomous Agronomic Advisory & Crop Health</p>
+      </div>
+    </a>
+    <div class="header-actions">
+      <select class="lang-toggle" id="langSelect" onchange="toggleLang(this.value)">
+        <option value="en">🇬🇧 English</option>
+        <option value="sw">🇰🇪 Kiswahili</option>
+      </select>
+      <a href="{% url 'health' %}" class="nav-btn"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+      <a href="{% url 'map' %}" class="nav-btn"><i class="fa-solid fa-map-location-dot"></i> Fields</a>
+    </div>
+  </header>
+
+  <div class="chat-wrapper">
+    <div class="messages-container" id="msgContainer">
+      <!-- Welcome Message -->
+      <div class="msg-row bot">
+        <div class="avatar"><i class="fa-solid fa-robot"></i></div>
+        <div class="bubble">
+          <p id="welcomeText">
+            Hello! I am <strong>AgriMind</strong>, your agricultural intelligence partner.
+            Ask me about crop health, rainfall & weather windows, soil diagnostics, pest scouting, or fertilizer schedules.
+          </p>
+          <div class="bubble-meta">
+            <span>Just now</span>
+            <span class="tools-tag">AgriMind Multi-Agent</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick prompt chips -->
+    <div class="quick-chips">
+      <button class="chip-btn" onclick="sendQuick('How does recent rainfall affect my maize spray window?')">🌧️ Weather & Spray Window</button>
+      <button class="chip-btn" onclick="sendQuick('How do I diagnose Fall Armyworm symptoms?')">🐛 Pest Scouting</button>
+      <button class="chip-btn" onclick="sendQuick('What NDVI reading indicates nitrogen deficiency?')">🌾 NDVI & Crop Health</button>
+      <button class="chip-btn" onclick="sendQuick('Best practices for top-dressing fertilizer timing?')">🌱 Fertilizer Application</button>
+      <button class="chip-btn" onclick="sendQuick('How to optimize drip irrigation for clay soil?')">💧 Irrigation Schedule</button>
+    </div>
+
+    <!-- Input Form -->
+    <form class="input-bar" id="chatForm" onsubmit="handleSend(event)">
+      {% csrf_token %}
+      <input type="text" id="userInput" placeholder="Ask AgriMind about your crops, weather, or soil..." autocomplete="off" />
+      <button type="submit" class="send-btn" id="sendBtn" title="Send message">
+        <i class="fa-solid fa-paper-plane"></i>
+      </button>
+    </form>
+  </div>
+
+  <script>
+    let currentLang = 'en';
+
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    function toggleLang(lang) {
+      currentLang = lang;
+      const input = document.getElementById('userInput');
+      const welcome = document.getElementById('welcomeText');
+      if (lang === 'sw') {
+        input.placeholder = 'Uliza AgriMind kuhusu mazao, hali ya hewa, au udongo...';
+        welcome.innerHTML = 'Habari! Mimi ni <strong>AgriMind</strong>, msaidizi wako wa akili bandia ya kilimo. Niulize kuhusu afya ya mazao, utabiri wa mvua, rutuba ya udongo, au dawa za wadudu.';
+      } else {
+        input.placeholder = 'Ask AgriMind about your crops, weather, or soil...';
+        welcome.innerHTML = 'Hello! I am <strong>AgriMind</strong>, your agricultural intelligence partner. Ask me about crop health, rainfall & weather windows, soil diagnostics, pest scouting, or fertilizer schedules.';
+      }
+    }
+
+    function sendQuick(text) {
+      document.getElementById('userInput').value = text;
+      handleSend(new Event('submit'));
+    }
+
+    function appendMessage(sender, text, meta = {}) {
+      const container = document.getElementById('msgContainer');
+      const row = document.createElement('div');
+      row.className = `msg-row ${sender}`;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.innerHTML = sender === 'bot' ? '<i class="fa-solid fa-robot"></i>' : '<i class="fa-solid fa-user"></i>';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = `<p>${escapeHTML(text)}</p>`;
+
+      const metaEl = document.createElement('div');
+      metaEl.className = 'bubble-meta';
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      metaEl.innerHTML = `<span>${timeStr}</span>`;
+      if (meta.source) {
+        metaEl.innerHTML += `<span class="tools-tag">${meta.source === 'agrimind_layer2' ? '⚡ AgriMind Live' : '🌿 Local Knowledge'}</span>`;
+      }
+      bubble.appendChild(metaEl);
+
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+      return bubble;
+    }
+
+    function showTyping() {
+      const container = document.getElementById('msgContainer');
+      const row = document.createElement('div');
+      row.className = 'msg-row bot';
+      row.id = 'typingRow';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.innerHTML = '<i class="fa-solid fa-robot"></i>';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function removeTyping() {
+      const typing = document.getElementById('typingRow');
+      if (typing) typing.remove();
+    }
+
+    function escapeHTML(str) {
+      return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[tag] || tag));
+    }
+
+    async function handleSend(e) {
+      e.preventDefault();
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      appendMessage('user', text);
+      input.value = '';
+      input.focus();
+
+      const btn = document.getElementById('sendBtn');
+      btn.disabled = true;
+      showTyping();
+
+      try {
+        const res = await fetch('/api/agent/chat/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({
+            message: text,
+            language: currentLang
+          })
+        });
+
+        const data = await res.json();
+        removeTyping();
+
+        if (res.ok) {
+          appendMessage('bot', data.response || 'Advisory completed.', {
+            source: data.source,
+            tools: data.tools_used
+          });
+        } else {
+          appendMessage('bot', data.error || 'Unable to process query right now.');
+        }
+      } catch (err) {
+        removeTyping();
+        appendMessage('bot', 'Network connection unavailable. Please verify connection and try again.');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
+

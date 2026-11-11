@@ -1,4 +1,4 @@
-from layer_2.validators import validate
+from agentic_layer_2.validators import validate
 
 
 def valid_state():

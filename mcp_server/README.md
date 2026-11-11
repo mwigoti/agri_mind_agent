@@ -389,6 +389,43 @@ MCP_SERVERS = {
 
 ---
 
+## Standalone Reusability: Using with Claude Desktop, Cursor, or External Agents
+
+Any external developer or third-party agentic framework can immediately reuse the AgriMind agricultural tool boundaries over standard MCP stdio JSON-RPC.
+
+### Claude Desktop / Cursor Configuration (`claude_desktop_config.json`)
+
+```json
+{
+  "mcpServers": {
+    "agrimind-telemetry": {
+      "command": "/absolute/path/to/venv/bin/python",
+      "args": ["-m", "mcp_server.server"],
+      "cwd": "/absolute/path/to/Agri_vision_agrimind_agent"
+    },
+    "agrimind-baselines": {
+      "command": "/absolute/path/to/venv/bin/python",
+      "args": [
+        "-c",
+        "import mcp_server_sqlite; mcp_server_sqlite.main()",
+        "--db-path",
+        "/absolute/path/to/Agri_vision_agrimind_agent/data/historical_records.db"
+      ],
+      "cwd": "/absolute/path/to/Agri_vision_agrimind_agent"
+    }
+  }
+}
+```
+
+### Reusable Tool Schemas & Contracts
+Every exposed capability has an independent input/output contract:
+- `get_plot_status`: Ground-truth crop identity, phenology, and GIS attributes (`{"plot_id": string}`).
+- `analyze_crop_telemetry`: Sentinel-2 NDVI, CHIRPS rainfall anomaly, soil moisture, and evidence IDs (`{"plot_id": string}`).
+- `evaluate_calendar_window`: Deterministic biological spray/plant gating (`{"crop": "maize", "phenological_stage": string, "rainfall_anomaly_pct": float}`).
+- `draft_advisory_for_approval`: Audit-trailed queue mutation requiring human officer review (`{"plot_id": string, "recommended_action": string, "advisory_rationale": string, "evidence_ids": string[]}`).
+
+---
+
 ## Production Guardrails Enforced
 
 1. **Stdio JSON-RPC Integrity:** Zero `print()` statements exist in server code. All logs route strictly to `sys.stderr` via `logger`.

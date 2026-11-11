@@ -24,12 +24,14 @@ load_dotenv()
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-(!4lv(jy64*-c&do2-3-t97*7_)25bt1q+zq(^gw=(n3vq4_&g'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'dev-fallback-key-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True   # Turn off debug in production
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,testserver').split(',') if h.strip()]
+if 'testserver' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('testserver')
 
 
 # Application definition
@@ -69,7 +71,21 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'AgriVision.urls'
 
-TEMPLATES = [ { 'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIRS': [os.path.join(BASE_DIR, 'base/templates')], 'APP_DIRS': True, 'OPTIONS': { 'context_processors': [ 'django.template.context_processors.debug', 'django.template.context_processors.request', 'django.contrib.auth.context_processors.auth', 'django.contrib.messages.context_processors.messages', ], }, }, ]
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [os.path.join(BASE_DIR, 'base/templates')],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
 
 WSGI_APPLICATION = 'AgriVision.wsgi.application'
 
@@ -165,9 +181,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Security Settings (adjust these in production)
-SECURE_SSL_REDIRECT = False # Redirect all HTTP to HTTPS
-SESSION_COOKIE_SECURE = True  # Ensure session cookie is only sent over HTTPS
-CSRF_COOKIE_SECURE = True  # Ensure CSRF cookie is only sent over HTTPS
+SECURE_SSL_REDIRECT = not DEBUG  # Redirect all HTTP to HTTPS in production
+SESSION_COOKIE_SECURE = not DEBUG  # Ensure session cookie is only sent over HTTPS
+CSRF_COOKIE_SECURE = not DEBUG  # Ensure CSRF cookie is only sent over HTTPS
 
 HUGGINGFACE_TOKEN=os.getenv("HUGGINGFACE_TOKEN")
 
@@ -180,9 +196,9 @@ EMAIL_HOST = 'smtp.gmail.com'  # or your SMTP server
 EMAIL_PORT = 587  # 465 for SSL
 EMAIL_USE_TLS = True  # False if using SSL
 EMAIL_USE_SSL = False  # True if using port 465
-EMAIL_HOST_USER = 'henrymwoha02@gmail.com'  # Your email address
-EMAIL_HOST_PASSWORD = 'igadgejoknyqsviq '  # Your password or app password
-DEFAULT_FROM_EMAIL = 'henrymwoha02@gmail.com'  # Default sender email
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')  # Your email address
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')  # Your password or app password
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)  # Default sender email
 
 
 # At the top of settings.py
@@ -195,9 +211,9 @@ AFRICAS_TALKING_API_KEY = config('AFRICAS_TALKING_API_KEY', default='')
 AFRICAS_TALKING_USSD_CODE = config('AFRICAS_TALKING_USSD_CODE', default='*384*1234#')
 AFRICAS_TALKING_SANDBOX = config('AFRICAS_TALKING_SANDBOX', default=True, cast=bool)
 CSRF_TRUSTED_ORIGINS = [
-   ' https://068bed127975.ngrok-free.app '
+    'https://068bed127975.ngrok-free.app'
 ]
-WEATHER_API_KEY = '109f222b11c58e432329752f9f07bae1'
+WEATHER_API_KEY = os.getenv('WEATHER_API_KEY', '')
 CELERY_BROKER_URL = 'redis://localhost:6379'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379'
 
@@ -236,7 +252,7 @@ LOGGING = {
         },
     },
     'loggers': {
-        'your_app_name.views': {  # Replace with your actual app name
+        'base.views': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
             'propagate': True,

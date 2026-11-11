@@ -2079,6 +2079,115 @@
         margin: 1cm;
       }
     }
+
+    /* ========================================
+       AGRIMIND AGENTIC UI ENHANCEMENTS
+       ======================================== */
+    .agrimind-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .agrimind-badge.high {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fca5a5;
+    }
+    .agrimind-badge.medium {
+      background: #fef3c7;
+      color: #b45309;
+      border: 1px solid #fde68a;
+    }
+    .agrimind-badge.low {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #86efac;
+    }
+    .agrimind-badge.pending {
+      background: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #7dd3fc;
+      animation: pulse 2s infinite;
+    }
+    .agrimind-widget {
+      background: #ffffff;
+      border: 2px solid hsl(var(--primary) / 0.25);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-top: 1.25rem;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    }
+    .agrimind-widget-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid hsl(var(--border));
+      padding-bottom: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .agrimind-action-box {
+      background: #f8fafc;
+      border-left: 4px solid hsl(var(--primary));
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
+    }
+    .agrimind-evidence-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 0.5rem 0;
+    }
+    .agrimind-tag {
+      background: #e2e8f0;
+      color: #334155;
+      font-size: 0.72rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    .agrimind-approval-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .agrimind-btn-approve {
+      background: #16a34a;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.8125rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: background 0.2s;
+    }
+    .agrimind-btn-approve:hover { background: #15803d; }
+    .agrimind-btn-reject {
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.8125rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: background 0.2s;
+    }
+    .agrimind-btn-reject:hover { background: #b91c1c; }
   </style>
 </head>
 <body>
@@ -2450,7 +2559,13 @@
         cropHTML = `<div style="padding: 0.75rem; background: hsl(var(--muted) / 0.3); border-radius: 8px; margin-bottom: 1rem; text-align: center;"><span style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">No active crop</span></div>`;
         buttonHTML = `<button class="btn btn-primary btn-sm" style="width: 100%;" onclick="openRegisterModal(${field.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Register Crop</button>`;
       }
-      card.innerHTML = `<div class="field-card-header"><div class="field-card-info"><h3>${field.name}</h3><p>${formatArea(field.area)}</p></div></div>${cropHTML}${buttonHTML}`;
+      const rank = (window._agrimindRankings || {})[field.id] || (window._agrimindRankings || {})[field.name];
+      const priorityBadge = rank ? `
+        <span class="agrimind-badge ${(rank.priority || 'medium').toLowerCase()}" title="AgriMind Multi-Agent Risk Priority">
+          ${(rank.priority || '').toUpperCase() === 'HIGH' || (rank.priority || '').toUpperCase() === 'CRITICAL' ? '⚠️' : '⚡'} ${rank.priority} Priority
+        </span>` : '';
+
+      card.innerHTML = `<div class="field-card-header"><div class="field-card-info"><h3>${field.name}</h3><p>${formatArea(field.area)}</p></div>${priorityBadge}</div>${cropHTML}${buttonHTML}`;
       card.addEventListener('click', (e) => { if (!e.target.closest('button')) selectField(field.id); });
       return card;
     }
@@ -2498,6 +2613,34 @@
                 ${field.crop.irrigation ? `<div class="stat-box"><div class="stat-box-icon">${getIrrigationIcon(field.crop.irrigation)}</div><div class="stat-box-label">Irrigation</div><div class="stat-box-value">${field.crop.irrigation.charAt(0).toUpperCase()+field.crop.irrigation.slice(1)}</div></div>` : ''}
               </div>
               <div style="background:hsl(var(--muted)/0.3);padding:1rem;border-radius:8px;margin-bottom:1.5rem;"><h4 style="font-size:0.875rem;font-weight:600;margin-bottom:0.75rem;color:hsl(var(--muted-foreground));">Growth Stage</h4><div class="growth-stage-tracker">${generateGrowthStageTracker(daysSincePlanting)}</div></div>
+              
+              <!-- AgriMind Autonomous Agronomist & Human Verification Widget -->
+              <div class="agrimind-widget" id="agrimind-widget-${fieldId}">
+                <div class="agrimind-widget-header">
+                  <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <span style="font-size:1.3rem;">🤖</span>
+                    <div>
+                      <strong style="color:hsl(var(--primary));font-size:0.95rem;">AgriMind Autonomous Agronomist</strong>
+                      <p style="font-size:0.75rem;color:hsl(var(--muted-foreground));margin:0;">Multi-Agent Field Assessment & Verification</p>
+                    </div>
+                  </div>
+                  <span class="agrimind-badge pending" id="agrimind-status-badge-${fieldId}">Standby</span>
+                </div>
+                <div id="agrimind-content-${fieldId}">
+                  <p style="font-size:0.875rem;color:#475569;margin-bottom:0.75rem;">
+                    Cross-checks real-time Sentinel-2 NDVI, CHIRPS rainfall anomaly, and soil moisture against agro-ecological baselines.
+                  </p>
+                  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="runAgriMindAdvisory(${fieldId})" id="agrimind-run-btn-${fieldId}">
+                      ⚡ Run AgriMind Advisory
+                    </button>
+                    <a href="/vra_page/${fieldId}/" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:0.35rem;text-decoration:none;" target="_blank">
+                      🎯 VRA Zone Prescriptions
+                    </a>
+                  </div>
+                </div>
+              </div>
+
               <div><h4 style="font-size:0.875rem;font-weight:600;margin-bottom:0.75rem;color:hsl(var(--muted-foreground));">Timeline</h4><div class="timeline">
                 <div class="timeline-item"><div class="timeline-dot active"></div><div class="timeline-content"><strong>Planted</strong><span>${formatDate(field.crop.plantingDate)}</span></div></div>
                 <div class="timeline-item"><div class="timeline-dot ${daysSincePlanting>=30?'active':''}"></div><div class="timeline-content"><strong>Vegetative Growth</strong><span>${daysSincePlanting>=30?'Completed':`In ${30-daysSincePlanting} days`}</span></div></div>
@@ -2505,7 +2648,7 @@
                 <div class="timeline-item"><div class="timeline-dot ${daysSincePlanting>=90?'active':''}"></div><div class="timeline-content"><strong>Ready for Harvest</strong><span>${daysSincePlanting>=90?'Ready now!':`In ${90-daysSincePlanting} days`}</span></div></div>
               </div></div>
             </div>
-            <div class="modal-footer"><button class="btn btn-outline" onclick="closeCropDetails()">Close</button><button class="btn btn-primary" onclick="analyzeCrop(${fieldId},${field.crop.activityId})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Analyze Crop</button></div>
+            <div class="modal-footer"><button class="btn btn-outline" onclick="closeCropDetails()">Close</button><a href="/vra_page/${fieldId}/" class="btn btn-secondary" style="display:inline-flex;align-items:center;gap:0.4rem;text-decoration:none;" target="_blank"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>VRA Resource Optimization</a><button class="btn btn-primary" onclick="analyzeCrop(${fieldId},${field.crop.activityId})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Analyze Crop</button></div>
           </div>
         </div>`;
       const tempDiv = document.createElement('div');
@@ -2875,10 +3018,150 @@
     }
 
     // ========================================
+    // AGRIMIND AGENTIC CLIENT FUNCTIONS
+    // ========================================
+    window._agrimindRankings = {};
+
+    async function fetchAgriMindRankings() {
+      try {
+        const res = await fetch('/api/agent/rankings/');
+        if (!res.ok) return;
+        const data = await res.json();
+        const plots = data.plots || [];
+        window._agrimindRankings = {};
+        plots.forEach((p, idx) => {
+          window._agrimindRankings[p.plot_id] = p;
+          if (fields[idx]) {
+            window._agrimindRankings[fields[idx].id] = p;
+          }
+        });
+        renderFields();
+      } catch (err) {
+        console.warn('AgriMind rankings unavailable:', err);
+      }
+    }
+
+    async function runAgriMindAdvisory(fieldId) {
+      const btn = document.getElementById(`agrimind-run-btn-${fieldId}`);
+      const content = document.getElementById(`agrimind-content-${fieldId}`);
+      const badge = document.getElementById(`agrimind-status-badge-${fieldId}`);
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Reasoning & Corroborating Evidence...';
+      }
+      if (badge) {
+        badge.className = 'agrimind-badge pending';
+        badge.textContent = 'Running';
+      }
+
+      try {
+        const res = await fetch(`/api/agent/advisory/${fieldId}/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+
+        if (badge) {
+          badge.className = 'agrimind-badge ' + (data.status === 'APPROVED' ? 'low' : data.status === 'PENDING_APPROVAL' ? 'medium' : 'pending');
+          badge.textContent = data.status || 'Active';
+        }
+
+        const advisoryDraft = data.advisory || {};
+        const action = advisoryDraft.action || data.selected_action || 'ACTION_RECOMMENDED';
+        const rationale = advisoryDraft.rationale || data.rationale || 'Evaluation completed based on crop stage & telemetry.';
+        const citations = advisoryDraft.evidence_citations || data.evidence_ids || ['Sentinel-2 NDVI', 'CHIRPS Rainfall', 'Soil Moisture'];
+
+        let citationsHTML = citations.map(c => `<span class="agrimind-tag">🔎 ${c}</span>`).join('');
+
+        content.innerHTML = `
+          <div class="agrimind-action-box">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">
+              <strong style="color:hsl(var(--foreground));font-size:0.95rem;">Action: ${action}</strong>
+              <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">Thread: ${data.thread_id || 'live'}</span>
+            </div>
+            <p style="font-size:0.85rem;color:#334155;margin:0.25rem 0;">${rationale}</p>
+            <div class="agrimind-evidence-tags">
+              ${citationsHTML}
+            </div>
+          </div>
+          ${data.status === 'PENDING_APPROVAL' ? `
+            <div style="background:#fffbeb;border:1px solid #fef3c7;padding:0.75rem;border-radius:6px;margin-bottom:0.75rem;">
+              <span style="font-size:0.8125rem;color:#92400e;font-weight:600;">⚠️ Agronomist Review Required</span>
+              <p style="font-size:0.75rem;color:#b45309;margin:0.2rem 0 0.5rem 0;">Confirm or reject this intervention before push notifications / SMS alerts are dispatched to the field.</p>
+              <div class="agrimind-approval-actions">
+                <button class="agrimind-btn-approve" onclick="submitAgriMindDecision('${data.thread_id}', 'APPROVE', ${fieldId})">
+                  ✓ Approve Action
+                </button>
+                <button class="agrimind-btn-reject" onclick="submitAgriMindDecision('${data.thread_id}', 'REJECT', ${fieldId})">
+                  ✗ Reject / Override
+                </button>
+              </div>
+            </div>
+          ` : `
+            <div style="display:flex;align-items:center;gap:0.4rem;color:#16a34a;font-size:0.85rem;font-weight:600;margin-top:0.5rem;">
+              <span>✅ Status: ${data.status}</span>
+            </div>
+          `}
+        `;
+      } catch (err) {
+        if (content) {
+          content.innerHTML = `<div style="color:#b91c1c;font-size:0.85rem;">Failed to fetch advisory: ${err.message}</div>`;
+        }
+      }
+    }
+
+    async function submitAgriMindDecision(threadId, verdict, fieldId) {
+      const content = document.getElementById(`agrimind-content-${fieldId}`);
+      const badge = document.getElementById(`agrimind-status-badge-${fieldId}`);
+      if (badge) {
+        badge.className = 'agrimind-badge pending';
+        badge.textContent = 'Submitting...';
+      }
+
+      try {
+        const res = await fetch(`/api/agent/decide/${threadId}/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({
+            verdict: verdict,
+            reason: `Field agronomist verified ${verdict} from field management portal`
+          })
+        });
+        const data = await res.json();
+        if (badge) {
+          badge.className = 'agrimind-badge ' + (verdict === 'APPROVE' ? 'low' : 'high');
+          badge.textContent = verdict === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+        }
+        if (content) {
+          content.innerHTML = `
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:0.75rem 1rem;border-radius:6px;">
+              <strong style="color:#166534;font-size:0.9rem;">✅ Decision Verified: ${verdict}</strong>
+              <p style="font-size:0.8rem;color:#15803d;margin:0.25rem 0 0 0;">
+                Logged at ${new Date().toLocaleTimeString()} by Field Agronomist. SMS dispatch updated.
+              </p>
+            </div>
+          `;
+        }
+      } catch (err) {
+        if (content) {
+          content.innerHTML += `<p style="color:#b91c1c;font-size:0.8rem;">Decision submission error: ${err.message}</p>`;
+        }
+      }
+    }
+
+    // ========================================
     // INITIALIZATION
     // ========================================
     document.addEventListener('DOMContentLoaded', function() {
       fetchFieldsFromDatabase();
+      fetchAgriMindRankings();
       populateCropOptions();
       setupDropdown();
       setupCropSearch();

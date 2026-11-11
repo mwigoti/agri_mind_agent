@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: agrivision_postgis
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: agrivision
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: agrivision_secret_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    container_name: agrivision_web
+    restart: unless-stopped
+    command: >
+      bash -c "python manage.py migrate &&
+               python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgres://postgres:agrivision_secret_password@db:5432/agrivision
+      - DEBUG=True
+      - SECRET_KEY=django-insecure-docker-secret-key
+    depends_on:
+      db:
+        condition: service_healthy
+
+  agent:
+    build: .
+    container_name: agrimind_agent
+    restart: unless-stopped
+    command: uvicorn agentic_layer_2.api:app --host 0.0.0.0 --port 8001 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8001:8001"
+    environment:
+      - MODEL_ID=Qwen/Qwen2.5-7B-Instruct
+      - MODEL_PROVIDER=auto
+      - CHECKPOINT_PATH=/app/layer_2/checkpoints.sqlite
+      - AUDIT_PATH=/app/layer_2/audit.jsonl
+      - HISTORICAL_DB=/app/data/historical_records.db
+    depends_on:
+      - db
+
+volumes:
+  pgdata:
+

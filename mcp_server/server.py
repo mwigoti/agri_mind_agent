@@ -8,6 +8,7 @@ from .clients.backend_client import (
     fetch_crop_telemetry_from_db,
     evaluate_calendar_window_helper,
     draft_advisory_helper,
+    compute_vra_prescription_helper,
 )
 
 # Initialize FastMCP Server with identity 'AgriMind'
@@ -173,6 +174,44 @@ def draft_advisory_for_approval(
         recommended_action=recommended_action,
         advisory_rationale=advisory_rationale,
         evidence_ids=evidence_ids,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TOOL 5: compute_vra_prescription (Variable Rate Application & Resource Optimization)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@mcp.tool()
+def compute_vra_prescription(
+    plot_id: str,
+    target_input: str = "CAN_nitrogen_top_dressing",
+    num_zones: int = 3,
+) -> Dict[str, Any]:
+    """
+    Compute zone-by-zone Variable Rate Application (VRA) prescription rates for maize
+    to optimize chemical resource usage and prevent uniform over-application.
+
+    Divides the field into management zones based on satellite NDVI vigor:
+      - Zone 1 (High vigor): Low rate (avoids nitrate leaching and lodging).
+      - Zone 2 (Medium vigor): Maintenance baseline rate.
+      - Zone 3 (Low vigor / stressed): Targeted replenishment rate.
+
+    Calculates resource savings compared to uniform blanket application (typically 80 kg/ha).
+
+    Args:
+        plot_id (str): The unique plot identifier (e.g., '101' or 'PLOT-101').
+        target_input (str): Target fertilizer or nutrient type.
+        num_zones (int): Number of management clusters (default: 3).
+
+    Returns:
+        Dict[str, Any]: Zone prescriptions, estimated fertilizer savings (%),
+        and verifiable evidence tokens for auditability.
+    """
+    logger.info(f"Tool invoked: compute_vra_prescription for plot_id='{plot_id}', input='{target_input}'")
+    return compute_vra_prescription_helper(
+        plot_id=plot_id,
+        target_input=target_input,
+        num_zones=num_zones,
     )
 
 

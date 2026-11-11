@@ -1,6 +1,8 @@
 from django.urls import path
 from .views import *
 from .views import SaveFieldView, DeleteFieldView, VRAAnalysisView, USSDView
+from . import views_agent
+from . import views_chat
 
 urlpatterns = [
         path(
@@ -80,4 +82,12 @@ urlpatterns = [
     
     # Health check
     path('api/health-check/', health_check, name='health_check'),
+
+    # AgriMind Agent Integration Endpoints
+    path('api/agent/status/', views_agent.AgriMindStatusView.as_view(), name='agrimind_status'),
+    path('api/agent/advisory/<int:field_id>/', views_agent.AgriMindFieldAdvisoryView.as_view(), name='agrimind_field_advisory'),
+    path('api/agent/decide/<str:thread_id>/', views_agent.AgriMindDecisionView.as_view(), name='agrimind_decision'),
+    path('api/agent/rankings/', views_agent.AgriMindRankingsView.as_view(), name='agrimind_rankings'),
+    path('api/agent/chat/', views_chat.ChatAPIView.as_view(), name='agrimind_chat'),
+    path('chat/', views_chat.chat_page, name='chat'),
 ]
