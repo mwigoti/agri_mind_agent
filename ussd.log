@@ -1,0 +1,24 @@
+INFO 2026-11-12 03:54:02,654 views Checking VRA engine status...
+ERROR 2026-11-12 03:54:02,658 views Health check failed with status 405
+INFO 2026-11-12 03:54:11,545 views Checking VRA engine status...
+ERROR 2026-11-12 03:54:11,549 views Health check failed with status 405
+INFO 2026-11-12 04:11:16,711 views Checking VRA engine status...
+ERROR 2026-11-12 04:11:16,716 views Health check failed with status 405
+INFO 2026-11-12 04:11:54,199 views Spawned pipeline thread for AnalysisResult #11 (field=75, activity=20, crop=Maize)
+ERROR 2026-11-12 04:12:04,173 views Pipeline failed for AnalysisResult #11: float() argument must be a string or a real number, not 'NoneType'
+Traceback (most recent call last):
+  File "/home/mwoha/Documents/Agri_vision_agrimind_agent/base/views.py", line 2136, in _run_pipeline_in_background
+    scientific = analyzer.analyze_field(
+                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mwoha/Documents/Agri_vision_agrimind_agent/base/agrivision_gee_analysis.py", line 831, in analyze_field
+    ewa_grain = self.calculate_ewa(
+                ^^^^^^^^^^^^^^^^^^^
+  File "/home/mwoha/Documents/Agri_vision_agrimind_agent/base/agrivision_gee_analysis.py", line 714, in calculate_ewa
+    moisture_factor = max(0.3, float(moisture))
+                               ^^^^^^^^^^^^^^^
+TypeError: float() argument must be a string or a real number, not 'NoneType'
+
+INFO 2026-11-12 04:36:45,781 views Spawned pipeline thread for AnalysisResult #11 (field=75, activity=20, crop=Maize)
+INFO 2026-11-12 04:37:34,667 views AnalysisResult #11 done — risk=Very High ml_yield=3.75
+INFO 2026-11-12 05:22:22,070 views Spawned pipeline thread for AnalysisResult #11 (field=75, activity=20, crop=Maize)
+INFO 2026-11-12 05:23:28,016 views AnalysisResult #11 done — risk=Very High ml_yield=3.75

@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-11-11T10:32:51Z",
+  "timestamp": "2026-11-12T04:15:40Z",
   "total_scenarios": 25,
   "passes_per_scenario": 2,
   "total_runs": 50,
   "accuracy_rate": 100.0,
   "run_to_run_consistency_pct": 100.0,
   "safety_gate_fail_closed_rate": 100.0,
-  "avg_latency_ms": 0.03,
+  "avg_latency_ms": 0.031,
   "avg_prompt_tokens": 619.6,
   "avg_completion_tokens": 77.6,
   "cost_per_advisory_run_usd": 0.000139,
@@ -21,7 +21,7 @@
       "expected": "REJECT",
       "actual": "REJECT",
       "consistent": true,
-      "avg_ms": 0.07,
+      "avg_ms": 0.05,
       "status": "\u2705 PASS"
     },
     {
@@ -33,7 +33,7 @@
       "expected": "VALID",
       "actual": "VALID",
       "consistent": true,
-      "avg_ms": 0.04,
+      "avg_ms": 0.03,
       "status": "\u2705 PASS"
     },
     {
@@ -81,7 +81,7 @@
       "expected": "REJECT",
       "actual": "REJECT",
       "consistent": true,
-      "avg_ms": 0.03,
+      "avg_ms": 0.02,
       "status": "\u2705 PASS"
     },
     {
@@ -117,7 +117,7 @@
       "expected": "VALID",
       "actual": "VALID",
       "consistent": true,
-      "avg_ms": 0.03,
+      "avg_ms": 0.02,
       "status": "\u2705 PASS"
     },
     {
@@ -129,7 +129,7 @@
       "expected": "REJECT",
       "actual": "REJECT",
       "consistent": true,
-      "avg_ms": 0.02,
+      "avg_ms": 0.03,
       "status": "\u2705 PASS"
     },
     {
@@ -141,7 +141,7 @@
       "expected": "VALID",
       "actual": "VALID",
       "consistent": true,
-      "avg_ms": 0.03,
+      "avg_ms": 0.02,
       "status": "\u2705 PASS"
     },
     {
@@ -177,7 +177,7 @@
       "expected": "VALID",
       "actual": "VALID",
       "consistent": true,
-      "avg_ms": 0.02,
+      "avg_ms": 0.04,
       "status": "\u2705 PASS"
     },
     {
@@ -189,7 +189,7 @@
       "expected": "REJECT",
       "actual": "REJECT",
       "consistent": true,
-      "avg_ms": 0.02,
+      "avg_ms": 0.04,
       "status": "\u2705 PASS"
     },
     {
@@ -201,7 +201,7 @@
       "expected": "VALID",
       "actual": "VALID",
       "consistent": true,
-      "avg_ms": 0.03,
+      "avg_ms": 0.05,
       "status": "\u2705 PASS"
     },
     {
@@ -237,7 +237,7 @@
       "expected": "REJECT",
       "actual": "REJECT",
       "consistent": true,
-      "avg_ms": 0.02,
+      "avg_ms": 0.04,
       "status": "\u2705 PASS"
     },
     {
@@ -249,7 +249,7 @@
       "expected": "VALID",
       "actual": "VALID",
       "consistent": true,
-      "avg_ms": 0.02,
+      "avg_ms": 0.04,
       "status": "\u2705 PASS"
     },
     {
@@ -261,7 +261,7 @@
       "expected": "REJECT",
       "actual": "REJECT",
       "consistent": true,
-      "avg_ms": 0.02,
+      "avg_ms": 0.04,
       "status": "\u2705 PASS"
     },
     {
@@ -273,7 +273,7 @@
       "expected": "REJECT",
       "actual": "REJECT",
       "consistent": true,
-      "avg_ms": 0.02,
+      "avg_ms": 0.03,
       "status": "\u2705 PASS"
     },
     {
@@ -285,7 +285,7 @@
       "expected": "REJECT",
       "actual": "REJECT",
       "consistent": true,
-      "avg_ms": 0.03,
+      "avg_ms": 0.02,
       "status": "\u2705 PASS"
     },
     {
@@ -297,7 +297,7 @@
       "expected": "REJECT",
       "actual": "REJECT",
       "consistent": true,
-      "avg_ms": 0.08,
+      "avg_ms": 0.02,
       "status": "\u2705 PASS"
     },
     {
@@ -309,7 +309,7 @@
       "expected": "VALID",
       "actual": "VALID",
       "consistent": true,
-      "avg_ms": 0.02,
+      "avg_ms": 0.03,
       "status": "\u2705 PASS"
     }
   ]

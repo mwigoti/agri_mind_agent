@@ -121,7 +121,8 @@ class AgriMindAPITests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"AgriMind Assistant", response.content)
 
-    def test_chat_api_fallback(self):
+    @patch("base.views_chat._proxy_to_layer2", return_value=None)
+    def test_chat_api_fallback(self, mock_proxy):
         response = self.api.post(
             "/api/agent/chat/",
             data={"message": "What is the weather forecast and rainfall status?"},

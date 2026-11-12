@@ -24,21 +24,28 @@ def _get_db_connection():
     options = f"-c statement_timeout={DB_STATEMENT_TIMEOUT}"
     
     if DATABASE_URL:
+        dsn = DATABASE_URL.strip()
+        if "aivencloud.com" in dsn and "sslmode=" not in dsn:
+            sep = "&" if "?" in dsn else "?"
+            dsn = f"{dsn}{sep}sslmode=require"
         return psycopg2.connect(
-            DATABASE_URL,
+            dsn,
             connect_timeout=DB_CONNECT_TIMEOUT,
             options=options,
         )
     
-    return psycopg2.connect(
-        host=POSTGRES_HOST,
-        port=POSTGRES_PORT,
-        dbname=POSTGRES_DB,
-        user=POSTGRES_USER,
-        password=POSTGRES_PASSWORD,
-        connect_timeout=DB_CONNECT_TIMEOUT,
-        options=options,
-    )
+    conn_params = {
+        "host": POSTGRES_HOST,
+        "port": POSTGRES_PORT,
+        "dbname": POSTGRES_DB,
+        "user": POSTGRES_USER,
+        "password": POSTGRES_PASSWORD,
+        "connect_timeout": DB_CONNECT_TIMEOUT,
+        "options": options,
+    }
+    if "aivencloud.com" in POSTGRES_HOST:
+        conn_params["sslmode"] = "require"
+    return psycopg2.connect(**conn_params)
 
 
 def _clean_plot_id(plot_id: str) -> Optional[int]:

@@ -881,21 +881,26 @@
             <nav>
                 <ul>
                     <li id="infoPanelMenuItem" onclick="InfoPanelManager.toggleInfoPanel()">Hide Info Panel</li>
+                    {% url "health" as health_url %}
+                    <li id="cropHealthMenuItem" onclick='window.location.href="{{ health_url|escapejs }}"' style="cursor: pointer;">
+                        🌱 Crop Health & AgriMind
+                    </li>
                     {% url "seasons" as seasons_url %}
-<li id="fieldActivity" onclick='window.location.href="{{ seasons_url|escapejs }}"'>
-    Season Analytics
-</li>
-                    <li id="monitoring">Monitoring</li>
+                    <li id="seasonAnalytics" onclick='window.location.href="{{ seasons_url|escapejs }}"' style="cursor: pointer;">
+                        Season Analytics
+                    </li>
+                    <li id="monitoring" onclick='window.location.href="{{ health_url|escapejs }}"' style="cursor: pointer;">Crop Monitoring</li>
                     <li id="weatherMenuItem" onclick="WeatherManager.hideWeatherDashboard()">Hide Weather Dashboard</li>
                     <li id="overview">Overview</li>
                     <li id="vraMapsButton">VRA Maps</li>
-                  {% url "activity" as activity_url %}
-<li id="fieldActivity" onclick='window.location.href="{{ activity_url|escapejs }}"'>
-    Field Activity Log
-</li>
-
-
-
+                    {% url "activity" as activity_url %}
+                    <li id="fieldActivity" onclick='window.location.href="{{ activity_url|escapejs }}"' style="cursor: pointer;">
+                        Field Activity Log
+                    </li>
+                    {% url "chat" as chat_url %}
+                    <li id="chatMenuItem" onclick='window.location.href="{{ chat_url|escapejs }}"' style="cursor: pointer;">
+                        🤖 AgriMind AI Chat
+                    </li>
                     <li id="dataManager">Data Manager</li>
                     <li id="myFieldsButton">Field Manager</li>
                     <li id="notifications">Notifications</li>

@@ -94,7 +94,7 @@ WSGI_APPLICATION = 'AgriVision.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs, unquote
 
 from dotenv import load_dotenv
 
@@ -102,18 +102,36 @@ from dotenv import load_dotenv
 # Load environment variables from .env
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", '')
+DATABASE_URL = os.getenv("DATABASE_URL", '').strip()
 
 if DATABASE_URL:
     url = urlparse(DATABASE_URL)
+    query_params = parse_qs(url.query)
+
+    db_name = url.path.lstrip('/')
+    db_user = unquote(url.username or '')
+    db_password = unquote(url.password or '')
+    db_host = url.hostname or 'localhost'
+    db_port = url.port or 5432
+
+    options = {}
+    if 'sslmode' in query_params:
+        options['sslmode'] = query_params['sslmode'][0]
+    elif 'aivencloud.com' in db_host:
+        options['sslmode'] = 'require'
+
+    # GeoDjango requires the postgis backend for spatial fields (PolygonField)
+    engine = 'django.contrib.gis.db.backends.postgis'
+
     DATABASES = {
         'default': {
-            'ENGINE': 'django.contrib.gis.db.backends.postgis',
-            'NAME': url.path[1:],
-            'USER': url.username,
-            'PASSWORD': url.password,
-            'HOST': url.hostname,
-            'PORT': url.port,
+            'ENGINE': engine,
+            'NAME': db_name,
+            'USER': db_user,
+            'PASSWORD': db_password,
+            'HOST': db_host,
+            'PORT': db_port,
+            'OPTIONS': options,
         }
     }
 else:
@@ -259,3 +277,10 @@ LOGGING = {
         },
     },
 }
+
+# Earth Engine & ML Model Configurations
+AGRIVISION_GEE_PROJECT = os.getenv('AGRIVISION_GEE_PROJECT', 'ee-henrymwoha02')
+AGRIVISION_ML_MODEL_PATH = os.getenv(
+    'AGRIVISION_ML_MODEL_PATH',
+    str(BASE_DIR / 'base' / 'MODEL' / 'agrivision_ULTIMATE_voting_ensemble.pkl')
+)

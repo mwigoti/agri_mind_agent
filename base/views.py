@@ -190,6 +190,8 @@ def pricing(request):
 class SaveFieldView(APIView):
     def post(self, request, *args, **kwargs):
         try:
+            if not request.user or not request.user.is_authenticated:
+                return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
             data = request.data
             name = data.get('name', 'Unnamed Field')
             coordinates = data.get('coordinates')
@@ -232,6 +234,8 @@ from .serializers import FieldGeoJSONSerializer
 
 @api_view(['GET'])
 def get_fields_geojson(request):
+    if not request.user or not request.user.is_authenticated:
+        return Response({'detail': 'Authentication required.'}, status=status.HTTP_401_UNAUTHORIZED)
     fields = Field.objects.filter(owner=request.user)  # Query all fields
     serializer = FieldGeoJSONSerializer(fields, many=True)  # Serialize data
     return Response(serializer.data) 
@@ -433,6 +437,8 @@ class VRAAnalysisView(APIView):
     
     def post(self, request, field_id):
         try:
+            if not request.user or not request.user.is_authenticated:
+                return Response({"success": False, "error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
             logger.info(f"Starting VRA analysis for field {field_id}")
             
             # Get the field from database
@@ -2123,11 +2129,13 @@ def _run_pipeline_in_background(result_id: int) -> None:
             openweather_api_key=os.environ.get('OPENWEATHER_API_KEY'),
             use_gee=use_gee,
         )
+        default_model = getattr(
+            settings,
+            'AGRIVISION_ML_MODEL_PATH',
+            os.path.join(settings.BASE_DIR, 'base', 'MODEL', 'agrivision_ULTIMATE_voting_ensemble.pkl')
+        )
         ml_pipeline = AgrivisionProductionPipeline(
-            ml_model_path=os.environ.get(
-                'AGRIVISION_ML_MODEL_PATH',
-                'agrivision_ULTIMATE_voting_ensemble.pkl',
-            ),
+            ml_model_path=os.environ.get('AGRIVISION_ML_MODEL_PATH') or default_model,
             hf_token=os.environ.get('HUGGINGFACE_API_TOKEN', ''),
             use_gee=use_gee,
         )
