@@ -24,7 +24,7 @@ class AgriMindStatusView(APIView):
         return Response({
             "agent_online": online,
             "agent_url": client.base_url,
-            "status": "connected" if online else "offline_fallback_ready"
+            "status": "connected" if online else "database_fallback_ready"
         }, status=status.HTTP_200_OK)
 
 

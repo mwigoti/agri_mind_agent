@@ -22,3 +22,5 @@ INFO 2026-11-12 04:36:45,781 views Spawned pipeline thread for AnalysisResult #1
 INFO 2026-11-12 04:37:34,667 views AnalysisResult #11 done — risk=Very High ml_yield=3.75
 INFO 2026-11-12 05:22:22,070 views Spawned pipeline thread for AnalysisResult #11 (field=75, activity=20, crop=Maize)
 INFO 2026-11-12 05:23:28,016 views AnalysisResult #11 done — risk=Very High ml_yield=3.75
+INFO 2026-11-12 06:30:35,663 views Checking VRA engine status...
+ERROR 2026-11-12 06:30:35,666 views Health check failed with status 405

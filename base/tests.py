@@ -46,12 +46,18 @@ class AgriMindClientTests(SimpleTestCase):
         self.assertEqual(res["status"], "PENDING_APPROVAL")
         self.assertEqual(res["thread_id"], "thread-123")
 
+    @patch("base.models.Field.objects.filter")
     @patch("requests.post")
-    def test_request_advisory_fallback_on_network_error(self, mock_post):
+    def test_request_advisory_fallback_uses_db_record(self, mock_post, mock_field_filter):
         mock_post.side_effect = Exception("Timeout")
+        mock_field = MagicMock(id=42, name="North Plot")
+        mock_field_filter.return_value.select_related.return_value.first.return_value = mock_field
+
         res = self.client.request_advisory(plot_id=42)
-        self.assertEqual(res["status"], "OFFLINE_FALLBACK")
-        self.assertIn("fallback-42", res["thread_id"])
+
+        self.assertEqual(res["status"], "DB_FALLBACK")
+        self.assertIn("North Plot", res["advisory"])
+        self.assertTrue(res["thread_id"].startswith("db-fallback-"))
 
     @patch("requests.post")
     def test_submit_decision(self, mock_post):

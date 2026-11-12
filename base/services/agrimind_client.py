@@ -13,6 +13,52 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+def _db_field_summary(plot_id: str | int) -> Dict[str, Any]:
+    """Build advisory context strictly from database records so offline mode still uses real field state."""
+    try:
+        from base.models import Field
+
+        field = Field.objects.filter(pk=plot_id).select_related("owner").first()
+        if field is None:
+            return {
+                "status": "NO_FIELD_RECORD",
+                "advisory": f"No field record exists for plot {plot_id} in the database.",
+                "field": None,
+            }
+
+        planting_activity = field.activities.filter(activity_type="planting").order_by("-date").first()
+        crop_name = "Unregistered crop"
+        if planting_activity and planting_activity.crop:
+            crop_name = planting_activity.crop.name
+
+        return {
+            "status": "DB_FALLBACK",
+            "thread_id": f"db-fallback-{field.id}",
+            "execution_id": f"db-exec-{field.id}",
+            "advisory": (
+                f"Field '{field.name}' is available in the database. "
+                f"Current crop record: {crop_name}. "
+                "Use the saved field and crop records as the source of truth until the agent service is reachable."
+            ),
+            "field": {
+                "id": field.id,
+                "name": field.name,
+                "area_ha": field.area,
+                "owner": getattr(field.owner, "email", None),
+            },
+            "crop": {"name": crop_name},
+        }
+    except Exception as exc:  # pragma: no cover - defensive guard
+        logger.warning("DB-backed fallback advisory generation failed: %s", exc)
+        return {
+            "status": "DB_FALLBACK_UNAVAILABLE",
+            "thread_id": f"db-fallback-{plot_id}",
+            "execution_id": f"db-exec-{plot_id}",
+            "advisory": "Database-backed advisory data is unavailable right now.",
+            "field": None,
+        }
+
+
 class AgriMindClient:
     def __init__(
         self,
@@ -120,7 +166,7 @@ class AgriMindClient:
             return {"status": "ERROR", "error": str(exc)}
 
     def get_prioritized_rankings(self) -> List[Dict[str, Any]]:
-        """Fetch prioritized farm parcels based on crop health and stress factors."""
+        """Fetch prioritized farm parcels based on crop health and stress factors from the database when live ranking is unavailable."""
         try:
             resp = requests.get(
                 f"{self.base_url}/api/ranking",
@@ -132,19 +178,38 @@ class AgriMindClient:
                 return data.get("plots", [])
             return []
         except Exception as exc:
-            logger.warning("Ranking endpoint failed, returning fallback: %s", exc)
-            return []
+            logger.warning("Ranking endpoint failed, falling back to database-backed rankings: %s", exc)
+            try:
+                from base.models import Field, AnalysisResult
+
+                rankings: List[Dict[str, Any]] = []
+                for field in Field.objects.all().order_by("id")[:20]:
+                    latest_result = (
+                        AnalysisResult.objects.filter(field=field).order_by("-updated_at").first()
+                    )
+                    if latest_result is None:
+                        continue
+                    rankings.append({
+                        "plot_id": str(field.id),
+                        "field_name": field.name,
+                        "priority": "medium",
+                        "score": float(latest_result.ndvi_latest or 0.0),
+                        "source": "database",
+                    })
+                return rankings
+            except Exception:  # pragma: no cover - defensive guard
+                return []
 
     def _fallback_advisory(self, plot_id: str | int) -> Dict[str, Any]:
-        """Deterministic local fallback when the remote agent service is offline."""
+        """Use the saved database record as the source of truth when the remote agent is offline."""
+        fallback = _db_field_summary(plot_id)
         return {
-            "thread_id": f"fallback-{plot_id}",
-            "execution_id": f"exec-fallback-{plot_id}",
-            "status": "OFFLINE_FALLBACK",
-            "advisory": (
-                f"Field #{plot_id} queued for local rule evaluation. "
-                "Remote agent is currently offline; deterministic fallback active."
-            ),
+            "thread_id": fallback.get("thread_id", f"db-fallback-{plot_id}"),
+            "execution_id": fallback.get("execution_id", f"db-exec-{plot_id}"),
+            "status": fallback.get("status", "DB_FALLBACK"),
+            "advisory": fallback.get("advisory", "Database-backed advisory data is unavailable."),
+            "field": fallback.get("field"),
+            "crop": fallback.get("crop"),
             "review": None,
             "errors": [],
         }

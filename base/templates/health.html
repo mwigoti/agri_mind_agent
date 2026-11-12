@@ -248,6 +248,578 @@
       font-size: 0.875rem;
     }
 
+    .ops-shell {
+      max-width: 1440px;
+      margin: 0 auto;
+      background: hsl(var(--background));
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+    }
+
+    .ops-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding: 0.25rem 0.125rem;
+    }
+
+    .ops-title {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+    }
+
+    .ops-title-mark {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      box-shadow: 0 0 0 8px hsl(var(--primary) / 0.08);
+    }
+
+    .ops-title h2 {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: hsl(var(--foreground));
+      letter-spacing: -0.03em;
+    }
+
+    .ops-subtitle {
+      margin-top: 0.2rem;
+      font-size: 0.75rem;
+      color: hsl(var(--muted-foreground));
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .ops-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      flex-wrap: wrap;
+    }
+
+    .ops-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 2rem;
+      border-radius: 9999px;
+      padding: 0 0.75rem;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      color: hsl(var(--foreground));
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .ops-chip.primary {
+      background: hsl(var(--primary));
+      border-color: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+    }
+
+    .workflow-steps {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin: 0 0 1.5rem;
+    }
+
+    .workflow-step {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 0.9rem;
+      padding: 0.75rem 0.8rem;
+      min-height: 3.5rem;
+    }
+
+    .workflow-step.active {
+      border-color: hsl(var(--primary) / 0.3);
+      background: hsl(var(--primary) / 0.03);
+    }
+
+    .workflow-step .step-index {
+      width: 1.6rem;
+      height: 1.6rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: hsl(var(--muted));
+      color: hsl(var(--foreground));
+    }
+
+    .workflow-step.active .step-index {
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+    }
+
+    .workflow-step strong {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .workflow-step span {
+      display: block;
+      color: hsl(var(--muted-foreground));
+      font-size: 0.62rem;
+      margin-top: 0.1rem;
+    }
+
+    .ops-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1.6fr 0.9fr;
+      gap: 1.125rem;
+      align-items: stretch;
+    }
+
+    .ops-panel {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: 1.125rem;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+      overflow: hidden;
+    }
+
+    .ops-map-panel,
+    .ops-field-panel,
+    .ops-queue-panel {
+      padding: 1rem;
+    }
+
+    .ops-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.9rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+
+    .ops-panel-header h3 {
+      font-size: 0.87rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+
+    .ops-panel-meta {
+      font-size: 0.7rem;
+      color: hsl(var(--muted-foreground));
+      font-weight: 600;
+    }
+
+    .map-shell {
+      position: relative;
+      height: 26rem;
+      border-radius: 1rem;
+      overflow: hidden;
+      border: 1px solid hsl(var(--border));
+      background:
+        linear-gradient(120deg, rgba(15, 23, 42, 0.015), rgba(15, 23, 42, 0.01)),
+        linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+        linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+        hsl(120 20% 97%);
+      background-size: auto, 32px 32px, 32px 32px, auto;
+    }
+
+    .field-shape {
+      position: absolute;
+      border-radius: 0.9rem;
+      border: 1px solid rgba(23, 74, 48, 0.2);
+      background: rgba(23, 74, 48, 0.08);
+      box-shadow: inset 0 0 0 1px rgba(23, 74, 48, 0.04);
+    }
+
+    .field-shape.a {
+      left: 16%;
+      top: 20%;
+      width: 38%;
+      height: 28%;
+      transform: rotate(-8deg);
+    }
+
+    .field-shape.b {
+      left: 46%;
+      top: 18%;
+      width: 32%;
+      height: 26%;
+      transform: rotate(8deg);
+    }
+
+    .field-shape.c {
+      left: 22%;
+      top: 52%;
+      width: 42%;
+      height: 26%;
+      transform: rotate(-3deg);
+    }
+
+    .field-shape.active {
+      background: rgba(23, 74, 48, 0.14);
+      border-color: rgba(23, 74, 48, 0.34);
+    }
+
+    .map-marker {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: hsl(var(--primary));
+      border: 2px solid hsl(var(--card));
+      box-shadow: 0 8px 18px hsl(var(--primary) / 0.2);
+    }
+
+    .map-marker.m1 { left: 50%; top: 40%; }
+    .map-marker.m2 { left: 62%; top: 28%; }
+    .map-marker.m3 { left: 34%; top: 68%; }
+
+    .map-legend {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 0.8rem;
+      color: hsl(var(--muted-foreground));
+      font-size: 0.72rem;
+      padding: 0 0.2rem;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .legend-dot.green { background: hsl(var(--primary)); }
+    .legend-dot.amber { background: hsl(var(--warning)); }
+    .legend-dot.red { background: hsl(var(--destructive)); }
+
+    .field-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .field-top h3 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .field-sub {
+      margin-top: 0.45rem;
+      display: block;
+      color: hsl(var(--muted-foreground));
+      font-size: 0.76rem;
+    }
+
+    .status-pill {
+      min-width: 88px;
+      height: 30px;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 0.65rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .status-pill.watch {
+      background: hsl(var(--warning) / 0.12);
+      color: hsl(var(--warning));
+    }
+
+    .status-pill.good {
+      background: hsl(var(--success) / 0.12);
+      color: hsl(var(--success));
+    }
+
+    .status-pill.alert {
+      background: hsl(var(--destructive) / 0.12);
+      color: hsl(var(--destructive));
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.7rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .metric-card {
+      background: hsl(var(--muted));
+      border: 1px solid hsl(var(--border));
+      border-radius: 0.9rem;
+      padding: 0.8rem 0.75rem;
+      min-height: 5.5rem;
+    }
+
+    .metric-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-size: 0.66rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: hsl(var(--muted-foreground));
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      display: block;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: hsl(var(--foreground));
+    }
+
+    .metric-change {
+      display: block;
+      margin-top: 0.4rem;
+      font-size: 0.68rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .trend-box {
+      border: 1px solid hsl(var(--border));
+      background: linear-gradient(180deg, hsl(var(--card)), hsl(120 20% 98%));
+      border-radius: 1rem;
+      padding: 0.9rem 0.9rem 0.8rem;
+      margin-bottom: 1rem;
+    }
+
+    .trend-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .trend-head h4 {
+      margin: 0;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .trend-legend {
+      font-size: 0.68rem;
+      color: hsl(var(--muted-foreground));
+    }
+
+    .trend-chart {
+      height: 94px;
+      display: flex;
+      align-items: flex-end;
+      gap: 0.45rem;
+      padding: 0 0.2rem;
+    }
+
+    .trend-bar {
+      flex: 1;
+      background: linear-gradient(180deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.5));
+      border-radius: 0.6rem 0.6rem 0 0;
+      min-height: 0.8rem;
+    }
+
+    .trend-bar:nth-child(1) { height: 26%; }
+    .trend-bar:nth-child(2) { height: 34%; }
+    .trend-bar:nth-child(3) { height: 48%; }
+    .trend-bar:nth-child(4) { height: 52%; }
+    .trend-bar:nth-child(5) { height: 66%; }
+    .trend-bar:nth-child(6) { height: 80%; }
+    .trend-bar:nth-child(7) { height: 68%; }
+
+    .summary-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+
+    .note-box {
+      background: hsl(var(--muted));
+      border: 1px solid hsl(var(--border));
+      border-radius: 0.9rem;
+      padding: 0.8rem 0.8rem 0.7rem;
+    }
+
+    .note-box label {
+      display: block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: hsl(var(--muted-foreground));
+      text-transform: uppercase;
+      margin-bottom: 0.45rem;
+    }
+
+    .note-box strong {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .queue-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      margin-top: 0.6rem;
+    }
+
+    .queue-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      background: hsl(var(--muted));
+      border: 1px solid hsl(var(--border));
+      border-radius: 0.9rem;
+      padding: 0.85rem 0.8rem;
+    }
+
+    .queue-item.active {
+      background: hsl(var(--primary) / 0.03);
+      border-color: hsl(var(--primary) / 0.25);
+    }
+
+    .queue-item h4 {
+      margin: 0;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .queue-meta {
+      margin-top: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+      color: hsl(var(--muted-foreground));
+      font-size: 0.67rem;
+    }
+
+    .tiny-badge {
+      min-width: 3.1rem;
+      height: 1.6rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 0.55rem;
+      border-radius: 9999px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .tiny-badge.red {
+      background: hsl(var(--destructive) / 0.12);
+      color: hsl(var(--destructive));
+    }
+
+    .tiny-badge.amber {
+      background: hsl(var(--warning) / 0.12);
+      color: hsl(var(--warning));
+    }
+
+    .tiny-badge.green {
+      background: hsl(var(--success) / 0.12);
+      color: hsl(var(--success));
+    }
+
+    .decision-box {
+      margin-top: 1.1rem;
+      border: 1px solid hsl(var(--border));
+      border-radius: 1rem;
+      background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--muted)));
+      padding: 0.9rem 0.9rem 0.85rem;
+    }
+
+    .decision-box h4 {
+      margin: 0 0 0.35rem;
+      font-size: 0.76rem;
+      color: hsl(var(--muted-foreground));
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .decision-title {
+      margin: 0 0 0.45rem;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .decision-copy {
+      margin: 0;
+      color: hsl(var(--muted-foreground));
+      font-size: 0.76rem;
+      line-height: 1.55;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.9rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+      appearance: none;
+      border: none;
+      border-radius: 0.75rem;
+      height: 2.2rem;
+      padding: 0 0.9rem;
+      font-size: 0.74rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+      box-shadow: 0 8px 18px hsl(var(--primary) / 0.18);
+    }
+
+    .btn-secondary {
+      background: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      color: hsl(var(--foreground));
+    }
+
+    .btn-primary:hover,
+    .btn-secondary:hover {
+      transform: translateY(-1px);
+    }
+
     .stats-row {
       display: flex;
       align-items: center;
@@ -2218,8 +2790,45 @@
       </div>
     </header>
 
-    <main class="main">
-      <div class="page-header">
+    <main class="main ops-shell">
+      <div class="ops-topbar">
+        <div class="ops-title">
+          <span class="ops-title-mark" aria-hidden="true"></span>
+          <div>
+            <h2>Field Operations</h2>
+            <div class="ops-subtitle">Uasin Gishu grain corridor</div>
+          </div>
+        </div>
+        <div class="ops-actions">
+          <span class="ops-chip">Updated 08:40</span>
+          <span class="ops-chip primary">Review 3 priority fields</span>
+        </div>
+      </div>
+
+      <div class="workflow-steps" aria-label="Operational workflow steps">
+        <div class="workflow-step active">
+          <span class="step-index">1</span>
+          <div><strong>Farm</strong><span>Create field</span></div>
+        </div>
+        <div class="workflow-step">
+          <span class="step-index">2</span>
+          <div><strong>Crop</strong><span>Register season</span></div>
+        </div>
+        <div class="workflow-step">
+          <span class="step-index">3</span>
+          <div><strong>Monitor</strong><span>Health & risk</span></div>
+        </div>
+        <div class="workflow-step">
+          <span class="step-index">4</span>
+          <div><strong>Review</strong><span>Approval</span></div>
+        </div>
+        <div class="workflow-step">
+          <span class="step-index">5</span>
+          <div><strong>Report</strong><span>VRA output</span></div>
+        </div>
+      </div>
+
+      <div class="page-header" style="margin-bottom: 1.25rem;">
         <div class="page-title">
           <h2>My Fields</h2>
           <p>Manage and monitor your agricultural fields</p>
@@ -2262,7 +2871,119 @@
         </div>
       </div>
 
-      <div class="content-grid">
+      <div class="ops-grid">
+        <div class="ops-panel ops-map-panel">
+          <div class="ops-panel-header">
+            <h3>Field map</h3>
+            <span class="ops-panel-meta">12 parcels</span>
+          </div>
+
+          <div class="map-shell" aria-label="Field map overview">
+            <div class="field-shape a active"></div>
+            <div class="field-shape b"></div>
+            <div class="field-shape c"></div>
+            <div class="map-marker m1"></div>
+            <div class="map-marker m2"></div>
+            <div class="map-marker m3"></div>
+          </div>
+
+          <div class="map-legend">
+            <span class="legend-item"><span class="legend-dot green"></span>Healthy</span>
+            <span class="legend-item"><span class="legend-dot amber"></span>Watch</span>
+            <span class="legend-item"><span class="legend-dot red"></span>Action</span>
+          </div>
+        </div>
+
+        <div class="ops-panel ops-field-panel">
+          <div class="field-top">
+            <div>
+              <h3 id="selected-field-name">No field selected</h3>
+              <span class="field-sub" id="selected-field-meta">Load a field to view field health and risk context.</span>
+            </div>
+            <span class="status-pill watch" id="selected-field-status">—</span>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">NDVI</span>
+              <span class="metric-value" id="selected-ndvi">—</span>
+              <span class="metric-change" id="selected-ndvi-change">Awaiting field data</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Rainfall</span>
+              <span class="metric-value" id="selected-rain">—</span>
+              <span class="metric-change" id="selected-rain-change">Awaiting field data</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Soil moisture</span>
+              <span class="metric-value" id="selected-soil">—</span>
+              <span class="metric-change" id="selected-soil-change">Awaiting field data</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Risk</span>
+              <span class="metric-value" id="selected-risk">—</span>
+              <span class="metric-change" id="selected-risk-change">Awaiting field data</span>
+            </div>
+          </div>
+
+          <div class="trend-box">
+            <div class="trend-head">
+              <h4>Vegetation trend</h4>
+              <span class="trend-legend" id="selected-trend-label">No live observations</span>
+            </div>
+            <div class="trend-chart" aria-label="Trend chart">
+              <span class="trend-bar"></span>
+              <span class="trend-bar"></span>
+              <span class="trend-bar"></span>
+              <span class="trend-bar"></span>
+              <span class="trend-bar"></span>
+              <span class="trend-bar"></span>
+              <span class="trend-bar"></span>
+            </div>
+          </div>
+
+          <div class="summary-row">
+            <div class="note-box">
+              <label>Recommended action</label>
+              <strong id="selected-action">No recommendation yet</strong>
+            </div>
+            <div class="note-box">
+              <label>Next review</label>
+              <strong id="selected-review">Awaiting data</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="ops-panel ops-queue-panel">
+          <div class="ops-panel-header">
+            <h3>Priority queue</h3>
+            <span class="ops-panel-meta" id="priority-queue-count">0 items</span>
+          </div>
+
+          <div class="queue-list" id="priority-queue-list">
+            <div class="queue-item">
+              <div>
+                <h4>No field queue</h4>
+                <div class="queue-meta">
+                  <span>Database has no active records</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="decision-box">
+            <h4>AgriMind review</h4>
+            <p class="decision-title" id="agrimind-title">Waiting for field data</p>
+            <p class="decision-copy" id="agrimind-copy">No advisory has been created yet. The review will populate from the selected field once the database record is available.</p>
+            <div class="action-row">
+              <button class="btn-primary">Approve</button>
+              <button class="btn-secondary">Reject</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="content-grid" style="margin-top: 1.2rem;">
         <div>
           <p class="field-list-header">0 fields</p>
           <div class="field-list" id="field-list"></div>
@@ -2533,6 +3254,91 @@
       }
     }
 
+    function renderSelectedFieldSummary() {
+      const field = fields.find(f => f.id === selectedFieldId) || fields[0] || null;
+      const nameEl = document.getElementById('selected-field-name');
+      const metaEl = document.getElementById('selected-field-meta');
+      const statusEl = document.getElementById('selected-field-status');
+      const ndviEl = document.getElementById('selected-ndvi');
+      const ndviChangeEl = document.getElementById('selected-ndvi-change');
+      const rainEl = document.getElementById('selected-rain');
+      const rainChangeEl = document.getElementById('selected-rain-change');
+      const soilEl = document.getElementById('selected-soil');
+      const soilChangeEl = document.getElementById('selected-soil-change');
+      const riskEl = document.getElementById('selected-risk');
+      const riskChangeEl = document.getElementById('selected-risk-change');
+      const trendEl = document.getElementById('selected-trend-label');
+      const actionEl = document.getElementById('selected-action');
+      const reviewEl = document.getElementById('selected-review');
+      const queueCountEl = document.getElementById('priority-queue-count');
+      const queueListEl = document.getElementById('priority-queue-list');
+      const titleEl = document.getElementById('agrimind-title');
+      const copyEl = document.getElementById('agrimind-copy');
+
+      if (!field) {
+        nameEl.textContent = 'No field selected';
+        metaEl.textContent = 'Load a field to view field health and risk context.';
+        statusEl.textContent = '—';
+        ndviEl.textContent = '—';
+        ndviChangeEl.textContent = 'Awaiting field data';
+        rainEl.textContent = '—';
+        rainChangeEl.textContent = 'Awaiting field data';
+        soilEl.textContent = '—';
+        soilChangeEl.textContent = 'Awaiting field data';
+        riskEl.textContent = '—';
+        riskChangeEl.textContent = 'Awaiting field data';
+        trendEl.textContent = 'No live observations';
+        actionEl.textContent = 'No recommendation yet';
+        reviewEl.textContent = 'Awaiting data';
+        queueCountEl.textContent = '0 items';
+        queueListEl.innerHTML = '<div class="queue-item"><div><h4>No field queue</h4><div class="queue-meta"><span>Database has no active records</span></div></div></div>';
+        titleEl.textContent = 'Waiting for field data';
+        copyEl.textContent = 'No advisory has been created yet. The review will populate from the selected field once the database record is available.';
+        return;
+      }
+
+      const cropName = field.crop?.type?.name || 'Crop unregistered';
+      const cropDays = field.crop ? Math.max(0, Math.floor((Date.now() - new Date(field.crop.plantingDate).getTime()) / (1000 * 60 * 60 * 24))) : 0;
+      nameEl.textContent = field.name;
+      metaEl.textContent = `${cropName} • ${formatArea(field.area)} • ${field.crop ? `Planted ${cropDays} days ago` : 'No crop registered yet'}`;
+      statusEl.textContent = field.crop ? 'Active' : 'No crop';
+      ndviEl.textContent = '—';
+      ndviChangeEl.textContent = field.crop ? 'NDVI will appear after crop analysis is stored in the database' : 'Awaiting field data';
+      rainEl.textContent = '—';
+      rainChangeEl.textContent = field.crop ? 'Rainfall data is loaded from weather records when available' : 'Awaiting field data';
+      soilEl.textContent = '—';
+      soilChangeEl.textContent = field.crop ? 'Soil metrics are pulled from the field record set' : 'Awaiting field data';
+      riskEl.textContent = '—';
+      riskChangeEl.textContent = field.crop ? 'Risk is calculated from the latest saved analysis result' : 'Awaiting field data';
+      trendEl.textContent = field.crop ? 'Observations will appear when analysis data is present' : 'No live observations';
+      actionEl.textContent = field.crop ? 'Waiting for agronomist review' : 'No recommendation yet';
+      reviewEl.textContent = field.crop ? 'Pending DB review' : 'Awaiting data';
+
+      const queueItems = fields.slice(0, 3).map((item, index) => {
+        const statusText = item.crop ? `${item.crop.type?.name || 'Crop'} is active` : 'Crop not registered';
+        const queueRisk = index === 0 ? { label: 'Info', className: 'green' } : index === 1 ? { label: 'Review', className: 'amber' } : { label: 'Queued', className: 'green' };
+        return `
+          <div class="queue-item ${index === 0 ? 'active' : ''}">
+            <div>
+              <h4>${item.name}</h4>
+              <div class="queue-meta">
+                <span>${statusText}</span>
+                <span>${formatArea(item.area)}</span>
+              </div>
+            </div>
+            <span class="tiny-badge ${queueRisk.className}">${queueRisk.label}</span>
+          </div>
+        `;
+      }).join('');
+
+      queueCountEl.textContent = `${Math.min(fields.length, 3)} item${Math.min(fields.length, 3) !== 1 ? 's' : ''}`;
+      queueListEl.innerHTML = queueItems || '<div class="queue-item"><div><h4>No field queue</h4><div class="queue-meta"><span>Database has no active records</span></div></div></div>';
+
+      const advisoryDraft = field.crop ? 'The selected field is ready for agronomist review when the latest analysis is saved to the database.' : 'Waiting for crop registration before a review can be generated.';
+      titleEl.textContent = field.crop ? 'AgriMind review' : 'Waiting for field data';
+      copyEl.textContent = advisoryDraft;
+    }
+
     function renderFields() {
       const fieldList = document.getElementById('field-list');
       const fieldListHeader = document.querySelector('.field-list-header');
@@ -2540,9 +3346,12 @@
       fieldList.innerHTML = '';
       if (fields.length === 0) {
         fieldList.innerHTML = `<div class="waiting-card"><div class="waiting-icon">📍</div><h3>No fields yet</h3><p>Add your first field to start monitoring</p></div>`;
+        renderSelectedFieldSummary();
         return;
       }
+      if (!selectedFieldId) selectedFieldId = fields[0].id;
       fields.forEach(field => { const card = createFieldCard(field); fieldList.appendChild(card); });
+      renderSelectedFieldSummary();
     }
 
     function createFieldCard(field) {

@@ -165,10 +165,10 @@ def fetch_plot_status_from_db(plot_id: str) -> Dict[str, Any]:
                 "center_lon": round(float(row["center_lon"]), 5) if row.get("center_lon") is not None else None,
             },
             "crop": {
-                "crop_type": (row.get("crop_type") or "maize").lower(),
-                "variety": "Standard Hybrid",
-                "water_sensitivity": row.get("water_sensitivity") or "high",
-                "drought_tolerance": row.get("drought_tolerance") or "medium",
+                "crop_type": (row.get("crop_type") or "unknown").lower(),
+                "variety": row.get("variety") or "not recorded",
+                "water_sensitivity": row.get("water_sensitivity") or "not recorded",
+                "drought_tolerance": row.get("drought_tolerance") or "not recorded",
             },
             "phenology": {
                 "sowing_date": sowing_str,
@@ -179,11 +179,11 @@ def fetch_plot_status_from_db(plot_id: str) -> Dict[str, Any]:
             "soil_baseline": {
                 "soil_ph": round(float(row["soil_ph"]), 2) if row.get("soil_ph") is not None else None,
                 "organic_carbon_gkg": round(float(row["organic_carbon_gkg"]), 2) if row.get("organic_carbon_gkg") is not None else None,
-                "soil_type": row.get("soil_type") or "Loam",
+                "soil_type": row.get("soil_type") or "not recorded",
             },
             "farmer": {
                 "name": farmer_name,
-                "phone_number": row.get("farmer_phone") or "N/A",
+                "phone_number": row.get("farmer_phone") or "not recorded",
                 "county": row.get("farmer_county") or "Unknown",
             }
         }
@@ -262,7 +262,7 @@ def fetch_crop_telemetry_from_db(plot_id: str) -> Dict[str, Any]:
             return {
                 "status": "INSUFFICIENT_EVIDENCE",
                 "plot_id": plot_id,
-                "message": f"No telemetry snapshot found for plot {plot_id}. The satellite analysis pipeline has not been executed yet."
+                "message": f"No telemetry snapshot exists for plot {plot_id} in the database. Run the crop analysis pipeline before requesting an advisory."
             }
 
         status_val = (row.get("pipeline_status") or "").lower()
@@ -281,7 +281,7 @@ def fetch_crop_telemetry_from_db(plot_id: str) -> Dict[str, Any]:
 
         updated_at = row.get("updated_at")
         now_utc = datetime.now(timezone.utc)
-        
+
         if updated_at:
             if updated_at.tzinfo is None:
                 updated_at = updated_at.replace(tzinfo=timezone.utc)
@@ -304,19 +304,33 @@ def fetch_crop_telemetry_from_db(plot_id: str) -> Dict[str, Any]:
         satellite = bundle.get("satellite", {})
         climate = bundle.get("climate", {})
         sci_idx = bundle.get("scientific_indices", {})
-        
-        ndvi_latest = float(row["ndvi_latest"]) if row.get("ndvi_latest") is not None else float(satellite.get("ndvi_grain_filling") or 0.65)
-        evi_latest = float(satellite.get("evi_grain_filling") or satellite.get("evi_latest") or 0.45)
-        ndre_peak = float(row["ndre_peak"]) if row.get("ndre_peak") is not None else float(satellite.get("ndre_grain_filling") or 0.50)
-        
-        total_rain = float(row["total_rainfall_mm"]) if row.get("total_rainfall_mm") is not None else float(climate.get("total_season_rainfall_mm") or 250.0)
-        gdd = float(row["cumulative_gdd"]) if row.get("cumulative_gdd") is not None else float(climate.get("gdd") or 1100.0)
-        heat_stress = float(row["heat_stress_frac"]) if row.get("heat_stress_frac") is not None else float(climate.get("heat_stress_frac") or 0.05)
-        
-        wsi = float(sci_idx.get("wsi") or 45.0)
-        ml_yield = float(bundle.get("predicted_yield_t_ha") or bundle.get("ml_yield_t_ha") or 3.5)
 
-        rain_anomaly_pct = round(((total_rain - 350.0) / 350.0) * 100.0, 1)
+        ndvi_latest = row.get("ndvi_latest")
+        ndre_peak = row.get("ndre_peak")
+        total_rain = row.get("total_rainfall_mm")
+        gdd = row.get("cumulative_gdd")
+        heat_stress = row.get("heat_stress_frac")
+        wsi = (sci_idx.get("wsi") if isinstance(sci_idx, dict) else None)
+        ml_yield = bundle.get("predicted_yield_t_ha") or bundle.get("ml_yield_t_ha")
+
+        if ndvi_latest is None and not satellite.get("ndvi_grain_filling") and not satellite.get("ndvi_latest"):
+            return {
+                "status": "INSUFFICIENT_EVIDENCE",
+                "plot_id": plot_id,
+                "message": "The database record exists, but no vegetation indices were stored for this field. The analysis pipeline needs to populate NDVI data first.",
+            }
+
+        ndvi_latest = float(ndvi_latest) if ndvi_latest is not None else float(satellite.get("ndvi_grain_filling") or satellite.get("ndvi_latest") or 0.0)
+        evi_latest = float(satellite.get("evi_grain_filling") or satellite.get("evi_latest") or 0.0)
+        ndre_peak = float(ndre_peak) if ndre_peak is not None else float(satellite.get("ndre_grain_filling") or satellite.get("ndre_latest") or 0.0)
+
+        total_rain = float(total_rain) if total_rain is not None else float(climate.get("total_season_rainfall_mm") or 0.0)
+        gdd = float(gdd) if gdd is not None else float(climate.get("gdd") or 0.0)
+        heat_stress = float(heat_stress) if heat_stress is not None else float(climate.get("heat_stress_frac") or 0.0)
+        wsi = float(wsi) if wsi is not None else 0.0
+        ml_yield = float(ml_yield) if ml_yield is not None else 0.0
+
+        rain_anomaly_pct = round(((total_rain - 350.0) / 350.0) * 100.0, 1) if total_rain else 0.0
 
         scene_date_raw = row.get("latest_scene_date") or (updated_at.strftime("%Y-%m-%d") if updated_at else "20240101")
         date_tag = scene_date_raw.replace("-", "")
