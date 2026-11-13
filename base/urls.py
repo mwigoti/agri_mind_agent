@@ -1,3 +1,4 @@
+from django.contrib import admin
 from django.urls import path
 from .views import *
 from .views import SaveFieldView, DeleteFieldView, VRAAnalysisView, USSDView
@@ -17,6 +18,10 @@ urlpatterns = [
         AnalysisStatusView.as_view(),
         name='analysis_status',
     ),
+
+        path('api/field-metrics/', upload_field_metric, name='field_metrics'),
+        path('api/dashboard/field/<int:field_id>/', field_dashboard_summary, name='field_dashboard_summary'),
+        path('api/advisory-review/<int:review_id>/decision/', advisory_review_decision, name='advisory_review_decision'),
 
     # Basic pages
     path('', home, name='home'),

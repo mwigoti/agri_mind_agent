@@ -24,3 +24,48 @@ INFO 2026-11-12 05:22:22,070 views Spawned pipeline thread for AnalysisResult #1
 INFO 2026-11-12 05:23:28,016 views AnalysisResult #11 done — risk=Very High ml_yield=3.75
 INFO 2026-11-12 06:30:35,663 views Checking VRA engine status...
 ERROR 2026-11-12 06:30:35,666 views Health check failed with status 405
+INFO 2026-11-12 08:52:15,546 views Spawned pipeline thread for AnalysisResult #11 (field=75, activity=20, crop=Maize)
+INFO 2026-11-12 08:53:02,160 views AnalysisResult #11 done — risk=Very High ml_yield=3.75
+INFO 2026-11-12 08:53:37,810 views Spawned pipeline thread for AnalysisResult #11 (field=75, activity=20, crop=Maize)
+INFO 2026-11-12 08:54:43,436 views AnalysisResult #11 done — risk=Very High ml_yield=3.75
+INFO 2026-11-12 08:55:09,807 views Checking VRA engine status...
+ERROR 2026-11-12 08:55:09,810 views Health check failed with status 405
+INFO 2026-11-12 09:20:32,234 views Spawned pipeline thread for AnalysisResult #11 (field=75, activity=20, crop=Maize)
+INFO 2026-11-12 09:21:28,834 views AnalysisResult #11 done — risk=Very High ml_yield=3.75
+INFO 2026-11-12 13:48:07,738 views Checking VRA engine status...
+ERROR 2026-11-12 13:48:07,743 views Health check failed with status 405
+INFO 2026-11-12 14:52:06,558 views Spawned pipeline thread for AnalysisResult #12 (field=76, activity=22, crop=Maize)
+INFO 2026-11-12 14:52:47,651 views AnalysisResult #12 done — risk=Very High ml_yield=3.74
+INFO 2026-11-12 15:09:44,649 views AnalysisResult #12 done — risk=Very High ml_yield=3.39
+INFO 2026-11-12 15:10:19,363 views AnalysisResult #11 done — risk=Very High ml_yield=3.75
+INFO 2026-11-12 15:10:52,540 views AnalysisResult #13 done — risk=Very High ml_yield=3.74
+INFO 2026-11-12 15:11:27,561 views AnalysisResult #2 done — risk=Very High ml_yield=3.74
+INFO 2026-11-12 15:13:16,720 views AnalysisResult #12 done — risk=Very High ml_yield=3.39
+INFO 2026-11-12 15:13:45,291 views AnalysisResult #11 done — risk=Very High ml_yield=3.75
+INFO 2026-11-12 15:14:15,294 views AnalysisResult #13 done — risk=Very High ml_yield=3.74
+INFO 2026-11-12 15:14:42,123 views AnalysisResult #2 done — risk=Very High ml_yield=3.74
+INFO 2026-11-12 15:28:08,695 views AnalysisResult #12 done — risk=Very High ml_yield=3.74
+INFO 2026-11-12 15:29:17,445 views AnalysisResult #12 done — risk=Very High ml_yield=3.74
+INFO 2026-11-12 15:29:52,385 views AnalysisResult #11 done — risk=Very High ml_yield=3.74
+INFO 2026-11-12 15:29:56,757 views AnalysisResult #13 done — risk=Very High ml_yield=3.74
+INFO 2026-11-12 15:30:01,273 views AnalysisResult #2 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 06:05:23,196 views AnalysisResult #12 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 06:05:45,211 views AnalysisResult #11 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 06:05:49,410 views AnalysisResult #13 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 06:05:53,889 views AnalysisResult #2 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 06:12:52,006 views Spawned pipeline thread for AnalysisResult #11 (field=75, activity=20, crop=Maize)
+INFO 2026-11-13 06:13:28,208 views AnalysisResult #11 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 06:21:52,563 views Checking VRA engine status...
+ERROR 2026-11-13 06:21:52,567 views Health check failed with status 405
+INFO 2026-11-13 16:15:26,177 views AnalysisResult #12 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 16:16:00,922 views AnalysisResult #11 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 16:16:05,119 views AnalysisResult #13 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 16:16:09,172 views AnalysisResult #2 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 17:41:27,793 views AnalysisResult #12 done — risk=Very High ml_yield=3.39
+INFO 2026-11-13 17:42:34,545 views AnalysisResult #11 done — risk=Very High ml_yield=3.75
+INFO 2026-11-13 17:43:11,112 views AnalysisResult #13 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 17:43:45,149 views AnalysisResult #2 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 17:56:18,044 views AnalysisResult #12 done — risk=Very High ml_yield=3.39
+INFO 2026-11-13 17:57:20,953 views AnalysisResult #11 done — risk=Very High ml_yield=3.75
+INFO 2026-11-13 17:58:32,955 views AnalysisResult #13 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 18:00:46,889 views AnalysisResult #2 done — risk=Very High ml_yield=3.74

@@ -66,6 +66,65 @@ from .models import *
 logger = logging.getLogger(__name__)
 
 CustomUser = get_user_model()
+
+
+@require_http_methods(["POST"])
+def upload_field_metric(request):
+    """Create a field metric snapshot for a field owned by the caller."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"detail": "Authentication required."}, status=401)
+    try:
+        data = json.loads(request.body or "{}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"detail": "Request body must be valid JSON."}, status=400)
+
+    field_id = data.get("field_id")
+    if not field_id:
+        return JsonResponse({"detail": "field_id is required."}, status=400)
+    field = get_object_or_404(Field, pk=field_id, owner=request.user)
+    allowed = {
+        "ndvi", "evi", "savi", "ndmi", "rainfall_mm", "temperature_c",
+        "humidity_pct", "soil_moisture_pct", "pest_pressure", "nutrient_status",
+        "health_score", "yield_estimate_t_ha", "metadata",
+    }
+    values = {key: value for key, value in data.items() if key in allowed}
+    metric = FieldMetric.objects.create(field=field, **values)
+    return JsonResponse({"id": metric.pk, "field_id": field.pk, "captured_at": metric.captured_at.isoformat()}, status=201)
+
+
+@require_http_methods(["GET"])
+def field_dashboard_summary(request, field_id):
+    """Return the dashboard summary for one of the caller's fields."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"detail": "Authentication required."}, status=401)
+    field = get_object_or_404(Field, pk=field_id, owner=request.user)
+    from .dashboard_cache import build_field_dashboard_summary
+
+    return JsonResponse(build_field_dashboard_summary(field))
+
+
+@require_http_methods(["POST"])
+def advisory_review_decision(request, review_id):
+    """Record an authenticated reviewer's decision on an advisory."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"detail": "Authentication required."}, status=401)
+    try:
+        data = json.loads(request.body or "{}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"detail": "Request body must be valid JSON."}, status=400)
+    review = get_object_or_404(AdvisoryReview, pk=review_id, field__owner=request.user)
+    decision = str(data.get("decision", "")).lower()
+    if decision not in {"approved", "rejected"}:
+        return JsonResponse({"detail": "decision must be 'approved' or 'rejected'."}, status=400)
+    review.status = decision
+    review.reviewer = request.user
+    review.reviewer_comment = str(data.get("comment", ""))
+    review.decision_reason = str(data.get("reason", ""))
+    review.reviewed_at = timezone.now()
+    review.save(update_fields=["status", "reviewer", "reviewer_comment", "decision_reason", "reviewed_at"])
+    return JsonResponse({"id": review.pk, "status": review.status, "reviewed_at": review.reviewed_at.isoformat()})
+
+
 # Create your views here.
 def home(request):
     return render(request, 'index.html')
@@ -1903,7 +1962,6 @@ def analysis_status(request, result_id: int):
 # ─────────────────────────────────────────────────────────────
 def _run_synchronous(field_id: int, activity_id: int, result_id: int):
     """Run the pipeline in-process (blocking). For dev only."""
-    from .gee_pipeline import run_pipeline_2
     from .models import AnalysisResult
 
     result = AnalysisResult.objects.get(pk=result_id)
@@ -1911,10 +1969,11 @@ def _run_synchronous(field_id: int, activity_id: int, result_id: int):
     result.save(update_fields=["pipeline_status"])
 
     try:
-        run_pipeline_2(field_id, activity_id)
+        _run_pipeline_in_background(result_id)
         result.refresh_from_db()
-        result.pipeline_status = "done"
-        result.save(update_fields=["pipeline_status"])
+        if result.pipeline_status != "done":
+            result.pipeline_status = "done"
+            result.save(update_fields=["pipeline_status"])
     except Exception as exc:
         logger.exception("Synchronous pipeline failed: %s", exc)
         result.pipeline_status = "error"

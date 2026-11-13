@@ -46,9 +46,4 @@ class Migration(migrations.Migration):
             name='ussd_registration_date',
             field=models.DateTimeField(blank=True, null=True),
         ),
-        migrations.AlterField(
-            model_name='field',
-            name='geometry',
-            field=django.contrib.gis.db.models.fields.PolygonField(geography=True, srid=4326),
-        ),
     ]

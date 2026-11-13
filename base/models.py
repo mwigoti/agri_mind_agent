@@ -55,6 +55,92 @@ class Field(models.Model):
     def __str__(self):
         return self.name
 
+
+class FieldMetric(models.Model):
+    """Real farm-condition snapshots for a field and date/time."""
+    field = models.ForeignKey(Field, on_delete=models.CASCADE, related_name='metrics')
+    captured_at = models.DateTimeField(default=now)
+
+    ndvi = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
+    evi = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
+    savi = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
+    ndmi = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
+
+    rainfall_mm = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    temperature_c = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    humidity_pct = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    soil_moisture_pct = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    pest_pressure = models.DecimalField(max_digits=5, decimal_places=3, default=0)
+    nutrient_status = models.CharField(
+        max_length=30,
+        choices=[('unknown', 'Unknown'), ('low', 'Low'), ('adequate', 'Adequate'), ('high', 'High')],
+        default='unknown',
+    )
+    health_score = models.DecimalField(max_digits=5, decimal_places=3, default=0)
+    yield_estimate_t_ha = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-captured_at']
+
+    def __str__(self):
+        return f"{self.field.name} metric @ {self.captured_at:%Y-%m-%d %H:%M}"
+
+
+class AdvisoryReview(models.Model):
+    """Human-in-the-loop advisory decisions."""
+    ACTION_CHOICES = [
+        ('HOLD', 'Hold'),
+        ('PLANT', 'Plant'),
+        ('SPRAY', 'Spray'),
+        ('IRRIGATE', 'Irrigate'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    field = models.ForeignKey(Field, on_delete=models.CASCADE, related_name='advisory_reviews')
+    thread_id = models.CharField(max_length=120, blank=True, null=True)
+    recommended_action = models.CharField(max_length=20, choices=ACTION_CHOICES, default='HOLD')
+    rationale = models.TextField(blank=True)
+    evidence_ids = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    reviewer = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='advisory_reviews')
+    reviewer_comment = models.TextField(blank=True)
+    decision_reason = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.field.name} - {self.recommended_action} - {self.status}"
+
+
+class AdvisoryComment(models.Model):
+    """Comments attached to a review by an agronomist or extension officer."""
+    review = models.ForeignKey(AdvisoryReview, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='advisory_comments')
+    comment = models.TextField()
+    is_internal = models.BooleanField(default=True)
+    is_farmer_visible = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Comment by {self.author.email if self.author else 'system'} on {self.review_id}"
+
+
 class USSDSession(models.Model):
     session_id = models.CharField(max_length=100, unique=True)
     phone_number = models.CharField(max_length=15)

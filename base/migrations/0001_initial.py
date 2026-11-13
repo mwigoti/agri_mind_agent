@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False)),
                 ('name', models.CharField(max_length=255)),
-                ('geometry', django.contrib.gis.db.models.fields.PolygonField(srid=3857)),
+                ('geometry', django.contrib.gis.db.models.fields.PolygonField(geography=True, srid=4326)),
                 ('created_at', models.DateTimeField(default=django.utils.timezone.now)),
                 ('area', models.FloatField(default=0.0)),
                 ('owner', models.ForeignKey(default=True, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),

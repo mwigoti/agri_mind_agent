@@ -245,6 +245,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'agrivision.tasks.generate_recommendations',
         'schedule': 7200.0,  # Run every 2 hours
     },
+    'refresh-ee-analysis-every-12-days': {
+        'task': 'base.tasks.refresh_stale_field_analysis',
+        'schedule': 12 * 24 * 60 * 60,  # Run every 12 days
+        'kwargs': {'max_age_days': 12},
+    },
 }
 # Add logging for USSD
 LOGGING = {

@@ -29,5 +29,5 @@ ENV PYTHONPATH=/app
 
 EXPOSE 8000 8001
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py warmup_dashboard_data && python manage.py runserver 0.0.0.0:8000"]
 

@@ -2905,9 +2905,9 @@
 
           <div class="metrics-grid">
             <div class="metric-card">
-              <span class="metric-label">NDVI</span>
-              <span class="metric-value" id="selected-ndvi">—</span>
-              <span class="metric-change" id="selected-ndvi-change">Awaiting field data</span>
+              <span class="metric-label">Estimated yield</span>
+              <span class="metric-value" id="selected-yield">—</span>
+              <span class="metric-change" id="selected-yield-change">Awaiting saved analysis</span>
             </div>
             <div class="metric-card">
               <span class="metric-label">Rainfall</span>
@@ -2915,9 +2915,9 @@
               <span class="metric-change" id="selected-rain-change">Awaiting field data</span>
             </div>
             <div class="metric-card">
-              <span class="metric-label">Soil moisture</span>
-              <span class="metric-value" id="selected-soil">—</span>
-              <span class="metric-change" id="selected-soil-change">Awaiting field data</span>
+              <span class="metric-label">Overall health</span>
+              <span class="metric-value" id="selected-health">—</span>
+              <span class="metric-change" id="selected-health-change">Awaiting saved analysis</span>
             </div>
             <div class="metric-card">
               <span class="metric-label">Risk</span>
@@ -3259,12 +3259,12 @@
       const nameEl = document.getElementById('selected-field-name');
       const metaEl = document.getElementById('selected-field-meta');
       const statusEl = document.getElementById('selected-field-status');
-      const ndviEl = document.getElementById('selected-ndvi');
-      const ndviChangeEl = document.getElementById('selected-ndvi-change');
+      const yieldEl = document.getElementById('selected-yield');
+      const yieldChangeEl = document.getElementById('selected-yield-change');
       const rainEl = document.getElementById('selected-rain');
       const rainChangeEl = document.getElementById('selected-rain-change');
-      const soilEl = document.getElementById('selected-soil');
-      const soilChangeEl = document.getElementById('selected-soil-change');
+      const healthEl = document.getElementById('selected-health');
+      const healthChangeEl = document.getElementById('selected-health-change');
       const riskEl = document.getElementById('selected-risk');
       const riskChangeEl = document.getElementById('selected-risk-change');
       const trendEl = document.getElementById('selected-trend-label');
@@ -3279,12 +3279,12 @@
         nameEl.textContent = 'No field selected';
         metaEl.textContent = 'Load a field to view field health and risk context.';
         statusEl.textContent = '—';
-        ndviEl.textContent = '—';
-        ndviChangeEl.textContent = 'Awaiting field data';
+        yieldEl.textContent = '—';
+        yieldChangeEl.textContent = 'Awaiting saved analysis';
         rainEl.textContent = '—';
         rainChangeEl.textContent = 'Awaiting field data';
-        soilEl.textContent = '—';
-        soilChangeEl.textContent = 'Awaiting field data';
+        healthEl.textContent = '—';
+        healthChangeEl.textContent = 'Awaiting saved analysis';
         riskEl.textContent = '—';
         riskChangeEl.textContent = 'Awaiting field data';
         trendEl.textContent = 'No live observations';
@@ -3302,12 +3302,12 @@
       nameEl.textContent = field.name;
       metaEl.textContent = `${cropName} • ${formatArea(field.area)} • ${field.crop ? `Planted ${cropDays} days ago` : 'No crop registered yet'}`;
       statusEl.textContent = field.crop ? 'Active' : 'No crop';
-      ndviEl.textContent = '—';
-      ndviChangeEl.textContent = field.crop ? 'NDVI will appear after crop analysis is stored in the database' : 'Awaiting field data';
+      yieldEl.textContent = '—';
+      yieldChangeEl.textContent = 'Awaiting saved analysis';
       rainEl.textContent = '—';
-      rainChangeEl.textContent = field.crop ? 'Rainfall data is loaded from weather records when available' : 'Awaiting field data';
-      soilEl.textContent = '—';
-      soilChangeEl.textContent = field.crop ? 'Soil metrics are pulled from the field record set' : 'Awaiting field data';
+      rainChangeEl.textContent = 'Awaiting saved metric or analysis';
+      healthEl.textContent = '—';
+      healthChangeEl.textContent = 'Awaiting saved analysis';
       riskEl.textContent = '—';
       riskChangeEl.textContent = field.crop ? 'Risk is calculated from the latest saved analysis result' : 'Awaiting field data';
       trendEl.textContent = field.crop ? 'Observations will appear when analysis data is present' : 'No live observations';
@@ -3337,6 +3337,26 @@
       const advisoryDraft = field.crop ? 'The selected field is ready for agronomist review when the latest analysis is saved to the database.' : 'Waiting for crop registration before a review can be generated.';
       titleEl.textContent = field.crop ? 'AgriMind review' : 'Waiting for field data';
       copyEl.textContent = advisoryDraft;
+
+      // Load the latest persisted values for this field; never substitute demo data.
+      fetch(`/api/dashboard/field/${field.id}/`, { credentials: 'same-origin' })
+        .then(response => response.ok ? response.json() : null)
+        .then(summary => {
+          if (!summary || selectedFieldId && Number(selectedFieldId) !== Number(field.id)) return;
+          const metric = summary.latest_metric || {};
+          const show = (value, suffix = '') => value == null ? '—' : `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}${suffix}`;
+          yieldEl.textContent = show(summary.yield_estimate_t_ha, ' t/ha');
+          yieldChangeEl.textContent = summary.yield_estimate_t_ha == null ? 'No saved yield estimate' : 'Latest saved field estimate';
+          rainEl.textContent = show(metric.rainfall_mm, ' mm');
+          rainChangeEl.textContent = metric.rainfall_mm == null ? 'No saved rainfall data' : (metric.captured_at ? `Captured ${new Date(metric.captured_at).toLocaleDateString()}` : 'Latest saved field metric');
+          const health = metric.health_score;
+          const healthPct = health == null ? null : (Number(health) <= 1 ? Number(health) * 100 : Number(health));
+          healthEl.textContent = healthPct == null ? '—' : `${healthPct.toFixed(1)}%`;
+          healthChangeEl.textContent = healthPct == null ? 'No saved health score' : 'Latest saved field score';
+          riskEl.textContent = metric.risk_level || '—';
+          riskChangeEl.textContent = metric.risk_level && metric.risk_level !== 'UNKNOWN' ? 'Based on latest saved health score' : 'No saved risk assessment';
+        })
+        .catch(error => console.error('Could not load saved field metrics:', error));
     }
 
     function renderFields() {
