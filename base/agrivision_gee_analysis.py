@@ -1220,7 +1220,10 @@ class AgrivisionCompleteAnalyzer:
 
 class AgrivisionProductionPipeline:
     def __init__(self, ml_model_path: str, hf_token: str, **kwargs):
-        self.hf_token = hf_token
+        self.hf_token = hf_token or os.environ.get('HF_TOKEN') or os.environ.get('HUGGINGFACE_API_TOKEN', '')
+        self.model_id = os.environ.get('MODEL_ID', 'Qwen/Qwen2.5-7B-Instruct')
+        self.model_provider = os.environ.get('MODEL_PROVIDER', 'auto')
+        self.model_base_url = os.environ.get('MODEL_BASE_URL', 'https://router.huggingface.co/v1').rstrip('/')
         self.use_gee = kwargs.get('use_gee', True)
         self.model = None
 
@@ -1406,10 +1409,13 @@ class AgrivisionProductionPipeline:
         }
     def generate_llm_report(self, yield_val, feats, extrapolated, scientific=None):
         if not self.hf_token:
-            return f"Predicted yield: {yield_val:.2f} t/ha based on ML ensemble model."
+            return "AI agronomic report unavailable: configure HF_TOKEN to generate a hosted report."
 
-        API_URL = "https://router.huggingface.co/v1/chat/completions"
+        API_URL = f"{self.model_base_url}/chat/completions"
         headers = {"Authorization": f"Bearer {self.hf_token}"}
+        model_id = self.model_id
+        if self.model_provider not in {'', 'auto', 'huggingface'}:
+            model_id = f"{model_id}:{self.model_provider}"
 
         # Build context only from real available data
         lines = []
@@ -1463,7 +1469,7 @@ class AgrivisionProductionPipeline:
             API_URL,
             headers=headers,
             json={
-                "model": "Qwen/Qwen2.5-7B-Instruct:together",
+                "model": model_id,
                 "messages": [
                     {
                         "role": "system",
@@ -1522,21 +1528,7 @@ class AgrivisionProductionPipeline:
 
         except Exception as e:
             logger.warning("LLM report failed: %s", e)
-
-            # Honest fallback using only real data
-            if scientific:
-                idx  = scientific.get('scientific_indices', {})
-                clim = scientific.get('climate', {})
-                parts = [f"Predicted yield: {yield_val:.2f} t/ha ({status})."]
-                if idx.get('chi')  is not None:
-                    parts.append(f"Crop Health Index: {idx['chi']}%.")
-                if clim.get('total_season_rainfall_mm') is not None:
-                    parts.append(f"Season rainfall: {clim['total_season_rainfall_mm']}mm.")
-                if scientific.get('risk_level'):
-                    parts.append(f"Risk level: {scientific['risk_level']}.")
-                return " ".join(parts)
-
-            return f"Predicted yield: {yield_val:.2f} t/ha ({status})."
+            return "AI agronomic report unavailable: Hugging Face report generation failed. Retry after checking the hosted model configuration."
 # ─────────────────────────────────────────────────────────────────────────────
 # DJANGO MANAGEMENT COMMAND
 # ─────────────────────────────────────────────────────────────────────────────

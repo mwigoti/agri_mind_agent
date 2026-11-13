@@ -1482,6 +1482,17 @@ def generate_report(request):
     from .report_generator import AgrivisionReportGenerator
     try:
         data = json.loads(request.body)
+
+        if not request.user.is_authenticated:
+            return JsonResponse({'success': False, 'error': 'Authentication required.'}, status=401)
+        result_id = data.get('analysis_result_id')
+        if not result_id:
+            return JsonResponse({'success': False, 'error': 'analysis_result_id is required for human-review gating.'}, status=400)
+        AnalysisResult = _get_model('AnalysisResult')
+        analysis_result = get_object_or_404(AnalysisResult, pk=result_id, field__owner=request.user, pipeline_status='done')
+        latest_review = AdvisoryReview.objects.filter(field=analysis_result.field).order_by('-reviewed_at', '-created_at').first()
+        if not latest_review or latest_review.status != 'approved' or not latest_review.reviewed_at or latest_review.reviewed_at < analysis_result.updated_at:
+            return JsonResponse({'success': False, 'error': 'A human reviewer must approve an advisory for this analysis before the report can be released.'}, status=409)
         
         if 'analysis_data' not in data:
             return JsonResponse({
@@ -2132,6 +2143,13 @@ def _result_to_frontend(ar) -> Dict[str, Any]:
         or yields.get('simple_model_t_ha')
     )
     field_area_ha = float(ar.field.area) if ar.field_id and ar.field.area is not None else None
+    latest_review = AdvisoryReview.objects.filter(field=ar.field).order_by('-reviewed_at', '-created_at').first()
+    report_approved = bool(
+        latest_review
+        and latest_review.status == 'approved'
+        and latest_review.reviewed_at
+        and latest_review.reviewed_at >= ar.updated_at
+    )
 
     scene_count  = sat.get('scene_count', 0) or 0
     ready_for_ml = scene_count >= 2
@@ -2169,7 +2187,8 @@ def _result_to_frontend(ar) -> Dict[str, Any]:
         'field_area_ha':       field_area_ha,
         'estimated_yield_t':   round(float(yield_rate) * field_area_ha, 2)
                                if yield_rate is not None and field_area_ha is not None else None,
-        'ai_agronomic_report': bundle.get('ai_agronomic_report'),
+        'ai_agronomic_report': bundle.get('ai_agronomic_report') if report_approved else None,
+        'ai_report_review_status': 'approved' if report_approved else 'pending',
         'is_extrapolated':     bundle.get('is_extrapolated', False),
 
         # SAR
@@ -2265,7 +2284,7 @@ def _run_pipeline_in_background(result_id: int) -> None:
         )
         ml_pipeline = AgrivisionProductionPipeline(
             ml_model_path=os.environ.get('AGRIVISION_ML_MODEL_PATH') or default_model,
-            hf_token=os.environ.get('HUGGINGFACE_API_TOKEN', ''),
+            hf_token=os.environ.get('HF_TOKEN') or os.environ.get('HUGGINGFACE_API_TOKEN', ''),
             use_gee=use_gee,
         )
 

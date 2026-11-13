@@ -579,12 +579,24 @@ async def get_map_fields() -> dict[str, Any]:
 
 @app.get("/health")
 async def health() -> dict[str, Any]:
+    required_tools = {"get_plot_status", "analyze_crop_telemetry", "evaluate_calendar_window", "draft_advisory_for_approval"}
+    discovered_tools = set(tools.contracts.get("agrimind", {}))
+    missing_tools = sorted(required_tools - discovered_tools) if not settings.demo_mode else []
+    missing_configuration = []
+    if not settings.demo_mode:
+        if not settings.hf_token:
+            missing_configuration.append("HF_TOKEN")
+        if missing_tools:
+            missing_configuration.append("AgriMind MCP tools: " + ", ".join(missing_tools))
+    ready = settings.demo_mode or not missing_configuration
     return {
-        "status": "ok",
-        "mode": "operational" if not settings.demo_mode else "demo_mode",
+        "status": "ok" if ready else "degraded",
+        "mode": "demo_mode" if settings.demo_mode else "live" if ready else "live_not_ready",
         "model_configured": bool(settings.hf_token),
         "mcp_discovered": bool(tools.contracts) if not settings.demo_mode else False,
-        "runtime": "local_fallback" if (not settings.hf_token and not settings.demo_mode) else "hosted_model" if not settings.demo_mode else "synthetic"
+        "mcp_required_tools_missing": missing_tools,
+        "missing_configuration": missing_configuration,
+        "runtime": "synthetic" if settings.demo_mode else "hosted_model" if ready else "not_ready",
     }
 
 
@@ -592,6 +604,10 @@ async def health() -> dict[str, Any]:
 async def start_advisory(payload: AdvisoryRequest, background_tasks: BackgroundTasks, _: str = Depends(require_api)) -> dict[str, Any]:
     if graph is None:
         raise HTTPException(503, detail={"error": "workflow_not_ready"})
+    if not settings.demo_mode:
+        readiness = await health()
+        if readiness["status"] != "ok":
+            raise HTTPException(503, detail={"error": "live_workflow_not_ready", "missing_configuration": readiness["missing_configuration"]})
     state = new_state(payload.plot_id, payload.thread_id)
     thread_id = state["thread_id"]
     if thread_id in active_runs and active_runs[thread_id].get("status") == "RUNNING":

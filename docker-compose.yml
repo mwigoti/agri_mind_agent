@@ -31,6 +31,13 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres:agrivision_secret_password@db:5432/agrivision
       - AGRIMIND_AGENT_URL=http://agent:8001
+      - HF_TOKEN=${HF_TOKEN:-}
+      - MODEL_ID=${MODEL_ID:-Qwen/Qwen2.5-7B-Instruct}
+      - MODEL_PROVIDER=${MODEL_PROVIDER:-auto}
+      - MODEL_BASE_URL=${MODEL_BASE_URL:-https://router.huggingface.co/v1}
+      - DEMO_MODE=${DEMO_MODE:-true}
+      - API_BEARER_TOKEN=${API_BEARER_TOKEN:-dev-api-token}
+      - REVIEWER_TOKEN=${REVIEWER_TOKEN:-dev-reviewer-token}
       - DEBUG=True
       - SECRET_KEY=django-insecure-docker-secret-key
     depends_on:
@@ -47,8 +54,14 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - MODEL_ID=Qwen/Qwen2.5-7B-Instruct
-      - MODEL_PROVIDER=auto
+      - DATABASE_URL=postgres://postgres:agrivision_secret_password@db:5432/agrivision
+      - HF_TOKEN=${HF_TOKEN:-}
+      - MODEL_ID=${MODEL_ID:-Qwen/Qwen2.5-7B-Instruct}
+      - MODEL_PROVIDER=${MODEL_PROVIDER:-auto}
+      - MODEL_BASE_URL=${MODEL_BASE_URL:-https://router.huggingface.co/v1}
+      - DEMO_MODE=${DEMO_MODE:-true}
+      - API_BEARER_TOKEN=${API_BEARER_TOKEN:-dev-api-token}
+      - REVIEWER_TOKENS=${REVIEWER_TOKENS:-officer:dev-reviewer-token,supervisor:dev-supervisor-token}
       - CHECKPOINT_PATH=/app/agentic_layer_2/checkpoints.sqlite
       - AUDIT_PATH=/app/agentic_layer_2/audit.jsonl
       - HISTORICAL_DB=/app/data/historical_records.db

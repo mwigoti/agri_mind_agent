@@ -119,7 +119,7 @@ class AgriMindClient:
             }
         except Exception as exc:
             logger.warning("Could not reach AgriMind agent at %s: %s", self.base_url, exc)
-            return self._fallback_advisory(plot_id)
+            return {"status": "UNAVAILABLE", "error": "AgriMind is unavailable; no advisory was generated."}
 
     def get_advisory(self, thread_id: str) -> Dict[str, Any]:
         """Fetch the current state, draft, citations, and status for a thread."""

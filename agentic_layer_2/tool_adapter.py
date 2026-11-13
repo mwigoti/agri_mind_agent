@@ -13,7 +13,6 @@ from typing import Any, AsyncIterator
 import httpx
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from mcp.client.streamable_http import streamable_http_client
 
 from .audit import AuditLog, utc_now
 from .config import settings
@@ -79,6 +78,14 @@ class MCPTools:
     async def _session(self, server: str) -> AsyncIterator[ClientSession]:
         endpoint = self.servers[server]
         if isinstance(endpoint, str):
+            try:
+                from mcp.client.streamable_http import streamable_http_client
+            except ImportError as exc:
+                raise RuntimeError(
+                    "Streamable HTTP requires MCP Python SDK >= 1.30.0; "
+                    "upgrade the agent environment with "
+                    "python -m pip install --upgrade -r agentic_layer_2/requirements.txt"
+                ) from exc
             headers = {"Authorization": f"Bearer {settings.agrimind_mcp_token}"} if settings.agrimind_mcp_token else None
             async with httpx.AsyncClient(
                 headers=headers,

@@ -49,6 +49,15 @@ class Workflow:
         if settings.demo_mode:
             from .synthetic import get_plot
             plot, telemetry, calendar = get_plot(plot_id)
+            if plot.get("status") != "OK":
+                state.update(
+                    status="INSUFFICIENT_EVIDENCE",
+                    errors=[
+                        "DEMO_MODE is enabled and only synthetic plot IDs KE-001, KE-002, and KE-003 are available. "
+                        "This dashboard sent a saved farm ID; set DEMO_MODE=false and connect the live MCP database to assess it."
+                    ],
+                )
+                return state
             state.update(plot_status=plot, telemetry=telemetry, calendar=calendar)
             state["tool_call_count"] = state.get("tool_call_count", 0) + 3
         else:

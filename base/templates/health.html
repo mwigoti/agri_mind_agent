@@ -3873,8 +3873,10 @@
               ${stressFlags.map(f => `<span class="report-stress-tag">⚠️ ${f}</span>`).join('')}
             </div>` : ''}
 
-            <!-- AI Report Sections -->
-            ${sections.map(s => `
+            <!-- Keep generated agronomic reasoning as a draft until the reviewer approves it. -->
+            ${d.ai_report_review_status !== 'approved' ? `
+              <div class="report-section"><h4>Human review required</h4><p>The AI agronomic reasoning is held as a draft until a reviewer approves an advisory for this analysis.</p></div>
+            ` : sections.map(s => `
               <div class="report-section">
                 <h4>${s.icon} ${s.title}</h4>
                 ${s.content}
@@ -3883,10 +3885,10 @@
           </div>
           <div class="report-modal-footer">
             <button class="btn btn-outline btn-sm" onclick="document.getElementById('aiFullReportOverlay').remove()">Close</button>
-            <button class="btn btn-pdf btn-sm" onclick="downloadReportPDF()">
+            ${d.ai_report_review_status === 'approved' ? `<button class="btn btn-pdf btn-sm" onclick="downloadReportPDF()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
               Download PDF
-            </button>
+            </button>` : ''}
           </div>
         </div>`;
       overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
@@ -4085,8 +4087,8 @@
           </div>
           ${data.status === 'PENDING_APPROVAL' ? `
             <div style="background:#fffbeb;border:1px solid #fef3c7;padding:0.75rem;border-radius:6px;margin-bottom:0.75rem;">
-              <span style="font-size:0.8125rem;color:#92400e;font-weight:600;">⚠️ Agronomist Review Required</span>
-              <p style="font-size:0.75rem;color:#b45309;margin:0.2rem 0 0.5rem 0;">Confirm or reject this intervention before push notifications / SMS alerts are dispatched to the field.</p>
+              <span style="font-size:0.8125rem;color:#92400e;font-weight:600;">⚠️ Draft reasoning — human review required</span>
+              <p style="font-size:0.75rem;color:#b45309;margin:0.2rem 0 0.5rem 0;">Review the evidence and reasoning. It remains a draft until you approve or reject it; no recommendation is released to the report before approval.</p>
               <div class="agrimind-approval-actions">
                 <button class="agrimind-btn-approve" onclick="submitAgriMindDecision('${data.thread_id}', 'APPROVE', ${fieldId})">
                   ✓ Approve Action
