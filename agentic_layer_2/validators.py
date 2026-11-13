@@ -16,8 +16,8 @@ def collect_evidence(state: AgriState) -> dict[str, dict[str, Any]]:
         store[evidence_id] = {
             "evidence_id": evidence_id, "source": row.get("source_sensor", "upstream telemetry"),
             "type": row.get("metric_name", "observation"), "value": row.get("metric_value"),
-            "retrieved_at": now or telemetry.get("latest_scene_date"), "valid": telemetry.get("status") == "OK",
-            "observation_key": f"{row.get('source_sensor')}:{row.get('metric_name')}:{telemetry.get('latest_scene_date')}",
+            "retrieved_at": now or row.get("latest_scene_date"), "valid": telemetry.get("status") == "OK",
+            "observation_key": f"{row.get('source_sensor')}:{row.get('metric_name')}:{row.get('latest_scene_date')}",
         }
     calendar = state.get("calendar", {})
     for rule_id in calendar.get("rule_citations", []):
@@ -39,8 +39,8 @@ def validate(state: AgriState) -> tuple[bool, list[str]]:
     climate = values.get("water_and_climate", {})
     if vegetation.get("ndvi_latest") is None and vegetation.get("crop_health_score") is None:
         errors.append("Critical vegetation observation is missing")
-    if climate.get("rainfall_anomaly_pct") is None:
-        errors.append("Critical rainfall anomaly is missing")
+    if all(climate.get(key) is None for key in ("rainfall_anomaly_pct", "total_season_rainfall_mm", "water_stress_index")):
+        errors.append("No current rainfall or water-stress observation is available")
     if action in {"PLANT", "SPRAY"} and climate.get("soil_moisture_vwc") is None:
         errors.append("Soil moisture is required to validate this action")
     if state.get("plot_status", {}).get("status") != "OK":

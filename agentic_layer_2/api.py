@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -35,6 +35,18 @@ graph = None
 saver = None
 saver_context = None
 decision_lock = asyncio.Lock()
+active_runs: dict[str, dict[str, Any]] = {}
+
+
+async def run_advisory(state: dict[str, Any]) -> None:
+    """Run a long workflow outside the request and retain its initial status for polling."""
+    thread_id = state["thread_id"]
+    try:
+        result = await graph.ainvoke(state, config={"configurable": {"thread_id": thread_id}})
+        active_runs[thread_id] = {"status": result.get("status", "FAILED"), "errors": result.get("errors", [])}
+    except Exception as exc:
+        audit.write({"event": "workflow_failure", "execution_id": state["execution_id"], "thread_id": thread_id, "error": type(exc).__name__})
+        active_runs[thread_id] = {"status": "FAILED", "errors": ["Workflow execution failed safely"]}
 
 
 @asynccontextmanager
@@ -228,7 +240,7 @@ async def dashboard() -> HTMLResponse:
           <div class="container" style="padding:0;">
             <div class="header">
               <h1>AgriMind Operations Dashboard</h1>
-              <span class="badge">Field operations overview</span>
+              <span class="badge">Illustrative synthetic data</span>
             </div>
 
             <div class="stats" style="margin-bottom: 18px;">
@@ -324,24 +336,9 @@ async def dashboard() -> HTMLResponse:
 
               <div class="card" style="grid-column: 1 / -1;">
                 <h2>Advisory Queue</h2>
-                <div class="row">
-                  <div>
-                    <label for="action">Recommended Action</label>
-                    <select id="action">
-                      <option>HOLD</option>
-                      <option>SPRAY</option>
-                      <option>IRRIGATE</option>
-                      <option>HARVEST</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label for="plotAdvisory">Plot ID</label>
-                    <input id="plotAdvisory" value="KE-001" />
-                  </div>
-                </div>
-                <label for="reason">Reasoning</label>
-                <textarea id="reason">Use field observations and evidence to advise the farmer.</textarea>
-                <button id="createAdvisoryBtn">Create advisory</button>
+                <label for="plotAdvisory">Plot ID</label>
+                <input id="plotAdvisory" value="KE-001" />
+                <button id="createAdvisoryBtn">Generate draft for review</button>
                 <div id="advisoryResult" class="result">Waiting</div>
               </div>
 
@@ -360,6 +357,8 @@ async def dashboard() -> HTMLResponse:
                     </select>
                   </div>
                 </div>
+                <label for="reason">Officer review note</label>
+                <textarea id="reason" placeholder="Record why you approve or reject this advisory."></textarea>
                 <button class="secondary" id="reviewBtn">Submit review</button>
                 <div id="reviewResult" class="result">Waiting</div>
               </div>
@@ -393,8 +392,8 @@ async def dashboard() -> HTMLResponse:
             warning: 'Monitor',
             alert: 'Alert'
           };
-          document.getElementById('plotId').value = String(label).toUpperCase().replace(/\s+/g, '-');
-          document.getElementById('plotAdvisory').value = String(label).toUpperCase().replace(/\s+/g, '-');
+          document.getElementById('plotId').value = String(label).toUpperCase().replace(/\\s+/g, '-');
+          document.getElementById('plotAdvisory').value = String(label).toUpperCase().replace(/\\s+/g, '-');
           document.getElementById('statusResult').textContent = `${label}: ${statusMap[risk] || 'Healthy'} risk state`;
         }
 
@@ -469,8 +468,6 @@ async def dashboard() -> HTMLResponse:
 
         document.getElementById('createAdvisoryBtn').addEventListener('click', async () => {
           const plotId = document.getElementById('plotAdvisory').value;
-          const action = document.getElementById('action').value;
-          const reason = document.getElementById('reason').value;
           const result = await apiFetch(`${baseUrl}/api/advisories`, {
             method: 'POST',
             body: JSON.stringify({ plot_id: plotId })
@@ -478,23 +475,19 @@ async def dashboard() -> HTMLResponse:
           const threadId = result.ok ? result.data.thread_id : '';
           document.getElementById('threadId').value = threadId;
           document.getElementById('advisoryResult').textContent = JSON.stringify(result, null, 2);
-          if (threadId) {
-            const reviewResult = await apiFetch(`${baseUrl}/api/advisories/${threadId}/decide`, {
-              method: 'POST',
-              reviewToken: reviewerToken,
-              body: JSON.stringify({ verdict: document.getElementById('decision').value, reason: reason + ' | action=' + action })
-            });
-            document.getElementById('reviewResult').textContent = JSON.stringify(reviewResult, null, 2);
-          }
         });
 
         document.getElementById('reviewBtn').addEventListener('click', async () => {
           const threadId = document.getElementById('threadId').value;
           const verdict = document.getElementById('decision').value;
+          if (!threadId) {
+            document.getElementById('reviewResult').textContent = 'Create an advisory and load its thread ID before submitting a review.';
+            return;
+          }
           const result = await apiFetch(`${baseUrl}/api/advisories/${threadId}/decide`, {
             method: 'POST',
             reviewToken: reviewerToken,
-            body: JSON.stringify({ verdict: verdict, reason: 'Officer reviewed in dashboard' })
+            body: JSON.stringify({ verdict: verdict, reason: document.getElementById('reason').value })
           });
           document.getElementById('reviewResult').textContent = JSON.stringify(result, null, 2);
         });
@@ -589,24 +582,29 @@ async def health() -> dict[str, Any]:
     return {
         "status": "ok",
         "mode": "operational" if not settings.demo_mode else "demo_mode",
-        "model_configured": bool(settings.hf_token) or True,
+        "model_configured": bool(settings.hf_token),
         "mcp_discovered": bool(tools.contracts) if not settings.demo_mode else False,
         "runtime": "local_fallback" if (not settings.hf_token and not settings.demo_mode) else "hosted_model" if not settings.demo_mode else "synthetic"
     }
 
 
 @app.post("/api/advisories", status_code=202)
-async def start_advisory(payload: AdvisoryRequest, _: str = Depends(require_api)) -> dict[str, Any]:
+async def start_advisory(payload: AdvisoryRequest, background_tasks: BackgroundTasks, _: str = Depends(require_api)) -> dict[str, Any]:
     if graph is None:
         raise HTTPException(503, detail={"error": "workflow_not_ready"})
     state = new_state(payload.plot_id, payload.thread_id)
-    config = {"configurable": {"thread_id": state["thread_id"]}}
-    try:
-        result = await graph.ainvoke(state, config=config)
-    except Exception as exc:
-        audit.write({"event": "workflow_failure", "execution_id": state["execution_id"], "thread_id": state["thread_id"], "error": type(exc).__name__})
-        raise HTTPException(502, detail={"error": "workflow_failed", "thread_id": state["thread_id"]}) from exc
-    return {"thread_id": state["thread_id"], "execution_id": state["execution_id"], "status": result.get("status"), "advisory": result.get("advisory_draft"), "review": result.get("review_prompt"), "errors": result.get("errors", [])}
+    thread_id = state["thread_id"]
+    if thread_id in active_runs and active_runs[thread_id].get("status") == "RUNNING":
+        raise HTTPException(409, detail={"error": "thread_already_running", "thread_id": thread_id})
+    if len(active_runs) > 256:
+        for old_id, old_run in list(active_runs.items()):
+            if old_run.get("status") != "RUNNING":
+                active_runs.pop(old_id, None)
+                if len(active_runs) <= 192:
+                    break
+    active_runs[thread_id] = {"status": "RUNNING", "execution_id": state["execution_id"]}
+    background_tasks.add_task(run_advisory, state)
+    return {"thread_id": thread_id, "execution_id": state["execution_id"], "status": "RUNNING"}
 
 
 @app.get("/api/advisories/{thread_id}")
@@ -616,6 +614,8 @@ async def get_advisory(thread_id: str, _: str = Depends(require_api)) -> dict[st
     state = await graph.aget_state({"configurable": {"thread_id": thread_id}})
     values = state.values
     if not values:
+        if thread_id in active_runs:
+            return {"thread_id": thread_id, **active_runs[thread_id]}
         raise HTTPException(404, detail={"error": "not_found"})
     return {key: values.get(key) for key in ("execution_id", "thread_id", "plot_id", "status", "selected_action", "rationale", "evidence_ids", "advisory_draft", "officer_decision", "officer_identity", "decision_timestamp", "simulated_sms", "errors")}
 

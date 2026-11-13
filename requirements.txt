@@ -54,5 +54,5 @@ urllib3==2.6.3
 gunicorn
 joblib
 
-mcp>=1.6.0
+mcp>=1.30.0,<2.0.0
 mcp-server-sqlite>=2025.4.25

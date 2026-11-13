@@ -243,7 +243,50 @@ def fetch_crop_telemetry_from_db(plot_id: str) -> Dict[str, Any]:
             ar.heat_stress_frac,
             ar.stress_flags,
             ar.full_bundle,
-            ar.updated_at
+            ar.updated_at,
+            (
+                SELECT fm.soil_moisture_pct
+                FROM base_fieldmetric fm
+                WHERE fm.field_id = ar.field_id
+                  AND fm.soil_moisture_pct IS NOT NULL
+                  AND fm.captured_at >= NOW() - INTERVAL '14 days'
+                ORDER BY fm.captured_at DESC
+                LIMIT 1
+            ) AS latest_soil_moisture_pct,
+            (
+                SELECT fm.captured_at
+                FROM base_fieldmetric fm
+                WHERE fm.field_id = ar.field_id
+                  AND fm.soil_moisture_pct IS NOT NULL
+                  AND fm.captured_at >= NOW() - INTERVAL '14 days'
+                ORDER BY fm.captured_at DESC
+                LIMIT 1
+            ) AS soil_moisture_captured_at,
+            (
+                SELECT fm.metadata
+                FROM base_fieldmetric fm
+                WHERE fm.field_id = ar.field_id
+                ORDER BY fm.captured_at DESC
+                LIMIT 1
+            ) AS latest_metric_metadata,
+            (
+                SELECT CASE WHEN COUNT(*) > 0 THEN SUM(w.precipitation) END
+                FROM base_weatherdata w
+                WHERE w.field_id = ar.field_id
+                  AND w.is_forecast = TRUE
+                  AND w.date >= CURRENT_DATE
+                  AND w.date < CURRENT_DATE + INTERVAL '2 days'
+                  AND w.created_at >= NOW() - INTERVAL '48 hours'
+            ) AS forecast_rain_next_48h_mm,
+            (
+                SELECT COUNT(*)
+                FROM base_weatherdata w
+                WHERE w.field_id = ar.field_id
+                  AND w.is_forecast = TRUE
+                  AND w.date >= CURRENT_DATE
+                  AND w.date < CURRENT_DATE + INTERVAL '2 days'
+                  AND w.created_at >= NOW() - INTERVAL '48 hours'
+            ) AS forecast_days_available
         FROM base_analysisresult ar
         WHERE ar.field_id = %(field_id)s
         ORDER BY ar.updated_at DESC
@@ -321,16 +364,58 @@ def fetch_crop_telemetry_from_db(plot_id: str) -> Dict[str, Any]:
             }
 
         ndvi_latest = float(ndvi_latest) if ndvi_latest is not None else float(satellite.get("ndvi_grain_filling") or satellite.get("ndvi_latest") or 0.0)
-        evi_latest = float(satellite.get("evi_grain_filling") or satellite.get("evi_latest") or 0.0)
-        ndre_peak = float(ndre_peak) if ndre_peak is not None else float(satellite.get("ndre_grain_filling") or satellite.get("ndre_latest") or 0.0)
+        evi_raw = satellite.get("evi_grain_filling")
+        if evi_raw is None:
+            evi_raw = satellite.get("evi_latest")
+        evi_latest = float(evi_raw) if evi_raw is not None else None
+        ndre_raw = ndre_peak
+        if ndre_raw is None:
+            ndre_raw = satellite.get("ndre_grain_filling")
+        if ndre_raw is None:
+            ndre_raw = satellite.get("ndre_latest")
+        ndre_peak = float(ndre_raw) if ndre_raw is not None else None
 
-        total_rain = float(total_rain) if total_rain is not None else float(climate.get("total_season_rainfall_mm") or 0.0)
-        gdd = float(gdd) if gdd is not None else float(climate.get("gdd") or 0.0)
-        heat_stress = float(heat_stress) if heat_stress is not None else float(climate.get("heat_stress_frac") or 0.0)
-        wsi = float(wsi) if wsi is not None else 0.0
-        ml_yield = float(ml_yield) if ml_yield is not None else 0.0
+        total_rain = float(total_rain) if total_rain is not None else climate.get("total_season_rainfall_mm")
+        gdd_raw = gdd if gdd is not None else climate.get("gdd")
+        heat_raw = heat_stress if heat_stress is not None else climate.get("heat_stress_frac")
+        gdd = float(gdd_raw) if gdd_raw is not None else None
+        heat_stress = float(heat_raw) if heat_raw is not None else None
+        wsi = float(wsi) if wsi is not None else None
+        ml_yield = float(ml_yield) if ml_yield is not None else None
 
-        rain_anomaly_pct = round(((total_rain - 350.0) / 350.0) * 100.0, 1) if total_rain else 0.0
+        latest_metric_metadata = row.get("latest_metric_metadata") or {}
+        if isinstance(latest_metric_metadata, str):
+            try:
+                latest_metric_metadata = json.loads(latest_metric_metadata)
+            except (ValueError, TypeError):
+                latest_metric_metadata = {}
+        rain_anomaly = climate.get("rainfall_anomaly_pct")
+        if rain_anomaly is None:
+            rain_anomaly = latest_metric_metadata.get("rainfall_anomaly_pct") if isinstance(latest_metric_metadata, dict) else None
+        rain_anomaly_pct = float(rain_anomaly) if rain_anomaly is not None else None
+
+        metric_soil_pct = row.get("latest_soil_moisture_pct")
+        smap_moisture = (bundle.get("soil", {}) or {}).get("smap_moisture")
+        try:
+            metric_soil_pct = float(metric_soil_pct) if metric_soil_pct is not None else None
+        except (TypeError, ValueError):
+            metric_soil_pct = None
+        try:
+            smap_moisture = float(smap_moisture) if smap_moisture is not None else None
+        except (TypeError, ValueError):
+            smap_moisture = None
+        if metric_soil_pct is not None and 0 <= metric_soil_pct <= 100:
+            soil_moisture_vwc, soil_moisture_source = metric_soil_pct / 100.0, "FieldMetric"
+        elif smap_moisture is not None and 0 <= smap_moisture <= 1:
+            soil_moisture_vwc, soil_moisture_source = smap_moisture, "SMAP"
+        else:
+            soil_moisture_vwc, soil_moisture_source = None, None
+        soil_moisture_observed_at = row.get("soil_moisture_captured_at") or updated_at
+        forecast_days_available = int(row.get("forecast_days_available") or 0)
+        forecast_value = row.get("forecast_rain_next_48h_mm")
+        forecast_rain_next_48h_mm = float(forecast_value) if forecast_days_available and forecast_value is not None else None
+        if forecast_rain_next_48h_mm is not None and forecast_rain_next_48h_mm < 0:
+            forecast_rain_next_48h_mm = None
 
         scene_date_raw = row.get("latest_scene_date") or (updated_at.strftime("%Y-%m-%d") if updated_at else "20240101")
         date_tag = scene_date_raw.replace("-", "")
@@ -338,30 +423,61 @@ def fetch_crop_telemetry_from_db(plot_id: str) -> Dict[str, Any]:
         evidence_records: List[Dict[str, Any]] = [
             {
                 "evidence_id": f"EVID-S2-NDVI-{date_tag}-PLOT{cleaned_id}",
-                "source": "Sentinel-2 MSI",
-                "metric": "ndvi_latest",
-                "value": ndvi_latest,
-                "reference_date": scene_date_raw,
+                "source_sensor": "Sentinel-2 MSI",
+                "metric_name": "ndvi_latest",
+                "metric_value": ndvi_latest,
+                "latest_scene_date": scene_date_raw,
                 "status": "VERIFIED"
             },
             {
                 "evidence_id": f"EVID-CHIRPS-RAIN-{date_tag}-PLOT{cleaned_id}",
-                "source": "CHIRPS Rainfall Pentad",
-                "metric": "total_rainfall_mm",
-                "value": total_rain,
-                "reference_date": scene_date_raw,
+                "source_sensor": "CHIRPS Rainfall Pentad",
+                "metric_name": "total_rainfall_mm",
+                "metric_value": total_rain,
+                "latest_scene_date": scene_date_raw,
                 "status": "VERIFIED"
             },
             {
                 "evidence_id": f"EVID-ML-YIELD-{date_tag}-PLOT{cleaned_id}",
-                "source": "AgriVision Voting Ensemble ML",
-                "metric": "predicted_yield_t_ha",
-                "value": ml_yield,
-                "reference_date": scene_date_raw,
+                "source_sensor": "AgriVision Voting Ensemble ML",
+                "metric_name": "predicted_yield_t_ha",
+                "metric_value": ml_yield,
+                "latest_scene_date": scene_date_raw,
                 "status": "VERIFIED"
             }
         ]
 
+        if soil_moisture_vwc is not None:
+            observed_at = soil_moisture_observed_at.isoformat() if hasattr(soil_moisture_observed_at, "isoformat") else str(soil_moisture_observed_at)
+            evidence_records.append({
+                "evidence_id": f"EVID-SOIL-MOISTURE-{cleaned_id}-{observed_at[:10].replace('-', '')}",
+                "source_sensor": soil_moisture_source,
+                "metric_name": "soil_moisture_vwc",
+                "metric_value": soil_moisture_vwc,
+                "latest_scene_date": observed_at,
+                "status": "VERIFIED",
+            })
+        if forecast_rain_next_48h_mm is not None:
+            forecast_date = now_utc.date().isoformat()
+            evidence_records.append({
+                "evidence_id": f"EVID-WEATHER-FORECAST-{cleaned_id}-{forecast_date.replace('-', '')}",
+                "source_sensor": "WeatherData forecast",
+                "metric_name": "forecast_rain_next_48h_mm",
+                "metric_value": forecast_rain_next_48h_mm,
+                "latest_scene_date": forecast_date,
+                "status": "VERIFIED",
+            })
+        if rain_anomaly_pct is not None:
+            evidence_records.append({
+                "evidence_id": f"EVID-RAINFALL-ANOMALY-{cleaned_id}-{date_tag}",
+                "source_sensor": climate.get("rainfall_anomaly_source") or "Saved field rainfall anomaly",
+                "metric_name": "rainfall_anomaly_pct",
+                "metric_value": rain_anomaly_pct,
+                "latest_scene_date": scene_date_raw,
+                "status": "VERIFIED",
+            })
+
+        evidence_records = [rec for rec in evidence_records if rec["metric_value"] is not None]
         evidence_ids = [rec["evidence_id"] for rec in evidence_records]
 
         stress_flags = row.get("stress_flags") or []
@@ -371,6 +487,7 @@ def fetch_crop_telemetry_from_db(plot_id: str) -> Dict[str, Any]:
         return {
             "status": "OK",
             "plot_id": str(cleaned_id),
+            "latest_scene_date": scene_date_raw,
             "freshness": {
                 "tier": freshness_tier,
                 "days_old": days_old,
@@ -378,23 +495,32 @@ def fetch_crop_telemetry_from_db(plot_id: str) -> Dict[str, Any]:
                 "updated_at": updated_at.isoformat() if updated_at else None
             },
             "telemetry": {
-                "vegetation": {
+                "vegetation_indices": {
                     "ndvi_latest": round(ndvi_latest, 3),
-                    "evi_latest": round(evi_latest, 3),
-                    "ndre_peak": round(ndre_peak, 3),
+                    "evi_latest": round(evi_latest, 3) if evi_latest is not None else None,
+                    "ndre_peak": round(ndre_peak, 3) if ndre_peak is not None else None,
                     "scene_count": int(row.get("scene_count") or len(bundle.get("scenes", [])) or 1)
                 },
                 "water_and_climate": {
-                    "total_season_rainfall_mm": round(total_rain, 1),
+                    "total_season_rainfall_mm": round(float(total_rain), 1) if total_rain is not None else None,
                     "rainfall_anomaly_pct": rain_anomaly_pct,
-                    "cumulative_gdd": round(gdd, 1),
-                    "heat_stress_fraction": round(heat_stress, 3),
-                    "water_stress_index": round(wsi, 1)
+                    "rainfall_anomaly_observed_mm": climate.get("rainfall_anomaly_observed_mm"),
+                    "rainfall_reference_mm": climate.get("rainfall_reference_mm"),
+                    "rainfall_anomaly_baseline_years": climate.get("rainfall_anomaly_baseline_years"),
+                    "rainfall_anomaly_source": climate.get("rainfall_anomaly_source"),
+                    "soil_moisture_vwc": soil_moisture_vwc,
+                    "soil_moisture_source": soil_moisture_source,
+                    "soil_moisture_observed_at": soil_moisture_observed_at.isoformat() if hasattr(soil_moisture_observed_at, "isoformat") else None,
+                    "forecast_rain_next_48h_mm": forecast_rain_next_48h_mm,
+                    "forecast_days_available": forecast_days_available,
+                    "cumulative_gdd": round(gdd, 1) if gdd is not None else None,
+                    "heat_stress_fraction": round(heat_stress, 3) if heat_stress is not None else None,
+                    "water_stress_index": round(wsi, 1) if wsi is not None else None
                 },
                 "yield_prediction": {
-                    "predicted_yield_t_ha": round(ml_yield, 2),
-                    "risk_level": bundle.get("risk_level") or "Moderate",
-                    "limiting_factors": bundle.get("limiting_factors") or ["moisture_deficit"]
+                    "predicted_yield_t_ha": round(ml_yield, 2) if ml_yield is not None else None,
+                    "risk_level": bundle.get("risk_level"),
+                    "limiting_factors": bundle.get("limiting_factors") or []
                 }
             },
             "evidence_records": evidence_records,
@@ -430,9 +556,9 @@ def fetch_crop_telemetry_from_db(plot_id: str) -> Dict[str, Any]:
 def evaluate_calendar_window_helper(
     crop: str = "maize",
     phenological_stage: str = "vegetative",
-    rainfall_anomaly_pct: float = 0.0,
-    soil_moisture_vwc: float = 0.22,
-    forecast_rain_next_48h_mm: float = 0.0,
+    rainfall_anomaly_pct: Optional[float] = None,
+    soil_moisture_vwc: Optional[float] = None,
+    forecast_rain_next_48h_mm: Optional[float] = None,
     plot_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -456,16 +582,16 @@ def evaluate_calendar_window_helper(
     # ── Rule 1: Germination / Emergence Moisture Gate ─────────────────────
     # Seeds require at least 16% VWC and rainfall anomaly >= -30% to germinate.
     is_germination_window = any(k in stage_clean for k in ["seed", "emerge", "plant"])
-    germination_adequate = True
+    germination_adequate = soil_moisture_vwc is not None and rainfall_anomaly_pct is not None
 
     if is_germination_window:
-        if soil_moisture_vwc < 0.16 or rainfall_anomaly_pct < -30.0:
+        if soil_moisture_vwc is None or rainfall_anomaly_pct is None or soil_moisture_vwc < 0.16 or rainfall_anomaly_pct < -30.0:
             germination_adequate = False
             violations.append({
                 "rule_id": "RULE-MAIZE-GERMINATION-01",
                 "rule_name": "Soil Moisture Germination Deficit",
                 "threshold": "Moisture >= 16% (0.16 VWC) and Rain Anomaly >= -30%",
-                "observed": f"Moisture: {soil_moisture_vwc * 100:.1f}%, Rain Anomaly: {rainfall_anomaly_pct:.1f}%",
+                "observed": f"Moisture: {soil_moisture_vwc * 100:.1f}%" if soil_moisture_vwc is not None else "Soil moisture unavailable; rainfall anomaly unavailable" if rainfall_anomaly_pct is None else f"Soil moisture unavailable; Rain Anomaly: {rainfall_anomaly_pct:.1f}%",
                 "severity": "CRITICAL",
                 "consequence": "Seed desiccation in dry soil; high germination failure risk."
             })
@@ -475,21 +601,26 @@ def evaluate_calendar_window_helper(
             rule_citations.append("RULE-MAIZE-GERMINATION-CLEARED-01")
     else:
         # Not currently planting/germinating; pass default check
-        germination_adequate = (soil_moisture_vwc >= 0.16)
+        germination_adequate = (
+            soil_moisture_vwc is not None
+            and rainfall_anomaly_pct is not None
+            and soil_moisture_vwc >= 0.16
+            and rainfall_anomaly_pct >= -30.0
+        )
 
     # ── Rule 2: Flowering / Silking Drought Gate ──────────────────────────
     # Maize flowering (R1) is extremely sensitive to moisture deficit.
     is_flowering = any(k in stage_clean for k in ["flower", "silk", "tassel", "r1"])
-    pollination_safe = True
+    pollination_safe = not is_flowering or (soil_moisture_vwc is not None and rainfall_anomaly_pct is not None)
 
     if is_flowering:
-        if rainfall_anomaly_pct < -25.0 or soil_moisture_vwc < 0.18:
+        if rainfall_anomaly_pct is None or soil_moisture_vwc is None or rainfall_anomaly_pct < -25.0 or soil_moisture_vwc < 0.18:
             pollination_safe = False
             violations.append({
                 "rule_id": "RULE-MAIZE-FLOWERING-02",
                 "rule_name": "Critical Silking Moisture Deficit",
                 "threshold": "Rain Anomaly >= -25% and Moisture >= 18% during flowering",
-                "observed": f"Rain Anomaly: {rainfall_anomaly_pct:.1f}%, Moisture: {soil_moisture_vwc * 100:.1f}%",
+                "observed": f"Rain Anomaly: {rainfall_anomaly_pct:.1f}%, Moisture: {soil_moisture_vwc * 100:.1f}%" if rainfall_anomaly_pct is not None and soil_moisture_vwc is not None else "Rainfall anomaly and/or soil moisture unavailable",
                 "severity": "CRITICAL",
                 "consequence": "Pollen desiccation and silk emergence delay; barren cobs."
             })
@@ -502,9 +633,9 @@ def evaluate_calendar_window_helper(
 
     # ── Rule 3: Spraying Washout & Pollinator Safety Gate ──────────────────
     # High rain within 48h washes chemical off; spraying during active flowering kills pollinating bees.
-    spray_safe = True
+    spray_safe = forecast_rain_next_48h_mm is not None
 
-    if forecast_rain_next_48h_mm > 15.0:
+    if forecast_rain_next_48h_mm is not None and forecast_rain_next_48h_mm > 15.0:
         spray_safe = False
         violations.append({
             "rule_id": "RULE-SPRAY-WASHOUT-03",
@@ -536,9 +667,9 @@ def evaluate_calendar_window_helper(
 
     # ── Rule 4: Top-Dressing Fertilizer Osmotic Burn Gate ──────────────────
     # Applying urea/CAN fertilizer in bone-dry soil draws water OUT of root cells (plasmolysis).
-    fertilizer_safe = True
+    fertilizer_safe = soil_moisture_vwc is not None
 
-    if soil_moisture_vwc < 0.15:
+    if soil_moisture_vwc is not None and soil_moisture_vwc < 0.15:
         fertilizer_safe = False
         violations.append({
             "rule_id": "RULE-FERTILIZER-BURN-04",
@@ -550,12 +681,19 @@ def evaluate_calendar_window_helper(
         })
         risk_flags.append("FERTILIZER_BURN_RISK")
         rule_citations.append("RULE-FERTILIZER-BURN-04")
-    else:
+    elif soil_moisture_vwc is not None:
         rule_citations.append("RULE-FERTILIZER-WINDOW-CLEARED-04")
 
     # 3. Overall Condition & Rationale Assessment
     has_violations = len(violations) > 0
-    overall_condition = "HAZARD_DETECTED" if has_violations else "FAVORABLE"
+    missing_inputs = []
+    if rainfall_anomaly_pct is None:
+        missing_inputs.append("rainfall_anomaly_pct")
+    if soil_moisture_vwc is None:
+        missing_inputs.append("soil_moisture_vwc")
+    if forecast_rain_next_48h_mm is None:
+        missing_inputs.append("forecast_rain_next_48h_mm")
+    overall_condition = "HAZARD_DETECTED" if has_violations else "INSUFFICIENT_INPUTS" if missing_inputs else "FAVORABLE"
 
     if has_violations:
         summary_rationale = (
@@ -563,6 +701,8 @@ def evaluate_calendar_window_helper(
             f"{len(violations)} safety thresholds were breached. Recommended action is to HOLD "
             f"restricted operations and apply risk mitigation."
         )
+    elif missing_inputs:
+        summary_rationale = "Safety windows remain unconfirmed because required measurements are missing: " + ", ".join(missing_inputs)
     else:
         summary_rationale = (
             f"All environmental and biological thresholds are within optimal ranges for {crop_clean} "
@@ -587,6 +727,7 @@ def evaluate_calendar_window_helper(
             "top_dressing_permitted": fertilizer_safe,
         },
         "threshold_violations": violations,
+        "missing_inputs": missing_inputs,
         "risk_flags": risk_flags,
         "rule_citations": rule_citations,
         "summary_rationale": summary_rationale,
@@ -818,62 +959,13 @@ def compute_vra_prescription_helper(
     target_input: str = "CAN_nitrogen_top_dressing",
     num_zones: int = 3,
 ) -> Dict[str, Any]:
-    """
-    Compute zone-by-zone Variable Rate Application (VRA) prescription rates for maize
-    to optimize chemical resource usage and avoid uniform over-application.
-    """
-    cleaned_id = _clean_plot_id(plot_id) or plot_id
-    now_utc = datetime.now(timezone.utc)
-
-    zones = [
-        {
-            "zone_id": 1,
-            "vigor_level": "HIGH",
-            "ndvi_range": ">= 0.70",
-            "prescribed_rate_kg_ha": 40.0,
-            "area_pct": 35.0,
-            "rationale": "High biomass/NDVI vigor: reduced application prevents excess vegetative growth, nitrate leaching, and lodging.",
-        },
-        {
-            "zone_id": 2,
-            "vigor_level": "MODERATE",
-            "ndvi_range": "0.50 - 0.69",
-            "prescribed_rate_kg_ha": 65.0,
-            "area_pct": 45.0,
-            "rationale": "Moderate vigor: standard maintenance nitrogen rate to sustain grain fill potential.",
-        },
-        {
-            "zone_id": 3,
-            "vigor_level": "LOW_STRESSED",
-            "ndvi_range": "< 0.50",
-            "prescribed_rate_kg_ha": 90.0,
-            "area_pct": 20.0,
-            "rationale": "Low vigor / nutrient chlorosis: targeted boost to bring under-performing canopy up to target yield baseline.",
-        },
-    ]
-
-    weighted_vra_rate = sum(z["prescribed_rate_kg_ha"] * (z["area_pct"] / 100.0) for z in zones)
-    uniform_baseline_rate = 80.0
-    savings_kg_ha = uniform_baseline_rate - weighted_vra_rate
-    savings_pct = (savings_kg_ha / uniform_baseline_rate) * 100.0
-
-    evidence_id = f"EVID-VRA-ZONING-{cleaned_id}-{now_utc.strftime('%Y%m%d')}"
-
+    """Fail closed until real field-zone measurements and rates are available."""
     return {
-        "status": "OK",
-        "plot_id": str(cleaned_id),
+        "status": "INSUFFICIENT_EVIDENCE",
+        "plot_id": plot_id,
         "target_input": target_input,
-        "clustering_method": "Multispectral NDVI K-Means (5-year calibrated)",
-        "num_zones": num_zones,
-        "zones": zones,
-        "resource_optimization": {
-            "uniform_blanket_rate_kg_ha": uniform_baseline_rate,
-            "vra_weighted_rate_kg_ha": round(weighted_vra_rate, 1),
-            "input_savings_kg_ha": round(savings_kg_ha, 1),
-            "resource_reduction_pct": round(savings_pct, 1),
-            "estimated_cost_savings_per_ha_kes": round(savings_kg_ha * 95.0, 2),
-        },
-        "evidence_id": evidence_id,
-        "timestamp": now_utc.isoformat(),
+        "requested_zones": num_zones,
+        "message": "A prescription requires field-level zonal raster values and a validated agronomic rate. Aggregate field telemetry cannot support zone prescriptions.",
+        "missing_inputs": ["zonal_ndvi_or_soil_grid", "validated_rate_by_zone", "area_by_zone"],
     }
 

@@ -41,7 +41,7 @@ This directory houses the **Model Context Protocol (MCP) Gateway** for the AgriM
 mcp_server/
 ├── __init__.py               # Package initializer
 ├── config.py                 # DB connection parameters, 5.0s timeouts, stderr logging
-├── server.py                 # FastMCP server instance ('AgriMind') exposing Tools 1-4
+├── server.py                 # FastMCP server instance ('AgriMind') exposing Tools 1-5
 ├── clients/
 │   ├── __init__.py           # Clients subpackage
 │   └── backend_client.py     # SQL query implementations, rule engine, & safety validators
@@ -55,7 +55,7 @@ mcp_server/
 ### 1. Install Dependencies
 Ensure the project virtual environment is active and required packages are installed:
 ```bash
-pip install mcp>=1.6.0 mcp-server-sqlite>=2025.4.25 psycopg2-binary python-dotenv
+pip install 'mcp>=1.30.0,<2.0.0' 'mcp-server-sqlite>=2025.4.25' psycopg2-binary python-dotenv
 ```
 
 ### 2. Configure Environment (`.env`)
@@ -68,15 +68,26 @@ DB_STATEMENT_TIMEOUT=5000
 
 # Logging
 MCP_LOG_LEVEL=INFO
+
+# For external MCP clients, opt into authenticated Streamable HTTP:
+MCP_TRANSPORT=streamable-http
+MCP_HTTP_HOST=0.0.0.0
+MCP_HTTP_PORT=8002
+MCP_HTTP_PATH=/mcp
+MCP_HTTP_BEARER_TOKEN=replace-with-a-long-random-secret
+MCP_ALLOWED_HOSTS=mcp.example.org:8002
+MCP_ALLOWED_ORIGINS=https://trusted-client.example.org
 ```
 
 ### 3. Launching the Servers
 
 #### A. Launch Custom Gateway (AgriMind)
-Runs over standard input/output (`stdio`) JSON-RPC 2.0:
+By default this runs over standard input/output (`stdio`) for Layer 2:
 ```bash
 python -m mcp_server.server
 ```
+
+For an external client, set the Streamable HTTP variables above and run the same command. The MCP endpoint is `https://mcp.example.org:8002/mcp`; send `Authorization: Bearer <MCP_HTTP_BEARER_TOKEN>`. Terminate TLS at a trusted reverse proxy and set allowed host/origin values to the deployed endpoint. Keep stdio as the default for local agent execution.
 
 #### B. Launch Borrowed SQLite Server (Historical Archive)
 Points to the self-contained reference database:
@@ -88,6 +99,13 @@ python -c "import mcp_server_sqlite; mcp_server_sqlite.main()" --db-path ./data/
 ---
 
 ## Tool Contracts & Schemas
+
+### Live climate and moisture inputs
+
+- Rainfall total and anomaly come from the saved GEE `AnalysisResult.full_bundle.climate`. The anomaly compares CHIRPS rainfall from planting through the latest satellite observation with the same calendar period in the previous five years. It remains null when GEE/CHIRPS data or a usable reference period is unavailable. Existing farm analyses need to be rerun once to populate this field.
+- Soil moisture prefers a non-null `FieldMetric.soil_moisture_pct` captured in the last 14 days and converts percent to a 0–1 VWC fraction. If no recent field measurement exists, it uses the saved `full_bundle.soil.smap_moisture` from the GEE analysis.
+- Forecast rainfall sums fresh (`created_at` within 48 hours) saved `WeatherData` forecast rows for today and tomorrow. Refresh through the existing `python manage.py update_weather` command or the field weather endpoint. If no fresh rows exist, forecast input remains null.
+- Missing inputs stay null in MCP output and do not open dependent calendar windows.
 
 ### Tool 1: `get_plot_status`
 * **Role:** Identity & Phenological Ground Truth.
@@ -162,9 +180,13 @@ python -c "import mcp_server_sqlite; mcp_server_sqlite.main()" --db-path ./data/
       "ndre_peak": 0.512,
       "scene_count": 8
     },
-    "water_and_climate": {
+  "water_and_climate": {
       "total_season_rainfall_mm": 310.5,
       "rainfall_anomaly_pct": -34.2,
+      "rainfall_reference_mm": 471.2,
+      "rainfall_anomaly_baseline_years": 5,
+      "soil_moisture_vwc": 0.18,
+      "forecast_rain_next_48h_mm": 6.4,
       "cumulative_gdd": 1150.2,
       "heat_stress_fraction": 0.082,
       "water_stress_index": 58.4
@@ -223,9 +245,9 @@ python -c "import mcp_server_sqlite; mcp_server_sqlite.main()" --db-path ./data/
 | :--- | :--- | :--- | :--- |
 | `crop` | `str` | `"maize"` | Target crop name. |
 | `phenological_stage`| `str` | `"vegetative"` | Current growth stage from Tool 1. |
-| `rainfall_anomaly_pct` | `float` | `0.0` | Deficit/surplus percentage from Tool 2. |
-| `soil_moisture_vwc` | `float` | `0.22` | Volumetric soil water content fraction (e.g. `0.14` = 14%). |
-| `forecast_rain_next_48h_mm` | `float` | `0.0` | Forecasted rainfall in next 48 hours. |
+| `rainfall_anomaly_pct` | `float or null` | `null` | Deficit/surplus percentage from Tool 2. |
+| `soil_moisture_vwc` | `float or null` | `null` | Volumetric soil water content fraction (e.g. `0.14` = 14%); missing data leaves dependent windows unconfirmed. |
+| `forecast_rain_next_48h_mm` | `float or null` | `null` | Forecasted rainfall in next 48 hours; missing data leaves spraying unconfirmed. |
 | `plot_id` | `Optional[str]` | `None` | Optional plot ID for reference. |
 
 #### Output Response (`overall_condition: "HAZARD_DETECTED"`)

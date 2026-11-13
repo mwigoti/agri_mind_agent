@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
   <style>
     /* ========================================
        CSS RESET & VARIABLES
@@ -249,11 +251,9 @@
     }
 
     .ops-shell {
-      max-width: 1440px;
+      max-width: 1320px;
       margin: 0 auto;
-      background: hsl(var(--background));
-      border-radius: 1.5rem;
-      padding: 1.5rem;
+      padding: 2rem 2.25rem 3.5rem;
     }
 
     .ops-topbar {
@@ -291,8 +291,7 @@
       margin-top: 0.2rem;
       font-size: 0.75rem;
       color: hsl(var(--muted-foreground));
-      letter-spacing: 0.02em;
-      text-transform: uppercase;
+      letter-spacing: 0;
     }
 
     .ops-actions {
@@ -322,12 +321,16 @@
       color: hsl(var(--primary-foreground));
     }
 
-    .workflow-steps {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 0.75rem;
-      margin: 0 0 1.5rem;
+    .analysis-batch-status {
+      height: auto;
+      min-height: 2rem;
+      max-width: 18rem;
+      padding: 0.35rem 0.7rem;
+      white-space: normal;
+      text-align: center;
     }
+
+    .workflow-steps { display: none; }
 
     .workflow-step {
       display: flex;
@@ -379,23 +382,55 @@
 
     .ops-grid {
       display: grid;
-      grid-template-columns: 1.15fr 1.6fr 0.9fr;
-      gap: 1.125rem;
-      align-items: stretch;
+      grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.85fr);
+      gap: 1rem;
+      align-items: start;
+    }
+
+    .ops-field-panel { grid-column: 1; grid-row: 1 / span 2; }
+    .ops-map-panel { grid-column: 2; grid-row: 1; }
+    .workflow-next-panel { grid-column: 2; grid-row: 2; align-self: start; }
+
+    @media (max-width: 1024px) {
+      .ops-grid { grid-template-columns: 1fr; }
+      .ops-field-panel, .ops-map-panel, .workflow-next-panel { grid-column: auto; grid-row: auto; }
+      .ops-field-panel { order: 1; }
+      .workflow-next-panel { order: 2; }
+      .ops-map-panel { order: 3; }
+    }
+
+    @media (max-width: 760px) {
+      .ops-shell { padding: 1.25rem 1rem 2.5rem; }
+      .ops-topbar { align-items: flex-start; flex-direction: column; margin-bottom: 1rem; }
+      .ops-actions { width: 100%; }
+      .ops-actions .btn { flex: 1; }
+      .page-header { align-items: flex-start; flex-direction: column; gap: 0.85rem; }
+      .stats-row { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .stat-item { min-width: 0; padding: 0.65rem 0.5rem; gap: 0.4rem; }
+      .stat-icon { display: none; }
+      .stat-text span { font-size: 0.62rem; }
+      .stat-text strong { font-size: 0.9rem; }
+      .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .map-shell { height: 240px; min-height: 220px; }
+      .risk-legend { gap: 0.45rem 0.7rem; }
+      .risk-legend .legend-item { font-size: 0.62rem; }
+      .farm-list-section { padding: 0.9rem; }
+      .farm-list-section .ops-panel-header { align-items: flex-start; }
+      .farm-list-section .ops-panel-header > div { max-width: 70%; }
     }
 
     .ops-panel {
       background: hsl(var(--card));
       border: 1px solid hsl(var(--border));
-      border-radius: 1.125rem;
-      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+      border-radius: 1rem;
+      box-shadow: 0 5px 20px rgba(15, 23, 42, 0.035);
       overflow: hidden;
     }
 
     .ops-map-panel,
     .ops-field-panel,
     .ops-queue-panel {
-      padding: 1rem;
+      padding: 1.15rem;
     }
 
     .ops-panel-header {
@@ -423,68 +458,24 @@
 
     .map-shell {
       position: relative;
-      height: 26rem;
+      height: 280px;
+      min-height: 240px;
       border-radius: 1rem;
       overflow: hidden;
       border: 1px solid hsl(var(--border));
-      background:
-        linear-gradient(120deg, rgba(15, 23, 42, 0.015), rgba(15, 23, 42, 0.01)),
-        linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
-        linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
-        hsl(120 20% 97%);
-      background-size: auto, 32px 32px, 32px 32px, auto;
+      background: #e7ece7;
     }
-
-    .field-shape {
-      position: absolute;
-      border-radius: 0.9rem;
-      border: 1px solid rgba(23, 74, 48, 0.2);
-      background: rgba(23, 74, 48, 0.08);
-      box-shadow: inset 0 0 0 1px rgba(23, 74, 48, 0.04);
+    #health-map { width: 100%; height: 100%; z-index: 1; }
+    .workflow-next-panel {
+      background: linear-gradient(135deg, hsl(var(--primary) / 0.055), hsl(var(--card)) 72%);
+      border-color: hsl(var(--primary) / 0.16);
     }
-
-    .field-shape.a {
-      left: 16%;
-      top: 20%;
-      width: 38%;
-      height: 28%;
-      transform: rotate(-8deg);
-    }
-
-    .field-shape.b {
-      left: 46%;
-      top: 18%;
-      width: 32%;
-      height: 26%;
-      transform: rotate(8deg);
-    }
-
-    .field-shape.c {
-      left: 22%;
-      top: 52%;
-      width: 42%;
-      height: 26%;
-      transform: rotate(-3deg);
-    }
-
-    .field-shape.active {
-      background: rgba(23, 74, 48, 0.14);
-      border-color: rgba(23, 74, 48, 0.34);
-    }
-
-    .map-marker {
-      position: absolute;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: hsl(var(--primary));
-      border: 2px solid hsl(var(--card));
-      box-shadow: 0 8px 18px hsl(var(--primary) / 0.2);
-    }
-
-    .map-marker.m1 { left: 50%; top: 40%; }
-    .map-marker.m2 { left: 62%; top: 28%; }
-    .map-marker.m3 { left: 34%; top: 68%; }
+    .workflow-next-panel .decision-copy { font-size: 0.84rem; color: hsl(var(--foreground)); }
+    .workflow-next-panel > .btn { width: 100%; margin: 0.2rem 0 0.7rem; }
+    .map-live-label { font-size: .68rem; color: hsl(var(--muted-foreground)); font-weight: 600; }
+    .risk-legend { display: flex; flex-wrap: wrap; gap: .55rem 1rem; padding: .85rem .15rem .1rem; }
+    .risk-legend .legend-item { font-size: .68rem; }
+    .risk-swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; margin-right: .35rem; vertical-align: -1px; }
 
     .map-legend {
       display: flex;
@@ -572,11 +563,11 @@
     }
 
     .metric-card {
-      background: hsl(var(--muted));
+      background: hsl(var(--card));
       border: 1px solid hsl(var(--border));
-      border-radius: 0.9rem;
-      padding: 0.8rem 0.75rem;
-      min-height: 5.5rem;
+      border-radius: 0.75rem;
+      padding: 0.85rem 0.8rem;
+      min-height: 6rem;
     }
 
     .metric-label {
@@ -647,13 +638,6 @@
       min-height: 0.8rem;
     }
 
-    .trend-bar:nth-child(1) { height: 26%; }
-    .trend-bar:nth-child(2) { height: 34%; }
-    .trend-bar:nth-child(3) { height: 48%; }
-    .trend-bar:nth-child(4) { height: 52%; }
-    .trend-bar:nth-child(5) { height: 66%; }
-    .trend-bar:nth-child(6) { height: 80%; }
-    .trend-bar:nth-child(7) { height: 68%; }
 
     .summary-row {
       display: grid;
@@ -823,14 +807,23 @@
     .stats-row {
       display: flex;
       align-items: center;
-      gap: 1.5rem;
+      gap: 0;
+      overflow: hidden;
+      border: 1px solid hsl(var(--border));
+      background: hsl(var(--card));
+      border-radius: 0.9rem;
+      box-shadow: 0 3px 12px rgba(15, 23, 42, 0.025);
     }
 
     .stat-item {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.65rem;
+      min-width: 150px;
+      padding: 0.75rem 1rem;
+      border-right: 1px solid hsl(var(--border));
     }
+    .stat-item:last-child { border-right: 0; }
 
     .stat-icon {
       width: 32px;
@@ -880,10 +873,20 @@
        ======================================== */
     .content-grid {
       display: grid;
-      grid-template-columns: 2fr 3fr;
-      gap: 2rem;
-      min-height: 600px;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      min-height: 0;
     }
+
+    .farm-list-section {
+      margin-top: 1.15rem;
+      padding: 1.15rem;
+      border: 1px solid hsl(var(--border));
+      border-radius: 1rem;
+      background: hsl(var(--card));
+    }
+    .farm-list-section .ops-panel-header { border-bottom: 0; padding-bottom: 0; margin-bottom: 0.35rem; }
+    .farm-list-section .ops-panel-header h3 { font-size: 1rem; }
 
     @media (max-width: 1024px) {
       .content-grid {
@@ -895,9 +898,9 @@
     }
 
     .field-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 0.85rem;
     }
 
     .field-list-header {
@@ -909,9 +912,9 @@
 
     .field-card {
       background: hsl(var(--card));
-      border: 2px solid hsl(var(--border) / 0.6);
-      border-radius: var(--radius);
-      padding: 1.25rem;
+      border: 1px solid hsl(var(--border));
+      border-radius: 0.85rem;
+      padding: 1rem;
       cursor: pointer;
       transition: all 0.2s ease;
     }
@@ -921,12 +924,15 @@
       border-color: hsl(var(--primary) / 0.4);
     }
 
-    .field-card.selected {
-      border-color: hsl(var(--primary));
-      box-shadow: 0 4px 12px hsl(210 15% 12% / 0.08);
-      background: hsl(var(--primary) / 0.02);
-      outline: 2px solid hsl(var(--primary) / 0.2);
+    .field-card:focus-visible {
+      outline: 3px solid hsl(var(--primary) / 0.3);
       outline-offset: 2px;
+    }
+
+    .field-card.selected {
+      border-color: hsl(var(--primary) / 0.65);
+      box-shadow: 0 0 0 3px hsl(var(--primary) / 0.08);
+      background: hsl(var(--primary) / 0.025);
     }
 
     .field-card-header {
@@ -2133,9 +2139,11 @@
 
     .trend-bar-wrapper {
       flex: 1;
+      height: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-end;
       gap: 0.5rem;
     }
 
@@ -2781,12 +2789,12 @@
             <span>SMART FIELD MONITORING</span>
           </div>
         </div>
-        <button class="btn btn-primary">
+        <a class="btn btn-primary" href="/map/" style="text-decoration:none;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M5 12h14"/><path d="M12 5v14"/>
           </svg>
           Add Field
-        </button>
+        </a>
       </div>
     </header>
 
@@ -2795,43 +2803,20 @@
         <div class="ops-title">
           <span class="ops-title-mark" aria-hidden="true"></span>
           <div>
-            <h2>Field Operations</h2>
-            <div class="ops-subtitle">Uasin Gishu grain corridor</div>
+            <h2>Field health</h2>
+            <div class="ops-subtitle">Satellite health and farm operations</div>
           </div>
         </div>
         <div class="ops-actions">
-          <span class="ops-chip">Updated 08:40</span>
-          <span class="ops-chip primary">Review 3 priority fields</span>
-        </div>
-      </div>
-
-      <div class="workflow-steps" aria-label="Operational workflow steps">
-        <div class="workflow-step active">
-          <span class="step-index">1</span>
-          <div><strong>Farm</strong><span>Create field</span></div>
-        </div>
-        <div class="workflow-step">
-          <span class="step-index">2</span>
-          <div><strong>Crop</strong><span>Register season</span></div>
-        </div>
-        <div class="workflow-step">
-          <span class="step-index">3</span>
-          <div><strong>Monitor</strong><span>Health & risk</span></div>
-        </div>
-        <div class="workflow-step">
-          <span class="step-index">4</span>
-          <div><strong>Review</strong><span>Approval</span></div>
-        </div>
-        <div class="workflow-step">
-          <span class="step-index">5</span>
-          <div><strong>Report</strong><span>VRA output</span></div>
+          <button class="btn btn-secondary btn-sm" id="analyze-all-fields-btn" type="button" onclick="analyzeAllFields()">Analyze all saved farms</button>
+          <span class="ops-chip analysis-batch-status" id="analysis-batch-status" role="status" aria-live="polite">Ready</span>
         </div>
       </div>
 
       <div class="page-header" style="margin-bottom: 1.25rem;">
         <div class="page-title">
-          <h2>My Fields</h2>
-          <p>Manage and monitor your agricultural fields</p>
+          <h2>Farm portfolio</h2>
+          <p>Live field coverage from your saved farms.</p>
         </div>
         <div class="stats-row">
           <div class="stat-item">
@@ -2872,25 +2857,21 @@
       </div>
 
       <div class="ops-grid">
-        <div class="ops-panel ops-map-panel">
+        <div class="ops-panel ops-map-panel" id="field-map-section">
           <div class="ops-panel-header">
-            <h3>Field map</h3>
-            <span class="ops-panel-meta">12 parcels</span>
+            <div><h3>Field map</h3><span class="map-live-label">Satellite imagery · risk by field</span></div>
+            <span class="map-live-label" id="map-field-count">0 fields</span>
           </div>
 
-          <div class="map-shell" aria-label="Field map overview">
-            <div class="field-shape a active"></div>
-            <div class="field-shape b"></div>
-            <div class="field-shape c"></div>
-            <div class="map-marker m1"></div>
-            <div class="map-marker m2"></div>
-            <div class="map-marker m3"></div>
-          </div>
+          <div class="map-shell" id="health-map-shell" aria-label="Esri satellite map with field boundaries colored by health risk"><div id="health-map"></div></div>
 
-          <div class="map-legend">
-            <span class="legend-item"><span class="legend-dot green"></span>Healthy</span>
-            <span class="legend-item"><span class="legend-dot amber"></span>Watch</span>
-            <span class="legend-item"><span class="legend-dot red"></span>Action</span>
+          <div class="risk-legend" aria-label="Field health risk legend">
+            <span class="legend-item"><i class="risk-swatch" style="background:#16a34a"></i>Low · 80–100%</span>
+            <span class="legend-item"><i class="risk-swatch" style="background:#84cc16"></i>Guarded · 65–79%</span>
+            <span class="legend-item"><i class="risk-swatch" style="background:#eab308"></i>Elevated · 50–64%</span>
+            <span class="legend-item"><i class="risk-swatch" style="background:#f97316"></i>High · 30–49%</span>
+            <span class="legend-item"><i class="risk-swatch" style="background:#dc2626"></i>Critical · 0–29%</span>
+            <span class="legend-item"><i class="risk-swatch" style="background:#64748b"></i>No score</span>
           </div>
         </div>
 
@@ -2905,9 +2886,9 @@
 
           <div class="metrics-grid">
             <div class="metric-card">
-              <span class="metric-label">Estimated yield</span>
+              <span class="metric-label">Total estimated yield</span>
               <span class="metric-value" id="selected-yield">—</span>
-              <span class="metric-change" id="selected-yield-change">Awaiting saved analysis</span>
+              <span class="metric-change" id="selected-yield-change">Yield per hectare × field area</span>
             </div>
             <div class="metric-card">
               <span class="metric-label">Rainfall</span>
@@ -2928,18 +2909,10 @@
 
           <div class="trend-box">
             <div class="trend-head">
-              <h4>Vegetation trend</h4>
+              <h4>Vegetation trend (NDVI)</h4>
               <span class="trend-legend" id="selected-trend-label">No live observations</span>
             </div>
-            <div class="trend-chart" aria-label="Trend chart">
-              <span class="trend-bar"></span>
-              <span class="trend-bar"></span>
-              <span class="trend-bar"></span>
-              <span class="trend-bar"></span>
-              <span class="trend-bar"></span>
-              <span class="trend-bar"></span>
-              <span class="trend-bar"></span>
-            </div>
+            <div class="trend-chart" id="selected-vegetation-trend" aria-label="Saved NDVI observations over time" aria-live="polite"><span class="trend-legend">No saved vegetation observations</span></div>
           </div>
 
           <div class="summary-row">
@@ -2954,84 +2927,22 @@
           </div>
         </div>
 
-        <div class="ops-panel ops-queue-panel">
+        <div class="ops-panel ops-queue-panel workflow-next-panel">
           <div class="ops-panel-header">
-            <h3>Priority queue</h3>
-            <span class="ops-panel-meta" id="priority-queue-count">0 items</span>
+            <h3>Recommended next step</h3>
+            <span class="ops-panel-meta" id="workflow-step-label">Select a farm</span>
           </div>
-
-          <div class="queue-list" id="priority-queue-list">
-            <div class="queue-item">
-              <div>
-                <h4>No field queue</h4>
-                <div class="queue-meta">
-                  <span>Database has no active records</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="decision-box">
-            <h4>AgriMind review</h4>
-            <p class="decision-title" id="agrimind-title">Waiting for field data</p>
-            <p class="decision-copy" id="agrimind-copy">No advisory has been created yet. The review will populate from the selected field once the database record is available.</p>
-            <div class="action-row">
-              <button class="btn-primary">Approve</button>
-              <button class="btn-secondary">Reject</button>
-            </div>
-          </div>
+          <p class="decision-copy" id="workflow-next-copy">Choose a farm to see its next step.</p>
+          <button class="btn btn-primary" id="workflow-next-button" type="button" disabled>Select a farm</button>
+          <p class="map-live-label" id="workflow-report-hint">Analysis, advisory review, and report export are available in the selected crop workspace.</p>
         </div>
       </div>
 
-      <div class="content-grid" style="margin-top: 1.2rem;">
+      <div class="content-grid farm-list-section" id="my-fields-section">
         <div>
+          <div class="ops-panel-header"><div><h3>Your fields</h3><span class="map-live-label">Select a field to inspect it, or open its crop workspace.</span></div><a class="btn btn-outline btn-sm" href="/map/" style="text-decoration:none;">+ Add field</a></div>
           <p class="field-list-header">0 fields</p>
           <div class="field-list" id="field-list"></div>
-        </div>
-        <div class="map-container">
-          <div class="map-header">
-            <div class="map-status">
-              <div class="map-status-dot"></div>
-              <span>Live Satellite View</span>
-            </div>
-            <button class="btn btn-ghost btn-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>
-              </svg>
-            </button>
-          </div>
-          <div class="map-bg"></div>
-          <div class="map-content">
-            <div style="position: relative;">
-              <svg width="380" height="320" viewBox="0 0 380 320" class="map-svg">
-                <polygon id="map-field-1" class="map-polygon inactive" points="50,70 170,45 195,140 75,165" data-field="1" style="display: none;"/>
-                <polygon id="map-field-2" class="map-polygon inactive" points="200,55 320,80 295,175 175,150" data-field="2" style="display: none;"/>
-                <polygon id="map-field-3" class="map-polygon inactive" points="95,195 215,170 240,265 120,290" data-field="3" style="display: none;"/>
-              </svg>
-              <div class="map-info-card hidden" id="map-info-card">
-                <div class="map-info-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
-                  </svg>
-                </div>
-                <div class="map-info-text">
-                  <strong id="map-info-name">Field Name</strong>
-                  <span>Selected</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="map-legend">
-            <div class="legend-item">
-              <div class="legend-color active"></div><span>Active</span>
-            </div>
-            <div class="legend-item">
-              <div class="legend-color inactive"></div><span>Inactive</span>
-            </div>
-          </div>
-          <div class="map-scale">
-            <div class="scale-bar"></div><span>100m</span>
-          </div>
         </div>
       </div>
     </main>
@@ -3150,6 +3061,10 @@
 
     let fields = [];
     let selectedFieldId = null;
+    let healthMap = null;
+    let healthFieldLayers = new Map();
+    let healthFieldGroup = null;
+    let healthMapFocusedFieldId = null;
     let currentFieldForRegistration = null;
     let selectedCrop = null;
     let selectedIrrigation = '';
@@ -3173,13 +3088,177 @@
     }
 
     function formatArea(area) {
-      if (area >= 10000) return `${(area / 10000).toFixed(2)} ha`;
-      return `${area.toFixed(2)} ha`;
+      return `${Number(area || 0).toFixed(2)} ha`;
     }
 
     function formatDate(dateString) {
       const date = new Date(dateString);
       return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function initializeHealthMap() {
+      if (!window.L || healthMap) return;
+      healthMap = L.map('health-map', { scrollWheelZoom: true }).setView([-0.5, 37.9], 6);
+      const esri = {
+        'Esri Satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics', maxZoom: 19
+        }),
+        'Esri Topographic': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles © Esri and its data providers', maxZoom: 19
+        }),
+        'Esri Streets': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles © Esri and its data providers', maxZoom: 19
+        })
+      };
+      esri['Esri Satellite'].addTo(healthMap);
+      L.control.layers(esri, null, { position: 'topright' }).addTo(healthMap);
+      healthFieldGroup = L.featureGroup().addTo(healthMap);
+      setTimeout(() => healthMap.invalidateSize(), 150);
+    }
+
+    function healthRisk(score) {
+      if (score == null || !Number.isFinite(Number(score))) return { label: 'No score', color: '#64748b' };
+      const pct = Number(score) <= 1 ? Number(score) * 100 : Number(score);
+      if (pct >= 80) return { label: 'Low', color: '#16a34a' };
+      if (pct >= 65) return { label: 'Guarded', color: '#84cc16' };
+      if (pct >= 50) return { label: 'Elevated', color: '#eab308' };
+      if (pct >= 30) return { label: 'High', color: '#f97316' };
+      return { label: 'Critical', color: '#dc2626' };
+    }
+
+    function escapeMapText(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+    }
+
+    function renderHealthMap() {
+      if (!healthMap || !healthFieldGroup) return;
+      healthFieldGroup.clearLayers();
+      healthFieldLayers.clear();
+      document.getElementById('map-field-count').textContent = `${fields.length} field${fields.length === 1 ? '' : 's'}`;
+      fields.forEach(field => {
+        if (!field.geometry) return;
+        const metric = field.summary?.latest_metric || {};
+        const risk = healthRisk(metric.health_score);
+        const selected = Number(field.id) === Number(selectedFieldId);
+        const layer = L.geoJSON({ type: 'Feature', geometry: field.geometry, properties: { name: field.name } }, {
+          style: {
+            color: selected ? '#ffffff' : risk.color,
+            weight: selected ? 4 : 2.5,
+            opacity: 1,
+            fillColor: risk.color,
+            fillOpacity: selected ? 0.62 : 0.43
+          }
+        });
+        const score = metric.health_score == null ? 'No saved score' : `${(Number(metric.health_score) <= 1 ? Number(metric.health_score) * 100 : Number(metric.health_score)).toFixed(1)}%`;
+        const yieldValue = field.summary?.yield_estimate_t_ha;
+        const yieldTotal = field.summary?.estimated_yield_t;
+        const rainValue = metric.rainfall_mm;
+        const popup = `<div style="min-width:175px"><strong>${escapeMapText(field.name)}</strong><div>Risk: ${risk.label}</div><div>Overall health: ${score}</div><div>Total yield: ${yieldTotal == null ? '—' : `${escapeMapText(yieldTotal)} t`}</div><div>Rate: ${yieldValue == null ? '—' : `${escapeMapText(yieldValue)} t/ha × ${escapeMapText(field.summary?.area_ha ?? field.area)} ha`}</div><div>Rainfall: ${rainValue == null ? '—' : `${escapeMapText(rainValue)} mm`}</div></div>`;
+        layer.bindPopup(popup);
+        layer.on('click', () => selectField(field.id));
+        layer.addTo(healthFieldGroup);
+        healthFieldLayers.set(Number(field.id), layer);
+      });
+      const selectedLayer = healthFieldLayers.get(Number(selectedFieldId));
+      const selectedBounds = selectedLayer?.getBounds();
+      if (selectedBounds?.isValid() && healthMapFocusedFieldId !== Number(selectedFieldId)) {
+        healthMap.fitBounds(selectedBounds, {
+          paddingTopLeft: [24, 24],
+          paddingBottomRight: [24, 24],
+          maxZoom: 18
+        });
+        healthMapFocusedFieldId = Number(selectedFieldId);
+      }
+    }
+
+    async function loadFieldSummary(field) {
+      if (field.summary) return field.summary;
+      if (!field.summaryPromise) {
+        field.summaryPromise = fetch(`/api/dashboard/field/${field.id}/`, { credentials: 'same-origin' })
+          .then(response => response.ok ? response.json() : null)
+          .then(summary => { field.summary = summary; return summary; })
+          .catch(error => { console.error(`Could not load metrics for field ${field.id}:`, error); return null; });
+      }
+      return field.summaryPromise;
+    }
+
+    async function analyzeAllFields() {
+      const button = document.getElementById('analyze-all-fields-btn');
+      const status = document.getElementById('analysis-batch-status');
+      button.disabled = true;
+      status.textContent = 'Queueing saved farms…';
+      try {
+        const response = await fetch('/api/analyze-all-fields/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+          credentials: 'same-origin',
+          body: JSON.stringify({})
+        });
+        const batch = await response.json();
+        if (!response.ok) throw new Error(batch.message || 'Could not queue farm analyses');
+        const ids = batch.result_ids || [];
+        if (!ids.length) {
+          button.disabled = false;
+          status.textContent = batch.skipped?.length ? `${batch.skipped.length} farm(s) need a crop planting record` : 'No saved farms to analyze';
+          return;
+        }
+
+        let timer = null;
+        let batchFinished = false;
+        let pollInProgress = false;
+        const poll = async () => {
+          if (batchFinished || pollInProgress) return;
+          pollInProgress = true;
+          const states = await Promise.all(ids.map(async id => {
+            try {
+              const result = await fetch(`/api/analysis-status/${id}/`, { credentials: 'same-origin' });
+              return result.ok ? await result.json() : { status: 'error' };
+            } catch (_) { return { status: 'error' }; }
+          }));
+          const finished = states.filter(item => ['done', 'error'].includes(item.status)).length;
+          const failures = states.filter(item => item.status === 'error').length;
+          status.textContent = `Analyzed ${finished}/${ids.length} farms · ${batch.max_concurrent_analyses} workers`;
+          pollInProgress = false;
+          if (finished < ids.length) return;
+          batchFinished = true;
+          clearInterval(timer);
+          button.disabled = false;
+          status.textContent = failures ? `Finished with ${failures} failed farm(s)` : `Finished ${ids.length} farm(s)`;
+          fields.forEach(field => { field.summary = null; field.summaryPromise = null; });
+          await Promise.all(fields.map(loadFieldSummary));
+          renderFields();
+          updateStats();
+        };
+        status.textContent = `Queued ${ids.length} farm(s) · ${batch.max_concurrent_analyses} workers`;
+        await poll();
+        if (!batchFinished) timer = setInterval(poll, 6000);
+      } catch (error) {
+        button.disabled = false;
+        status.textContent = error.message || 'Analysis could not start';
+      }
+    }
+
+    function renderVegetationTrend(points, latestMetric, statusMessage) {
+      const chart = document.getElementById('selected-vegetation-trend');
+      const label = document.getElementById('selected-trend-label');
+      const observations = Array.isArray(points) ? points.filter(point => point.ndvi != null) : [];
+      if (!observations.length) {
+        const message = statusMessage || 'No saved NDVI observations';
+        chart.innerHTML = `<span class="trend-legend">${escapeMapText(message)}</span>`;
+        label.textContent = message;
+        return;
+      }
+      const latest = observations[observations.length - 1];
+      const currentNdvi = Number(latestMetric?.ndvi ?? latest.ndvi);
+      label.textContent = `Current NDVI ${currentNdvi.toFixed(3)} · ${observations.length} observation${observations.length === 1 ? '' : 's'}`;
+      chart.innerHTML = observations.slice(-12).map(point => {
+        const ndvi = Number(point.ndvi);
+        const height = Math.max(4, Math.min(120, ndvi / 0.9 * 120));
+        const tone = ndvi >= 0.6 ? 'healthy' : ndvi >= 0.4 ? 'watch' : 'stress';
+        const date = new Date(point.date);
+        const dateLabel = Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        return `<div class="trend-bar-wrapper" title="${dateLabel}: NDVI ${ndvi.toFixed(3)}"><span class="trend-bar ${tone}" style="height:${height}px;flex:none;"></span><span class="trend-label">${escapeMapText(dateLabel)}</span></div>`;
+      }).join('');
     }
 
     async function fetchFieldsFromDatabase() {
@@ -3205,6 +3284,7 @@
           id: feature.id,
           name: feature.properties.name || 'Unnamed Field',
           area: feature.properties.area || 0,
+          geometry: feature.geometry,
           coordinates: feature.geometry?.coordinates?.[0] || [],
           crop: null,
           createdAt: feature.properties.created_at || new Date().toISOString(),
@@ -3212,6 +3292,8 @@
         }));
         renderFields();
         updateStats();
+        initializeHealthMap();
+        Promise.all(fields.map(loadFieldSummary)).then(renderHealthMap);
         await fetchActiveCrops();
         return fields;
       } catch (error) {
@@ -3270,10 +3352,11 @@
       const trendEl = document.getElementById('selected-trend-label');
       const actionEl = document.getElementById('selected-action');
       const reviewEl = document.getElementById('selected-review');
-      const queueCountEl = document.getElementById('priority-queue-count');
-      const queueListEl = document.getElementById('priority-queue-list');
-      const titleEl = document.getElementById('agrimind-title');
-      const copyEl = document.getElementById('agrimind-copy');
+      const nextStepLabel = document.getElementById('workflow-step-label');
+      const nextStepCopy = document.getElementById('workflow-next-copy');
+      const nextStepButton = document.getElementById('workflow-next-button');
+      const reportHint = document.getElementById('workflow-report-hint');
+      document.getElementById('selected-vegetation-trend').innerHTML = '<span class="trend-legend">Loading saved NDVI observations…</span>';
 
       if (!field) {
         nameEl.textContent = 'No field selected';
@@ -3288,12 +3371,15 @@
         riskEl.textContent = '—';
         riskChangeEl.textContent = 'Awaiting field data';
         trendEl.textContent = 'No live observations';
+        document.getElementById('selected-trend-label').textContent = 'No field selected';
         actionEl.textContent = 'No recommendation yet';
         reviewEl.textContent = 'Awaiting data';
-        queueCountEl.textContent = '0 items';
-        queueListEl.innerHTML = '<div class="queue-item"><div><h4>No field queue</h4><div class="queue-meta"><span>Database has no active records</span></div></div></div>';
-        titleEl.textContent = 'Waiting for field data';
-        copyEl.textContent = 'No advisory has been created yet. The review will populate from the selected field once the database record is available.';
+        nextStepLabel.textContent = 'Field setup';
+        nextStepCopy.textContent = 'Add a field boundary to begin a crop season and monitoring.';
+        nextStepButton.textContent = 'Add field boundary';
+        nextStepButton.disabled = false;
+        nextStepButton.onclick = () => { window.location.href = '/map/'; };
+        reportHint.textContent = 'After crop registration, analyze the field, review AgriMind advice, then open or download its report.';
         return;
       }
 
@@ -3301,7 +3387,9 @@
       const cropDays = field.crop ? Math.max(0, Math.floor((Date.now() - new Date(field.crop.plantingDate).getTime()) / (1000 * 60 * 60 * 24))) : 0;
       nameEl.textContent = field.name;
       metaEl.textContent = `${cropName} • ${formatArea(field.area)} • ${field.crop ? `Planted ${cropDays} days ago` : 'No crop registered yet'}`;
-      statusEl.textContent = field.crop ? 'Active' : 'No crop';
+      statusEl.textContent = field.crop ? 'Crop active' : 'No crop';
+      statusEl.classList.toggle('good', Boolean(field.crop));
+      statusEl.classList.toggle('watch', !field.crop);
       yieldEl.textContent = '—';
       yieldChangeEl.textContent = 'Awaiting saved analysis';
       rainEl.textContent = '—';
@@ -3311,50 +3399,85 @@
       riskEl.textContent = '—';
       riskChangeEl.textContent = field.crop ? 'Risk is calculated from the latest saved analysis result' : 'Awaiting field data';
       trendEl.textContent = field.crop ? 'Observations will appear when analysis data is present' : 'No live observations';
-      actionEl.textContent = field.crop ? 'Waiting for agronomist review' : 'No recommendation yet';
-      reviewEl.textContent = field.crop ? 'Pending DB review' : 'Awaiting data';
+      actionEl.textContent = 'No saved advisory';
+      reviewEl.textContent = field.crop ? 'Loading review status…' : 'Crop season not registered';
 
-      const queueItems = fields.slice(0, 3).map((item, index) => {
-        const statusText = item.crop ? `${item.crop.type?.name || 'Crop'} is active` : 'Crop not registered';
-        const queueRisk = index === 0 ? { label: 'Info', className: 'green' } : index === 1 ? { label: 'Review', className: 'amber' } : { label: 'Queued', className: 'green' };
-        return `
-          <div class="queue-item ${index === 0 ? 'active' : ''}">
-            <div>
-              <h4>${item.name}</h4>
-              <div class="queue-meta">
-                <span>${statusText}</span>
-                <span>${formatArea(item.area)}</span>
-              </div>
-            </div>
-            <span class="tiny-badge ${queueRisk.className}">${queueRisk.label}</span>
-          </div>
-        `;
-      }).join('');
-
-      queueCountEl.textContent = `${Math.min(fields.length, 3)} item${Math.min(fields.length, 3) !== 1 ? 's' : ''}`;
-      queueListEl.innerHTML = queueItems || '<div class="queue-item"><div><h4>No field queue</h4><div class="queue-meta"><span>Database has no active records</span></div></div></div>';
-
-      const advisoryDraft = field.crop ? 'The selected field is ready for agronomist review when the latest analysis is saved to the database.' : 'Waiting for crop registration before a review can be generated.';
-      titleEl.textContent = field.crop ? 'AgriMind review' : 'Waiting for field data';
-      copyEl.textContent = advisoryDraft;
+      nextStepButton.disabled = false;
+      if (!field.crop) {
+        nextStepLabel.textContent = 'Season setup';
+        nextStepCopy.textContent = `${field.name} has no active crop season. Register a crop to enable analysis and advice.`;
+        nextStepButton.textContent = 'Register crop';
+        nextStepButton.onclick = () => openRegisterModal(field.id);
+        reportHint.textContent = 'Crop type and planting date anchor growth stage, satellite windows, and yield estimation.';
+      } else {
+        nextStepLabel.textContent = 'Crop monitoring';
+        nextStepCopy.textContent = `${field.crop.type?.name || 'Crop'} is active. Open its workspace to run satellite analysis and review advice.`;
+        nextStepButton.textContent = 'Open crop workspace';
+        nextStepButton.onclick = () => viewCropDetails(field.id);
+        reportHint.textContent = 'The crop workspace contains analysis, AgriMind advisory review, VRA prescriptions, and report export.';
+      }
 
       // Load the latest persisted values for this field; never substitute demo data.
-      fetch(`/api/dashboard/field/${field.id}/`, { credentials: 'same-origin' })
-        .then(response => response.ok ? response.json() : null)
+      loadFieldSummary(field)
         .then(summary => {
           if (!summary || selectedFieldId && Number(selectedFieldId) !== Number(field.id)) return;
           const metric = summary.latest_metric || {};
           const show = (value, suffix = '') => value == null ? '—' : `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })}${suffix}`;
-          yieldEl.textContent = show(summary.yield_estimate_t_ha, ' t/ha');
-          yieldChangeEl.textContent = summary.yield_estimate_t_ha == null ? 'No saved yield estimate' : 'Latest saved field estimate';
+          yieldEl.textContent = show(summary.estimated_yield_t, ' t');
+          yieldChangeEl.textContent = summary.yield_estimate_t_ha == null
+            ? 'No saved yield estimate'
+            : `${show(summary.yield_estimate_t_ha, ' t/ha')} × ${show(summary.area_ha, ' ha')}`;
           rainEl.textContent = show(metric.rainfall_mm, ' mm');
           rainChangeEl.textContent = metric.rainfall_mm == null ? 'No saved rainfall data' : (metric.captured_at ? `Captured ${new Date(metric.captured_at).toLocaleDateString()}` : 'Latest saved field metric');
           const health = metric.health_score;
           const healthPct = health == null ? null : (Number(health) <= 1 ? Number(health) * 100 : Number(health));
           healthEl.textContent = healthPct == null ? '—' : `${healthPct.toFixed(1)}%`;
-          healthChangeEl.textContent = healthPct == null ? 'No saved health score' : 'Latest saved field score';
+          const healthCoverage = metric.health_score_coverage_pct;
+          const componentLabels = (metric.health_score_components || []).map(name => ({
+            vegetation_index: 'vegetation', soil_index: 'soil', water_availability: 'water',
+            climate_index: 'climate', radar_index: 'radar'
+          })[name] || name);
+          healthChangeEl.textContent = healthPct == null
+            ? 'Insufficient real inputs for score'
+            : (healthCoverage != null && Number(healthCoverage) < 99.9
+              ? `Partial: ${componentLabels.join(', ')} · ${Number(healthCoverage).toFixed(0)}% coverage`
+              : 'Latest saved field score');
+          renderVegetationTrend(summary.vegetation_trend, metric, summary.vegetation_status);
+          field.summary = summary;
+          const latestReview = (summary.recent_reviews || [])[0];
+          actionEl.textContent = latestReview?.recommended_action || 'No saved advisory';
+          reviewEl.textContent = summary.pending_reviews > 0
+            ? `${summary.pending_reviews} review${summary.pending_reviews === 1 ? '' : 's'} pending`
+            : (latestReview ? `Latest review: ${latestReview.status}` : 'No review recorded');
+          if (field.crop && ['queued', 'running'].includes(summary.latest_analysis_status)) {
+            nextStepLabel.textContent = 'Analysis in progress';
+            nextStepCopy.textContent = `Analysis for ${field.name} is ${summary.latest_analysis_status}. Saved health and vegetation data will refresh when it finishes.`;
+            nextStepButton.textContent = 'Analysis processing';
+            nextStepButton.disabled = true;
+          } else if (field.crop && summary.pending_reviews > 0) {
+            nextStepLabel.textContent = 'Advice review';
+            nextStepCopy.textContent = `${summary.pending_reviews} AgriMind recommendation${summary.pending_reviews === 1 ? '' : 's'} await review for ${field.name}.`;
+            nextStepButton.textContent = 'Review advice';
+            nextStepButton.disabled = false;
+            nextStepButton.onclick = () => viewCropDetails(field.id);
+          } else if (field.crop && summary.latest_analysis_status === 'error') {
+            nextStepLabel.textContent = 'Analysis needs attention';
+            nextStepCopy.textContent = 'The last analysis failed. Open the crop workspace to retry and inspect the saved error.';
+            nextStepButton.textContent = 'Retry analysis';
+            nextStepButton.disabled = false;
+            nextStepButton.onclick = () => viewCropDetails(field.id);
+          } else if (field.crop && summary.has_saved_analysis) {
+            nextStepLabel.textContent = 'Advice & report';
+            nextStepCopy.textContent = `Latest analysis for ${field.name} is saved. Open the crop workspace to run or review advice and access the report.`;
+            nextStepButton.textContent = 'Open advice & report';
+            nextStepButton.disabled = false;
+            nextStepButton.onclick = () => viewCropDetails(field.id);
+          }
           riskEl.textContent = metric.risk_level || '—';
-          riskChangeEl.textContent = metric.risk_level && metric.risk_level !== 'UNKNOWN' ? 'Based on latest saved health score' : 'No saved risk assessment';
+          riskChangeEl.textContent = metric.risk_level && metric.risk_level !== 'UNKNOWN'
+            ? (healthCoverage != null && Number(healthCoverage) < 99.9 ? 'Based on partial health score' : 'Based on latest saved health score')
+            : 'Insufficient real inputs for risk assessment';
+          renderHealthMap();
         })
         .catch(error => console.error('Could not load saved field metrics:', error));
     }
@@ -3372,11 +3495,16 @@
       if (!selectedFieldId) selectedFieldId = fields[0].id;
       fields.forEach(field => { const card = createFieldCard(field); fieldList.appendChild(card); });
       renderSelectedFieldSummary();
+      renderHealthMap();
     }
 
     function createFieldCard(field) {
       const card = document.createElement('div');
       card.className = 'field-card';
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-pressed', String(selectedFieldId === field.id));
+      card.setAttribute('aria-label', `Select ${field.name}, ${formatArea(field.area)}`);
       if (selectedFieldId === field.id) card.classList.add('selected');
       let cropHTML = '', buttonHTML = '';
       if (field.crop) {
@@ -3395,7 +3523,13 @@
         </span>` : '';
 
       card.innerHTML = `<div class="field-card-header"><div class="field-card-info"><h3>${field.name}</h3><p>${formatArea(field.area)}</p></div>${priorityBadge}</div>${cropHTML}${buttonHTML}`;
-      card.addEventListener('click', (e) => { if (!e.target.closest('button')) selectField(field.id); });
+      card.addEventListener('click', (e) => { if (!e.target.closest('button, a')) selectField(field.id); });
+      card.addEventListener('keydown', (e) => {
+        if (e.target === card && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          selectField(field.id);
+        }
+      });
       return card;
     }
 
@@ -3637,7 +3771,9 @@
       const panel = document.getElementById(panelId);
       if (!panel) return;
 
-      const yieldVal = data.ml_yield_t_ha || data.regression_model_t_ha || data.simple_model_t_ha || '—';
+      const yieldRate = data.yield_estimate_t_ha ?? data.ml_yield_t_ha ?? data.regression_model_t_ha ?? data.simple_model_t_ha;
+      const yieldVal = data.estimated_yield_t == null ? '—' : Number(data.estimated_yield_t).toLocaleString(undefined, { maximumFractionDigits: 2 });
+      const yieldFormula = yieldRate == null || data.field_area_ha == null ? 'Farm area unavailable' : `${Number(yieldRate).toFixed(2)} t/ha × ${Number(data.field_area_ha).toFixed(2)} ha`;
       const confidence = data.prediction_confidence_pct || null;
       const riskLevel = data.risk_level || 'Unknown';
       const riskClass = riskLevel.toLowerCase().includes('high') ? 'high' : riskLevel.toLowerCase().includes('medium') ? 'medium' : 'low';
@@ -3648,9 +3784,9 @@
           <div class="report-yield-hero" style="margin-bottom:1rem;">
             <div class="report-yield-main">
               <div class="report-yield-number">${yieldVal}</div>
-              <div class="report-yield-unit">t/ha estimated</div>
+              <div class="report-yield-unit">Estimated total output (t)</div>
             </div>
-            ${confidence ? `<div class="report-yield-divider"></div><div class="report-yield-meta"><div class="report-yield-meta-item"><span class="dot good"></span>Confidence: ${confidence}%</div><div class="report-yield-meta-item"><span class="dot ${riskClass==='high'?'warn':'good'}"></span>Risk: ${riskLevel}</div></div>` : ''}
+            <div class="report-yield-divider"></div><div class="report-yield-meta"><div class="report-yield-meta-item">${yieldFormula}</div>${confidence ? `<div class="report-yield-meta-item"><span class="dot good"></span>Confidence: ${confidence}%</div>` : ''}<div class="report-yield-meta-item"><span class="dot ${riskClass==='high'?'warn':'good'}"></span>Risk: ${riskLevel}</div></div>
           </div>
           <button onclick="openReportModal()" style="background:hsl(var(--primary));color:#fff;padding:12px 24px;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.9375rem;width:100%;">
             📋 View Full AI Agronomic Report
@@ -3667,7 +3803,9 @@
       const existing = document.getElementById('aiFullReportOverlay');
       if (existing) existing.remove();
 
-      const yieldVal = d.ml_yield_t_ha || d.regression_model_t_ha || d.simple_model_t_ha || '—';
+      const yieldRate = d.yield_estimate_t_ha ?? d.ml_yield_t_ha ?? d.regression_model_t_ha ?? d.simple_model_t_ha;
+      const yieldVal = d.estimated_yield_t == null ? '—' : Number(d.estimated_yield_t).toLocaleString(undefined, { maximumFractionDigits: 2 });
+      const yieldFormula = yieldRate == null || d.field_area_ha == null ? 'Farm area unavailable' : `${Number(yieldRate).toFixed(2)} t/ha × ${Number(d.field_area_ha).toFixed(2)} ha`;
       const confidence = d.prediction_confidence_pct || '—';
       const riskLevel = d.risk_level || 'Unknown';
       const riskClass = riskLevel.toLowerCase().includes('high') ? 'high' : riskLevel.toLowerCase().includes('medium') ? 'medium' : 'low';
@@ -3701,10 +3839,11 @@
             <div class="report-yield-hero">
               <div class="report-yield-main">
                 <div class="report-yield-number">${yieldVal}</div>
-                <div class="report-yield-unit">Estimated Yield (t/ha)</div>
+                <div class="report-yield-unit">Estimated total output (t)</div>
               </div>
               <div class="report-yield-divider"></div>
               <div class="report-yield-meta">
+                <div class="report-yield-meta-item"><strong>${yieldFormula}</strong></div>
                 <div class="report-yield-meta-item"><span class="dot good"></span> Confidence: <strong>${confidence}%</strong></div>
                 <div class="report-yield-meta-item"><span class="dot ${riskClass==='high'?'warn':'good'}"></span> Risk Level: <strong>${riskLevel}</strong></div>
                 ${d.yield_anomaly_pct != null ? `<div class="report-yield-meta-item"><span class="dot ${d.yield_anomaly_pct<0?'warn':'good'}"></span> Anomaly: <strong>${d.yield_anomaly_pct > 0 ? '+' : ''}${d.yield_anomaly_pct}%</strong></div>` : ''}
@@ -3892,27 +4031,54 @@
           },
           body: JSON.stringify({})
         });
-        const data = await res.json();
+        let data = await res.json();
+
+        if (res.ok && data.thread_id && data.status === 'RUNNING') {
+          const threadId = data.thread_id;
+          const terminal = new Set(['PENDING_APPROVAL', 'COMPLETED', 'REJECTED', 'FAILED', 'INSUFFICIENT_EVIDENCE', 'MAX_STEPS_EXCEEDED', 'MAX_TOOL_CALLS_EXCEEDED', 'SIMULATED_SMS_PREPARED']);
+          for (let attempt = 0; attempt < 90; attempt += 1) {
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            const statusRes = await fetch(`/api/agent/advisory/${fieldId}/?thread_id=${encodeURIComponent(threadId)}`);
+            if (!statusRes.ok) continue;
+            data = await statusRes.json();
+            if (badge) badge.textContent = data.status || 'Running';
+            if (terminal.has(data.status)) break;
+          }
+        }
 
         if (badge) {
-          badge.className = 'agrimind-badge ' + (data.status === 'APPROVED' ? 'low' : data.status === 'PENDING_APPROVAL' ? 'medium' : 'pending');
+          badge.className = 'agrimind-badge ' + (data.status === 'APPROVED' || data.status === 'SIMULATED_SMS_PREPARED' ? 'low' : data.status === 'PENDING_APPROVAL' ? 'medium' : ['FAILED', 'INSUFFICIENT_EVIDENCE', 'MAX_STEPS_EXCEEDED', 'MAX_TOOL_CALLS_EXCEEDED'].includes(data.status) ? 'high' : 'pending');
           badge.textContent = data.status || 'Active';
         }
 
-        const advisoryDraft = data.advisory || {};
-        const action = advisoryDraft.action || data.selected_action || 'ACTION_RECOMMENDED';
-        const rationale = advisoryDraft.rationale || data.rationale || 'Evaluation completed based on crop stage & telemetry.';
-        const citations = advisoryDraft.evidence_citations || data.evidence_ids || ['Sentinel-2 NDVI', 'CHIRPS Rainfall', 'Soil Moisture'];
+        if (!res.ok || data.status !== 'PENDING_APPROVAL') {
+          if (content) {
+            const details = Array.isArray(data.errors) ? data.errors.join('; ') : data.error;
+            content.textContent = data.status === 'RUNNING'
+              ? `Analysis is still running. Thread: ${data.thread_id || 'unavailable'}. Check this thread again shortly.`
+              : details || data.advisory || `No advisory draft was created (${data.status || `HTTP ${res.status}`}).`;
+          }
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = '⚡ Run AgriMind Advisory';
+          }
+          return;
+        }
 
-        let citationsHTML = citations.map(c => `<span class="agrimind-tag">🔎 ${c}</span>`).join('');
+        const advisoryDraft = data.advisory_draft || data.advisory || {};
+        const action = advisoryDraft.recommended_action || data.selected_action || 'Unavailable';
+        const rationale = advisoryDraft.advisory_rationale || data.rationale || 'No rationale was returned.';
+        const citations = advisoryDraft.evidence_ids || data.evidence_ids || [];
+
+        const citationsHTML = citations.map(c => `<span class="agrimind-tag">🔎 ${escapeMapText(c)}</span>`).join('');
 
         content.innerHTML = `
           <div class="agrimind-action-box">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">
-              <strong style="color:hsl(var(--foreground));font-size:0.95rem;">Action: ${action}</strong>
-              <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">Thread: ${data.thread_id || 'live'}</span>
+              <strong style="color:hsl(var(--foreground));font-size:0.95rem;">Action: ${escapeMapText(action)}</strong>
+              <span style="font-size:0.75rem;color:hsl(var(--muted-foreground));">Thread: ${escapeMapText(data.thread_id || '—')}</span>
             </div>
-            <p style="font-size:0.85rem;color:#334155;margin:0.25rem 0;">${rationale}</p>
+            <p style="font-size:0.85rem;color:#334155;margin:0.25rem 0;">${escapeMapText(rationale)}</p>
             <div class="agrimind-evidence-tags">
               ${citationsHTML}
             </div>
@@ -3938,7 +4104,15 @@
         `;
       } catch (err) {
         if (content) {
-          content.innerHTML = `<div style="color:#b91c1c;font-size:0.85rem;">Failed to fetch advisory: ${err.message}</div>`;
+          content.innerHTML = `<div style="color:#b91c1c;font-size:0.85rem;">Failed to fetch advisory: ${escapeMapText(err.message)}</div>`;
+        }
+        if (badge) {
+          badge.className = 'agrimind-badge high';
+          badge.textContent = 'Unavailable';
+        }
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '⚡ Run AgriMind Advisory';
         }
       }
     }
@@ -3964,16 +4138,19 @@
           })
         });
         const data = await res.json();
+        if (!res.ok || !['SIMULATED_SMS_PREPARED', 'REJECTED'].includes(data.status)) {
+          throw new Error(data.detail?.error || data.error || `Decision was not confirmed (HTTP ${res.status}).`);
+        }
         if (badge) {
           badge.className = 'agrimind-badge ' + (verdict === 'APPROVE' ? 'low' : 'high');
-          badge.textContent = verdict === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+          badge.textContent = data.status;
         }
         if (content) {
           content.innerHTML = `
             <div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:0.75rem 1rem;border-radius:6px;">
-              <strong style="color:#166534;font-size:0.9rem;">✅ Decision Verified: ${verdict}</strong>
+              <strong style="color:#166534;font-size:0.9rem;">✅ Decision recorded: ${escapeMapText(verdict)}</strong>
               <p style="font-size:0.8rem;color:#15803d;margin:0.25rem 0 0 0;">
-                Logged at ${new Date().toLocaleTimeString()} by Field Agronomist. SMS dispatch updated.
+                Logged at ${escapeMapText(data.decision_timestamp || new Date().toLocaleTimeString())}. No SMS was sent.
               </p>
             </div>
           `;
@@ -3989,6 +4166,7 @@
     // INITIALIZATION
     // ========================================
     document.addEventListener('DOMContentLoaded', function() {
+      initializeHealthMap();
       fetchFieldsFromDatabase();
       fetchAgriMindRankings();
       populateCropOptions();

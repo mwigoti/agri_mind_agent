@@ -6,6 +6,7 @@ import logging
 import os
 import threading
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Dict
@@ -31,6 +32,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.files.base import ContentFile
 from django.core.mail import send_mail, BadHeaderError
 from django.core.paginator import Paginator
+from django.db import close_old_connections
 from django.db.models import Avg, Count, Max, Min, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import (
@@ -65,6 +67,45 @@ from .models import *
 
 logger = logging.getLogger(__name__)
 
+try:
+    _ANALYSIS_WORKER_COUNT = max(1, min(4, int(os.environ.get('AGRIVISION_ANALYSIS_WORKERS', '2'))))
+except (TypeError, ValueError):
+    _ANALYSIS_WORKER_COUNT = 2
+
+_ANALYSIS_EXECUTOR = ThreadPoolExecutor(
+    max_workers=_ANALYSIS_WORKER_COUNT,
+    thread_name_prefix='agrivision-analysis',
+)
+_ANALYSIS_FUTURES = {}
+_ANALYSIS_FUTURES_LOCK = threading.RLock()
+
+
+def _execute_analysis_result(result_id: int) -> None:
+    """Run one analysis with a thread-local Django database connection."""
+    close_old_connections()
+    try:
+        _run_pipeline_in_background(result_id)
+    finally:
+        close_old_connections()
+
+
+def _submit_analysis_result(result_id: int) -> bool:
+    """Queue an analysis once; the executor bounds concurrent farm work."""
+    with _ANALYSIS_FUTURES_LOCK:
+        active = _ANALYSIS_FUTURES.get(result_id)
+        if active is not None and not active.done():
+            return False
+        future = _ANALYSIS_EXECUTOR.submit(_execute_analysis_result, result_id)
+        _ANALYSIS_FUTURES[result_id] = future
+        future.add_done_callback(lambda completed: _discard_analysis_future(result_id, completed))
+        return True
+
+
+def _discard_analysis_future(result_id: int, future) -> None:
+    with _ANALYSIS_FUTURES_LOCK:
+        if _ANALYSIS_FUTURES.get(result_id) is future:
+            _ANALYSIS_FUTURES.pop(result_id, None)
+
 CustomUser = get_user_model()
 
 
@@ -88,6 +129,15 @@ def upload_field_metric(request):
         "health_score", "yield_estimate_t_ha", "metadata",
     }
     values = {key: value for key, value in data.items() if key in allowed}
+    metric_metadata = values.get("metadata") or {}
+    if not isinstance(metric_metadata, dict):
+        return JsonResponse({"detail": "metadata must be an object."}, status=400)
+    values["metadata"] = {
+        **metric_metadata,
+        "provided_fields": [key for key in allowed if key in data],
+        "health_score_provided": "health_score" in data,
+        "yield_estimate_provided": "yield_estimate_t_ha" in data,
+    }
     metric = FieldMetric.objects.create(field=field, **values)
     return JsonResponse({"id": metric.pk, "field_id": field.pk, "captured_at": metric.captured_at.isoformat()}, status=201)
 
@@ -100,7 +150,17 @@ def field_dashboard_summary(request, field_id):
     field = get_object_or_404(Field, pk=field_id, owner=request.user)
     from .dashboard_cache import build_field_dashboard_summary
 
-    return JsonResponse(build_field_dashboard_summary(field))
+    summary = build_field_dashboard_summary(field)
+    metric = summary.get('latest_metric') or {}
+    logger.info(
+        "Field dashboard field=%s ndvi_points=%s latest_ndvi=%s health_score=%s vegetation_status=%s",
+        field.pk,
+        len(summary.get('vegetation_trend') or []),
+        metric.get('ndvi'),
+        metric.get('health_score'),
+        summary.get('vegetation_status'),
+    )
+    return JsonResponse(summary)
 
 
 @require_http_methods(["POST"])
@@ -2066,10 +2126,16 @@ def _result_to_frontend(ar) -> Dict[str, Any]:
     sci     = bundle.get('scientific_indices', {})
     yields  = bundle.get('scientific_yield', {})
     flags   = bundle.get('stress_flags', [])
+    yield_rate = (
+        bundle.get('predicted_yield_t_ha')
+        or yields.get('regression_model_t_ha')
+        or yields.get('simple_model_t_ha')
+    )
+    field_area_ha = float(ar.field.area) if ar.field_id and ar.field.area is not None else None
 
     scene_count  = sat.get('scene_count', 0) or 0
     ready_for_ml = scene_count >= 2
-    scenes       = bundle.get('scenes', [])
+    scenes       = sat.get('ndvi_observations', [])
 
     payload: Dict[str, Any] = {
         'status':    ar.pipeline_status,
@@ -2099,6 +2165,10 @@ def _result_to_frontend(ar) -> Dict[str, Any]:
         # Yield estimates
         'scientific_yield':    yields,
         'ml_yield_t_ha':       bundle.get('predicted_yield_t_ha'),
+        'yield_estimate_t_ha': yield_rate,
+        'field_area_ha':       field_area_ha,
+        'estimated_yield_t':   round(float(yield_rate) * field_area_ha, 2)
+                               if yield_rate is not None and field_area_ha is not None else None,
         'ai_agronomic_report': bundle.get('ai_agronomic_report'),
         'is_extrapolated':     bundle.get('is_extrapolated', False),
 
@@ -2223,11 +2293,14 @@ def _run_pipeline_in_background(result_id: int) -> None:
         flags   = []
         if scientific.get('risk_level') in ('High', 'Very High'):
             flags.append(f"Crop health risk: {scientific['risk_level']}")
-        if sci_idx.get('wsi', 0) > 50:
+        wsi = sci_idx.get('wsi')
+        vhi = sci_idx.get('vhi')
+        csi = sci_idx.get('csi')
+        if wsi is not None and wsi > 50:
             flags.append('Water stress detected (WSI > 50 %)')
-        if sci_idx.get('vhi', 100) < 40:
+        if vhi is not None and vhi < 40:
             flags.append('Vegetation health below normal (VHI < 40 %)')
-        if sci_idx.get('csi', 100) < 40:
+        if csi is not None and csi < 40:
             flags.append('Climate suitability below optimal (CSI < 40 %)')
 
         # Merge everything into one bundle
@@ -2247,7 +2320,63 @@ def _run_pipeline_in_background(result_id: int) -> None:
         # update stress_flags in combined after merge
         combined['stress_flags'] = flags
 
-       
+        # Save a dated field observation from the completed analysis. The
+        # dashboard trend is built from these real, persisted observations.
+        satellite_data = combined.get('satellite', {}) or {}
+        indices_data = combined.get('scientific_indices', {}) or {}
+        climate_data = combined.get('climate', {}) or {}
+        yield_data = combined.get('scientific_yield', {}) or {}
+        ndvi_observations = satellite_data.get('ndvi_observations', []) or []
+        if not ndvi_observations and satellite_data.get('data_source') == 'sentinel2':
+            composite_ndvi = satellite_data.get('ndvi_grain_filling')
+            if composite_ndvi is None:
+                composite_ndvi = satellite_data.get('ndvi_vegetative')
+            if composite_ndvi is not None and satellite_data.get('latest_scene_date'):
+                ndvi_observations = [{
+                    'date': satellite_data['latest_scene_date'],
+                    'ndvi': composite_ndvi,
+                }]
+        additional_metrics = {
+            'health_score': (float(indices_data['chi']) / 100.0
+                             if indices_data.get('chi') is not None
+                             and float(indices_data['chi']) > 1
+                             else indices_data.get('chi')),
+            'rainfall_mm': climate_data.get('total_season_rainfall_mm'),
+            'yield_estimate_t_ha': combined.get('predicted_yield_t_ha')
+                    or yield_data.get('regression_model_t_ha')
+                    or yield_data.get('simple_model_t_ha'),
+        }
+        for index, point in enumerate(ndvi_observations):
+            try:
+                captured_at = timezone.make_aware(datetime.strptime(point['date'], '%Y-%m-%d'))
+                ndvi_value = float(point['ndvi'])
+            except (KeyError, TypeError, ValueError):
+                continue
+            observation = {'ndvi': ndvi_value}
+            if index == len(ndvi_observations) - 1:
+                observation.update({key: value for key, value in additional_metrics.items() if value is not None})
+            provided_fields = list(observation.keys())
+            metadata = {
+                'source': 'sentinel2',
+                'analysis_result_id': ar.pk,
+                'provided_fields': provided_fields,
+                'health_score_provided': 'health_score' in observation,
+                'yield_estimate_provided': 'yield_estimate_t_ha' in observation,
+                'health_score_coverage_pct': indices_data.get('chi_coverage_pct'),
+                'health_score_components': indices_data.get('chi_components_used', []),
+            }
+            metric = FieldMetric.objects.filter(
+                field=field, captured_at=captured_at, metadata__source='sentinel2'
+            ).first()
+            if metric:
+                for key, value in observation.items():
+                    setattr(metric, key, value)
+                metric.metadata = metadata
+                metric.save()
+            else:
+                FieldMetric.objects.create(
+                    field=field, captured_at=captured_at, metadata=metadata, **observation
+                )
 
         
 
@@ -2258,10 +2387,17 @@ def _run_pipeline_in_background(result_id: int) -> None:
         ar.save(update_fields=['pipeline_status', 'error_message', 'full_bundle'])
 
         logger.info(
-            "AnalysisResult #%s done — risk=%s ml_yield=%s",
+            "AnalysisResult #%s done field=%s risk=%s health_score=%s health_coverage_pct=%s health_components=%s ml_yield=%s s2_scene_count=%s ndvi_observations=%s s2_status=%s",
             result_id,
+            field.pk,
             combined.get('risk_level', 'N/A'),
+            indices_data.get('chi'),
+            indices_data.get('chi_coverage_pct'),
+            indices_data.get('chi_components_used'),
             combined.get('predicted_yield_t_ha', 'N/A'),
+            satellite_data.get('scene_count', 0),
+            len(ndvi_observations),
+            satellite_data.get('data_status', 'unknown'),
         )
 
     except Exception as exc:
@@ -2360,14 +2496,16 @@ class AnalyzeCropView(LoginRequiredMixin, View):
         existing = AnalysisResult.objects.filter(
             field=field,
             activity=activity,
-            pipeline_status='running',       # ← AnalysisResult.pipeline_status
+            pipeline_status__in=['queued', 'running'],
         ).first()
         if existing:
+            if existing.pipeline_status == 'queued':
+                _submit_analysis_result(existing.pk)
             return JsonResponse(
                 {
-                    'status':    'running',
+                    'status':    existing.pipeline_status,
                     'result_id': existing.pk,
-                    'message':   'Analysis already running for this activity',
+                    'message':   'Analysis is already queued for this activity',
                 }
             )
  
@@ -2386,13 +2524,7 @@ class AnalyzeCropView(LoginRequiredMixin, View):
         )
  
         # ── spawn background thread ───────────────────────────────────────
-        t = threading.Thread(
-            target=_run_pipeline_in_background,
-            args=(ar.pk,),
-            daemon=True,
-            name=f'agrivision-pipeline-{ar.pk}',
-        )
-        t.start()
+        _submit_analysis_result(ar.pk)
         logger.info(
             "Spawned pipeline thread for AnalysisResult #%s "
             "(field=%s, activity=%s, crop=%s)",
@@ -2400,6 +2532,56 @@ class AnalyzeCropView(LoginRequiredMixin, View):
         )
  
         return JsonResponse({'status': 'queued', 'result_id': ar.pk})
+
+
+class AnalyzeAllFieldsView(LoginRequiredMixin, View):
+    """Queue the latest planted crop analysis for each of the user's fields."""
+
+    http_method_names = ['post']
+
+    def post(self, request, *args, **kwargs):
+        fields = Field.objects.filter(owner=request.user).order_by('id')
+        queued_ids = []
+        skipped = []
+
+        for field in fields:
+            activity = FieldActivity.objects.filter(
+                field=field,
+                activity_type='planting',
+                crop__isnull=False,
+            ).select_related('crop').order_by('-date').first()
+            if activity is None:
+                skipped.append({'field_id': field.pk, 'field_name': field.name, 'reason': 'No planting activity with a crop is registered.'})
+                continue
+
+            result = AnalysisResult.objects.filter(
+                field=field,
+                activity=activity,
+                pipeline_status__in=['queued', 'running'],
+            ).first()
+            if result is None:
+                result, _ = AnalysisResult.objects.update_or_create(
+                    field=field,
+                    activity=activity,
+                    defaults={
+                        'pipeline_status': 'queued',
+                        'error_message': None,
+                        'full_bundle': {},
+                        'stress_flags': [],
+                        'scene_count': 0,
+                    },
+                )
+            if result.pipeline_status == 'queued':
+                _submit_analysis_result(result.pk)
+            queued_ids.append(result.pk)
+
+        return JsonResponse({
+            'status': 'queued' if queued_ids else 'empty',
+            'result_ids': queued_ids,
+            'submitted': len(queued_ids),
+            'skipped': skipped,
+            'max_concurrent_analyses': _ANALYSIS_WORKER_COUNT,
+        }, status=202 if queued_ids else 200)
  
  
 # ──────────────────────────────────────────────────────────────────────────────

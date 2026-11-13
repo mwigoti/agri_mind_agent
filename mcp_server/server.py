@@ -1,6 +1,11 @@
 import sys
+import hmac
+import os
 from typing import Dict, Any, Optional, List
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 from .config import logger
 from .clients.backend_client import (
@@ -8,11 +13,33 @@ from .clients.backend_client import (
     fetch_crop_telemetry_from_db,
     evaluate_calendar_window_helper,
     draft_advisory_helper,
-    compute_vra_prescription_helper,
 )
 
-# Initialize FastMCP Server with identity 'AgriMind'
-mcp = FastMCP("AgriMind")
+MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio").lower()
+MCP_HTTP_HOST = os.getenv("MCP_HTTP_HOST", "127.0.0.1")
+MCP_HTTP_PORT = int(os.getenv("MCP_HTTP_PORT", "8002"))
+MCP_HTTP_TOKEN = os.getenv("MCP_HTTP_BEARER_TOKEN", "")
+MCP_HTTP_PATH = os.getenv("MCP_HTTP_PATH", "/mcp")
+MCP_ALLOWED_HOSTS = [host.strip() for host in os.getenv("MCP_ALLOWED_HOSTS", f"127.0.0.1:{MCP_HTTP_PORT},localhost:{MCP_HTTP_PORT}").split(",") if host.strip()]
+MCP_ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("MCP_ALLOWED_ORIGINS", "").split(",") if origin.strip()]
+
+security = None
+if MCP_TRANSPORT == "streamable-http":
+    security = TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=MCP_ALLOWED_HOSTS,
+        allowed_origins=MCP_ALLOWED_ORIGINS,
+    )
+
+# Keep stdio as the local default; remote MCP clients use authenticated Streamable HTTP.
+mcp = FastMCP(
+    "AgriMind",
+    host=MCP_HTTP_HOST,
+    port=MCP_HTTP_PORT,
+    streamable_http_path=MCP_HTTP_PATH,
+    stateless_http=True,
+    transport_security=security,
+)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -83,9 +110,9 @@ def analyze_crop_telemetry(plot_id: str) -> Dict[str, Any]:
 def evaluate_calendar_window(
     crop: str = "maize",
     phenological_stage: str = "vegetative",
-    rainfall_anomaly_pct: float = 0.0,
-    soil_moisture_vwc: float = 0.22,
-    forecast_rain_next_48h_mm: float = 0.0,
+    rainfall_anomaly_pct: Optional[float] = None,
+    soil_moisture_vwc: Optional[float] = None,
+    forecast_rain_next_48h_mm: Optional[float] = None,
     plot_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -100,9 +127,9 @@ def evaluate_calendar_window(
     Args:
         crop (str): The crop name (default: 'maize').
         phenological_stage (str): Current crop growth stage (e.g., 'Vegetative_V6', 'Silking_R1').
-        rainfall_anomaly_pct (float): Rainfall percentage anomaly from normal (e.g., -34.2).
-        soil_moisture_vwc (float): Volumetric soil water content fraction (e.g., 0.14 = 14%).
-        forecast_rain_next_48h_mm (float): Total rain forecasted in next 48 hours in mm (default: 0.0).
+        rainfall_anomaly_pct (Optional[float]): CHIRPS seasonal anomaly vs the same planting-to-observation period in the previous five years.
+        soil_moisture_vwc (Optional[float]): Volumetric soil water content fraction (e.g., 0.14 = 14%); null when no recent measurement is saved.
+        forecast_rain_next_48h_mm (Optional[float]): Sum of fresh saved forecast precipitation for the next two calendar days; null when unavailable.
         plot_id (Optional[str]): Optional plot ID for reference.
         
     Returns:
@@ -188,15 +215,7 @@ def compute_vra_prescription(
     num_zones: int = 3,
 ) -> Dict[str, Any]:
     """
-    Compute zone-by-zone Variable Rate Application (VRA) prescription rates for maize
-    to optimize chemical resource usage and prevent uniform over-application.
-
-    Divides the field into management zones based on satellite NDVI vigor:
-      - Zone 1 (High vigor): Low rate (avoids nitrate leaching and lodging).
-      - Zone 2 (Medium vigor): Maintenance baseline rate.
-      - Zone 3 (Low vigor / stressed): Targeted replenishment rate.
-
-    Calculates resource savings compared to uniform blanket application (typically 80 kg/ha).
+    Check whether measured zonal data and validated rates are available for a VRA prescription.
 
     Args:
         plot_id (str): The unique plot identifier (e.g., '101' or 'PLOT-101').
@@ -204,17 +223,42 @@ def compute_vra_prescription(
         num_zones (int): Number of management clusters (default: 3).
 
     Returns:
-        Dict[str, Any]: Zone prescriptions, estimated fertilizer savings (%),
-        and verifiable evidence tokens for auditability.
+        Dict[str, Any]: An explicit evidence gap until required zonal inputs are available.
     """
     logger.info(f"Tool invoked: compute_vra_prescription for plot_id='{plot_id}', input='{target_input}'")
-    return compute_vra_prescription_helper(
-        plot_id=plot_id,
-        target_input=target_input,
-        num_zones=num_zones,
-    )
+    return {
+        "status": "INSUFFICIENT_EVIDENCE",
+        "plot_id": plot_id,
+        "target_input": target_input,
+        "requested_zones": num_zones,
+        "message": "A prescription requires field-level zonal raster values and a validated agronomic rate. Aggregate field telemetry cannot support zone prescriptions.",
+        "missing_inputs": ["zonal_ndvi_or_soil_grid", "validated_rate_by_zone", "area_by_zone"],
+    }
+
+
+class BearerTokenMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, token: str):
+        super().__init__(app)
+        self.token = token
+
+    async def dispatch(self, request, call_next):
+        supplied = request.headers.get("authorization", "")
+        expected = f"Bearer {self.token}"
+        if not hmac.compare_digest(supplied, expected):
+            return JSONResponse({"error": "unauthorized"}, status_code=401, headers={"WWW-Authenticate": "Bearer"})
+        return await call_next(request)
 
 
 if __name__ == "__main__":
-    logger.info("Starting AgriMind FastMCP Server over stdio...")
-    mcp.run()
+    if MCP_TRANSPORT == "streamable-http":
+        if not MCP_HTTP_TOKEN:
+            raise RuntimeError("MCP_HTTP_BEARER_TOKEN is required for Streamable HTTP transport")
+        import uvicorn
+
+        app = mcp.streamable_http_app()
+        app.add_middleware(BearerTokenMiddleware, token=MCP_HTTP_TOKEN)
+        logger.info("Starting AgriMind FastMCP Server over authenticated Streamable HTTP on %s:%s%s", MCP_HTTP_HOST, MCP_HTTP_PORT, MCP_HTTP_PATH)
+        uvicorn.run(app, host=MCP_HTTP_HOST, port=MCP_HTTP_PORT)
+    else:
+        logger.info("Starting AgriMind FastMCP Server over stdio...")
+        mcp.run()

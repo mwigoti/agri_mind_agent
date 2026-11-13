@@ -3,7 +3,7 @@ uvicorn[standard]==0.34.0
 pydantic==2.10.6
 langgraph==0.3.34
 langgraph-checkpoint-sqlite==2.0.6
-mcp==1.6.0
+mcp>=1.30.0,<2.0.0
 openai==1.68.2
 aiosqlite==0.21.0
 pytest==8.3.5

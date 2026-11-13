@@ -10,8 +10,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, AsyncIterator
 
+import httpx
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from mcp.client.streamable_http import streamable_http_client
 
 from .audit import AuditLog, utc_now
 from .config import settings
@@ -57,13 +59,14 @@ class MCPTools:
         self._failures: dict[str, int] = {}
         self._circuit_until: dict[str, float] = {}
         self.servers = {
-            "agrimind": self._parameters(settings.agrimind_command, ["-m", "mcp_server.server"], Path.cwd()),
-            "historical": self._parameters(
+            "agrimind": settings.agrimind_mcp_url or self._parameters(settings.agrimind_command, ["-m", "mcp_server.server"], Path.cwd()),
+        }
+        if settings.historical_mcp_enabled:
+            self.servers["historical"] = self._parameters(
                 settings.historical_command,
                 ["-c", "import mcp_server_sqlite; mcp_server_sqlite.main()", "--db-path", str(settings.historical_db.resolve())],
                 Path.cwd(),
-            ),
-        }
+            )
 
     @staticmethod
     def _parameters(command: str, args: list[str], cwd: Path) -> StdioServerParameters:
@@ -74,10 +77,22 @@ class MCPTools:
 
     @asynccontextmanager
     async def _session(self, server: str) -> AsyncIterator[ClientSession]:
-        async with stdio_client(self.servers[server]) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                yield session
+        endpoint = self.servers[server]
+        if isinstance(endpoint, str):
+            headers = {"Authorization": f"Bearer {settings.agrimind_mcp_token}"} if settings.agrimind_mcp_token else None
+            async with httpx.AsyncClient(
+                headers=headers,
+                timeout=httpx.Timeout(30, read=300),
+            ) as http_client:
+                async with streamable_http_client(endpoint, http_client=http_client) as (read, write, _):
+                    async with ClientSession(read, write) as session:
+                        await session.initialize()
+                        yield session
+        else:
+            async with stdio_client(endpoint) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    yield session
 
     async def discover(self) -> dict[str, Any]:
         found: dict[str, Any] = {}
@@ -89,10 +104,9 @@ class MCPTools:
                     name: getattr(tool, "inputSchema", {}) for name, tool in tools.items()
                 }
                 found[server] = list(tools)
-        required = {
-            "agrimind": set(CUSTOM_CAPABILITIES.values()),
-            "historical": {"read_query"},
-        }
+        required = {"agrimind": set(CUSTOM_CAPABILITIES.values())}
+        if settings.historical_mcp_enabled:
+            required["historical"] = {"read_query"}
         for server, names in required.items():
             missing = names - set(self.contracts.get(server, {}))
             if missing:

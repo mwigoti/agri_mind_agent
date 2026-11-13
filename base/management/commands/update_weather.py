@@ -1,8 +1,6 @@
 from django.core.management.base import BaseCommand
-from django.utils import timezone
-from datetime import timedelta
-from ...models import Field, WeatherData
-from ...utils import WeatherService
+from ...models import Field
+from ...weather_service import WeatherService
 
 class Command(BaseCommand):
     help = 'Update weather data for all fields'
@@ -24,58 +22,22 @@ class Command(BaseCommand):
         
         for field in fields:
             try:
-                center = field.geometry.centroid
-                lat, lon = center.y, center.x
-                
-                # Get current weather
-                current = weather_service.get_current_weather(lat, lon)
-                if current:
-                    WeatherData.objects.update_or_create(
-                        field=field,
-                        date=timezone.now().replace(hour=0, minute=0, second=0, microsecond=0),
-                        is_forecast=False,
-                        defaults={
-                            'temperature_min': current['temperature_min'],
-                            'temperature_max': current['temperature_max'],
-                            'temperature_avg': current['temperature'],
-                            'humidity': current['humidity'],
-                            'precipitation': current['precipitation'],
-                            'wind_speed': current['wind_speed'],
-                            'wind_direction': current['wind_direction'],
-                            'pressure': current['pressure'],
-                            'weather_condition': current['weather_condition'],
-                            'uv_index': 0
-                        }
-                    )
-                
-                # Get forecast data
-                forecast = weather_service.get_forecast(lat, lon, days)
-                for day_data in forecast:
-                    WeatherData.objects.update_or_create(
-                        field=field,
-                        date=day_data['date'].replace(hour=12, minute=0, second=0, microsecond=0),
-                        is_forecast=True,
-                        defaults={
-                            'temperature_min': day_data['temperature_min'],
-                            'temperature_max': day_data['temperature_max'],
-                            'temperature_avg': day_data['temperature_avg'],
-                            'humidity': day_data['humidity'],
-                            'precipitation': day_data['precipitation'],
-                            'wind_speed': day_data['wind_speed'],
-                            'wind_direction': day_data['wind_direction'],
-                            'pressure': day_data['pressure'],
-                            'weather_condition': day_data['weather_condition'],
-                            'uv_index': day_data['uv_index']
-                        }
-                    )
-                
-                self.stdout.write(f'✓ Updated weather data for {field.name}')
+                weather = weather_service.get_field_weather(field, days=days)
+                if weather.get('stored'):
+                    self.stdout.write(f'✓ Updated weather data for {field.name}')
+                elif weather.get('current') is not None or weather.get('forecast'):
+                    self.stdout.write(self.style.ERROR(f'Live weather fetched but not saved for {field.name}'))
+                elif weather.get('error') == 'invalid_coordinates':
+                    self.stdout.write(self.style.ERROR(
+                        f'Skipped {field.name}: geometry centroid must be valid WGS84 latitude/longitude; '
+                        'correct the saved field polygon.'
+                    ))
+                else:
+                    self.stdout.write(self.style.WARNING(f'No live weather data available for {field.name}'))
                 
             except Exception as e:
                 self.stdout.write(
                     self.style.ERROR(f'✗ Error updating weather for {field.name}: {str(e)}')
                 )
         
-        self.stdout.write(
-            self.style.SUCCESS(f'Successfully updated weather data for {fields.count()} fields')
-        )
+        self.stdout.write(self.style.SUCCESS(f'Weather refresh finished for {fields.count()} fields'))

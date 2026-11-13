@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from typing import Any
@@ -55,7 +56,8 @@ class Workflow:
                 await self.tools.discover()
             available = self.tools.contracts.get("agrimind", {})
             # Dynamic capability reasoning based on plot and context
-            decision = self.model().complete_json(
+            decision = await asyncio.to_thread(
+                self.model().complete_json,
                 SYSTEM,
                 "Choose relevant discovered capabilities for this plot. get_plot_status must be first. "
                 f"Plot ID: {plot_id}. Available tools and schemas: {json.dumps(available)}. "
@@ -87,14 +89,15 @@ class Workflow:
                     args = {
                         "crop": "maize",
                         "phenological_stage": state.get("plot_status", {}).get("phenology", {}).get("growth_stage", "vegetative"),
-                        "rainfall_anomaly_pct": water.get("rainfall_anomaly_pct", 0.0),
+                        "rainfall_anomaly_pct": water.get("rainfall_anomaly_pct"),
                         "plot_id": plot_id,
                     }
                     if moisture is not None:
                         args["soil_moisture_vwc"] = moisture
-                    if "soil_moisture_vwc" not in available[name].get("properties", {}):
-                        args.pop("soil_moisture_vwc", None)
-                    for optional in ("forecast_rain_next_48h_mm",):
+                    forecast_rain = water.get("forecast_rain_next_48h_mm")
+                    if forecast_rain is not None:
+                        args["forecast_rain_next_48h_mm"] = forecast_rain
+                    for optional in ("soil_moisture_vwc", "forecast_rain_next_48h_mm"):
                         if optional not in available[name].get("properties", {}):
                             args.pop(optional, None)
 
@@ -117,7 +120,7 @@ class Workflow:
                         break
 
                     county = result.get("location", {}).get("county") if isinstance(result, dict) else None
-                    if isinstance(county, str) and county.strip() and all(ch.isalpha() or ch in " -'" for ch in county):
+                    if "historical" in self.tools.servers and isinstance(county, str) and county.strip() and all(ch.isalpha() or ch in " -'" for ch in county):
                         county_sql = county.replace("'", "''")
                         history = await self.tools.call("historical", "read_query", {
                             "query": "SELECT county, historical_mean_ndvi, benchmark_yield_t_ha, optimal_planting_window FROM agro_ecological_baselines WHERE county = '" + county_sql + "' LIMIT 1"
@@ -157,7 +160,8 @@ class Workflow:
             action = "HOLD"
             rationale = f"Synthetic evidence reports crop-health score {health} and rainfall anomaly {rain}%; an extension officer should review these observations and the applicable calendar constraints."
         else:
-            proposal = self.model().complete_json(
+            proposal = await asyncio.to_thread(
+                self.model().complete_json,
                 SYSTEM,
                 "Select action and explain briefly using only supplied records. Return JSON keys "
                 "selected_action, rationale, evidence_ids, limitations. If evidence is insufficient, choose INSUFFICIENT_EVIDENCE. "

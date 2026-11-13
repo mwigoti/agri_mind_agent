@@ -30,6 +30,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgres://postgres:agrivision_secret_password@db:5432/agrivision
+      - AGRIMIND_AGENT_URL=http://agent:8001
       - DEBUG=True
       - SECRET_KEY=django-insecure-docker-secret-key
     depends_on:
@@ -48,8 +49,8 @@ services:
     environment:
       - MODEL_ID=Qwen/Qwen2.5-7B-Instruct
       - MODEL_PROVIDER=auto
-      - CHECKPOINT_PATH=/app/layer_2/checkpoints.sqlite
-      - AUDIT_PATH=/app/layer_2/audit.jsonl
+      - CHECKPOINT_PATH=/app/agentic_layer_2/checkpoints.sqlite
+      - AUDIT_PATH=/app/agentic_layer_2/audit.jsonl
       - HISTORICAL_DB=/app/data/historical_records.db
     depends_on:
       - db

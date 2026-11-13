@@ -69,3 +69,51 @@ INFO 2026-11-13 17:56:18,044 views AnalysisResult #12 done — risk=Very High ml
 INFO 2026-11-13 17:57:20,953 views AnalysisResult #11 done — risk=Very High ml_yield=3.75
 INFO 2026-11-13 17:58:32,955 views AnalysisResult #13 done — risk=Very High ml_yield=3.74
 INFO 2026-11-13 18:00:46,889 views AnalysisResult #2 done — risk=Very High ml_yield=3.74
+INFO 2026-11-13 18:49:44,119 views Spawned pipeline thread for AnalysisResult #13 (field=64, activity=21, crop=Maize)
+ERROR 2026-11-13 18:50:57,121 views Pipeline failed for AnalysisResult #13: '<' not supported between instances of 'NoneType' and 'int'
+Traceback (most recent call last):
+  File "/home/mwoha/Documents/Agri_vision_agrimind_agent/base/views.py", line 2278, in _run_pipeline_in_background
+    if sci_idx.get('vhi', 100) < 40:
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: '<' not supported between instances of 'NoneType' and 'int'
+
+INFO 2026-11-13 18:53:19,993 views Spawned pipeline thread for AnalysisResult #13 (field=64, activity=21, crop=Maize)
+INFO 2026-11-13 18:54:36,285 views AnalysisResult #13 done — risk=None ml_yield=3.74
+INFO 2026-11-13 18:59:34,394 views Field dashboard field=75 ndvi_points=0 latest_ndvi=None health_score=33.46 vegetation_status=This saved analysis has no dated NDVI observations. Run a new crop analysis to collect them.
+INFO 2026-11-13 18:59:34,396 views Field dashboard field=76 ndvi_points=0 latest_ndvi=None health_score=34.58 vegetation_status=This saved analysis has no dated NDVI observations. Run a new crop analysis to collect them.
+INFO 2026-11-13 18:59:35,250 views Field dashboard field=64 ndvi_points=9 latest_ndvi=0.2509 health_score=None vegetation_status=9 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:05:24,034 views Field dashboard field=75 ndvi_points=0 latest_ndvi=None health_score=33.46 vegetation_status=This saved analysis has no dated NDVI observations. Run a new crop analysis to collect them.
+INFO 2026-11-13 19:05:24,104 views Field dashboard field=76 ndvi_points=0 latest_ndvi=None health_score=34.58 vegetation_status=This saved analysis has no dated NDVI observations. Run a new crop analysis to collect them.
+INFO 2026-11-13 19:05:24,716 views Field dashboard field=64 ndvi_points=9 latest_ndvi=0.2509 health_score=None vegetation_status=9 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:05:42,843 views Spawned pipeline thread for AnalysisResult #13 (field=64, activity=21, crop=Maize)
+INFO 2026-11-13 19:06:21,243 views AnalysisResult #13 done field=64 risk=None health_score=None health_coverage_pct=30.0 ml_yield=3.74 s2_scene_count=9 ndvi_observations=9 s2_status=ready
+INFO 2026-11-13 19:08:21,906 views Field dashboard field=75 ndvi_points=0 latest_ndvi=None health_score=33.46 vegetation_status=This saved analysis has no dated NDVI observations. Run a new crop analysis to collect them.
+INFO 2026-11-13 19:08:22,499 views Field dashboard field=64 ndvi_points=9 latest_ndvi=0.2509 health_score=None vegetation_status=9 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:08:22,904 views Field dashboard field=76 ndvi_points=0 latest_ndvi=None health_score=34.58 vegetation_status=This saved analysis has no dated NDVI observations. Run a new crop analysis to collect them.
+INFO 2026-11-13 19:11:17,059 views Field dashboard field=75 ndvi_points=0 latest_ndvi=None health_score=33.46 vegetation_status=This saved analysis has no dated NDVI observations. Run a new crop analysis to collect them.
+INFO 2026-11-13 19:11:17,468 views Field dashboard field=64 ndvi_points=9 latest_ndvi=0.2509 health_score=0.14 vegetation_status=9 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:11:18,108 views Field dashboard field=76 ndvi_points=0 latest_ndvi=None health_score=34.58 vegetation_status=This saved analysis has no dated NDVI observations. Run a new crop analysis to collect them.
+INFO 2026-11-13 19:15:19,980 views AnalysisResult #13 done field=64 risk=Very High health_score=18.98 health_coverage_pct=60.0 health_components=['vegetation_index', 'soil_index', 'radar_index'] ml_yield=3.74 s2_scene_count=9 ndvi_observations=9 s2_status=ready
+INFO 2026-11-13 19:15:57,926 views AnalysisResult #11 done field=75 risk=Very High health_score=26.46 health_coverage_pct=35.0 health_components=['vegetation_index', 'radar_index'] ml_yield=3.75 s2_scene_count=4 ndvi_observations=4 s2_status=ready
+INFO 2026-11-13 19:16:48,350 views AnalysisResult #12 done field=76 risk=Very High health_score=29.93 health_coverage_pct=35.0 health_components=['vegetation_index', 'radar_index'] ml_yield=3.39 s2_scene_count=6 ndvi_observations=6 s2_status=ready
+INFO 2026-11-13 19:17:17,279 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:17:17,743 views Field dashboard field=64 ndvi_points=9 latest_ndvi=0.2509 health_score=0.19 vegetation_status=9 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:17:18,833 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.299 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:26:00,570 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:26:00,910 views Field dashboard field=64 ndvi_points=9 latest_ndvi=0.2509 health_score=0.19 vegetation_status=9 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:26:02,217 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.299 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:26:40,179 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:26:41,558 views Field dashboard field=64 ndvi_points=9 latest_ndvi=0.2509 health_score=0.19 vegetation_status=9 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:26:41,560 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.299 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:29:56,871 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.299 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:29:56,875 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:29:57,330 views Field dashboard field=64 ndvi_points=9 latest_ndvi=0.2509 health_score=0.19 vegetation_status=9 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:36:55,494 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.299 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:36:55,905 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:36:55,921 views Field dashboard field=64 ndvi_points=9 latest_ndvi=0.2509 health_score=0.19 vegetation_status=9 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:40:44,906 views Field dashboard field=64 ndvi_points=9 latest_ndvi=0.2509 health_score=0.19 vegetation_status=9 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:40:46,394 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:40:50,933 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.299 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:41:38,283 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:41:38,567 views Field dashboard field=64 ndvi_points=9 latest_ndvi=0.2509 health_score=0.19 vegetation_status=9 saved Sentinel-2 observation(s)
+INFO 2026-11-13 19:41:40,995 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.299 vegetation_status=6 saved Sentinel-2 observation(s)

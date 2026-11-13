@@ -37,7 +37,8 @@ class AgriMindFieldAdvisoryView(APIView):
         thread_id = request.data.get("thread_id") if hasattr(request, "data") else None
         client = AgriMindClient()
         result = client.request_advisory(plot_id=field_id, thread_id=thread_id)
-        return Response(result, status=status.HTTP_200_OK)
+        http_status = status.HTTP_202_ACCEPTED if result.get("status") == "RUNNING" else status.HTTP_200_OK
+        return Response(result, status=http_status)
 
     def get(self, request, field_id: int, *args, **kwargs):
         thread_id = request.query_params.get("thread_id")

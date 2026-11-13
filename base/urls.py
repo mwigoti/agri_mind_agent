@@ -18,6 +18,7 @@ urlpatterns = [
         AnalysisStatusView.as_view(),
         name='analysis_status',
     ),
+    path('api/analyze-all-fields/', AnalyzeAllFieldsView.as_view(), name='analyze_all_fields'),
 
         path('api/field-metrics/', upload_field_metric, name='field_metrics'),
         path('api/dashboard/field/<int:field_id>/', field_dashboard_summary, name='field_dashboard_summary'),

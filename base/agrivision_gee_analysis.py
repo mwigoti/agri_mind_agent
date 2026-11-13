@@ -54,6 +54,7 @@ import joblib
 import json
 import logging
 import os
+import threading
 import traceback
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
@@ -68,6 +69,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+_GEE_INITIALIZATION_LOCK = threading.Lock()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -333,10 +335,11 @@ class AgrivisionCompleteAnalyzer:
                     getattr(settings, 'AGRIVISION_GEE_PROJECT', None) or 
                     'ee-henrymwoha02'
                 )
-                if gee_project:
-                    ee.Initialize(project=gee_project)
-                else:
-                    ee.Initialize()          # falls back to application default credentials
+                with _GEE_INITIALIZATION_LOCK:
+                    if gee_project:
+                        ee.Initialize(project=gee_project)
+                    else:
+                        ee.Initialize()      # falls back to application default credentials
                 self._ee = ee
                 logger.info("GEE initialised (Analyzer) project=%s", gee_project or 'default')
             except Exception as exc:
@@ -355,9 +358,9 @@ class AgrivisionCompleteAnalyzer:
         Depth layer: 0-30 cm mean
         """
         DEFAULTS = {
-            'organic_carbon': 20, 'clay_percent': 30, 'sand_percent': 40,
-            'ph': 6.5, 'cec': 15, 'bulk_density': 1.4,
-            'field_capacity': 0.25, 'wilting_point': 0.12,
+            'organic_carbon': None, 'clay_percent': None, 'sand_percent': None,
+            'ph': None, 'cec': None, 'bulk_density': None,
+            'field_capacity': None, 'wilting_point': None,
         }
         try:
             # SoilGrids v2 — one request with all needed properties
@@ -391,12 +394,12 @@ class AgrivisionCompleteAnalyzer:
                 raw = layers.get(key)
                 return float(raw) / divisor if raw is not None else fallback
 
-            soc  = pick('soc',   10.0,  DEFAULTS['organic_carbon'])   # dg/kg → g/kg
-            clay = pick('clay',  10.0,  DEFAULTS['clay_percent'])      # g/kg  → %
-            sand = pick('sand',  10.0,  DEFAULTS['sand_percent'])      # g/kg  → %
-            ph   = pick('phh2o', 10.0,  DEFAULTS['ph'])                # pH×10 → pH
-            cec  = pick('cec',   10.0,  DEFAULTS['cec'])               # mmol  → cmol
-            bdod = pick('bdod',  100.0, DEFAULTS['bulk_density'])      # cg/cm³→ g/cm³
+            soc  = pick('soc',   10.0,  None)   # dg/kg → g/kg
+            clay = pick('clay',  10.0,  None)   # g/kg  → %
+            sand = pick('sand',  10.0,  None)   # g/kg  → %
+            ph   = pick('phh2o', 10.0,  None)   # pH×10 → pH
+            cec  = pick('cec',   10.0,  None)   # mmol  → cmol
+            bdod = pick('bdod',  100.0, None)   # cg/cm³→ g/cm³
 
             props = {
                 'organic_carbon': soc,
@@ -405,8 +408,8 @@ class AgrivisionCompleteAnalyzer:
                 'ph':             ph,
                 'cec':            cec,
                 'bulk_density':   bdod,
-                'field_capacity': 0.2576 - 0.002 * sand + 0.0036 * clay,
-                'wilting_point':  0.026  + 0.005 * clay,
+                'field_capacity': 0.2576 - 0.002 * sand + 0.0036 * clay if sand is not None and clay is not None else None,
+                'wilting_point':  0.026 + 0.005 * clay if clay is not None else None,
             }
             logger.info(
                 "SoilGrids v2 OK (%.4f, %.4f) pH=%.1f SOC=%.1f clay=%.1f%%",
@@ -420,7 +423,7 @@ class AgrivisionCompleteAnalyzer:
 
     def fetch_chirps_rainfall(self, aoi, start_date: str, end_date: str) -> Dict:
         if not self.use_gee or not getattr(self, '_ee', None) or aoi is None:
-            return {'total_rainfall_mm': 95.0, 'num_days': 30, 'daily_mean': 3.17}
+            return {'total_rainfall_mm': None, 'num_days': 0, 'daily_mean': None}
         try:
             ee = self._ee
             chirps = (ee.ImageCollection('UCSB-CHG/CHIRPS/DAILY')
@@ -428,7 +431,7 @@ class AgrivisionCompleteAnalyzer:
                       .filterBounds(aoi)
                       .select('precipitation'))
             if chirps.size().getInfo() == 0:
-                return {'total_rainfall_mm': 95.0, 'num_days': 30, 'daily_mean': 3.17}
+                return {'total_rainfall_mm': None, 'num_days': 0, 'daily_mean': None}
             total = (chirps.sum()
                      .reduceRegion(
                          reducer=ee.Reducer.mean(),
@@ -437,7 +440,10 @@ class AgrivisionCompleteAnalyzer:
                          maxPixels=1e9,
                          bestEffort=True
                      ).getInfo())
-            tot = float(total.get('precipitation') or 95.0) if total else 95.0
+            raw_total = total.get('precipitation') if total else None
+            if raw_total is None:
+                return {'total_rainfall_mm': None, 'num_days': 0, 'daily_mean': None}
+            tot = float(raw_total)
             n_days = max(1, (datetime.strptime(end_date, '%Y-%m-%d') -
                             datetime.strptime(start_date, '%Y-%m-%d')).days)
             return {
@@ -447,11 +453,69 @@ class AgrivisionCompleteAnalyzer:
             }
         except Exception as exc:
             logger.warning("CHIRPS rainfall failed [%s→%s]: %s", start_date, end_date, exc)
-            return {'total_rainfall_mm': 95.0, 'num_days': 30, 'daily_mean': 3.17}
+            return {'total_rainfall_mm': None, 'num_days': 0, 'daily_mean': None}
+
+    def fetch_chirps_season_anomaly(self, aoi, start_date: str, end_date: str, baseline_years: int = 5) -> Dict:
+        """Compare CHIRPS rainfall through the latest observation with the same calendar period in prior years."""
+        unavailable = {
+            'rainfall_anomaly_pct': None,
+            'reference_rainfall_mm': None,
+            'baseline_years': 0,
+            'source': 'CHIRPS/DAILY',
+        }
+        if not self.use_gee or not getattr(self, '_ee', None) or aoi is None:
+            return unavailable
+        try:
+            start = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            if end < start:
+                return unavailable
+
+            ee = self._ee
+            chirps = ee.ImageCollection('UCSB-CHG/CHIRPS/DAILY').filterBounds(aoi).select('precipitation')
+            current_collection = chirps.filterDate(start_date, (end + timedelta(days=1)).isoformat())
+            if current_collection.size().getInfo() == 0:
+                return unavailable
+            duration_days = (end - start).days + 1
+            current = current_collection.sum()
+            years = ee.List.sequence(start.year - baseline_years, start.year - 1)
+
+            def prior_season(year):
+                prior_start = ee.Date.fromYMD(ee.Number(year), start.month, start.day)
+                return chirps.filterDate(
+                    prior_start,
+                    prior_start.advance(duration_days, 'day'),
+                ).sum().rename('precipitation')
+
+            historical = ee.ImageCollection.fromImages(years.map(prior_season)).mean()
+            totals = ee.Image.cat([
+                current.rename('current_mm'),
+                historical.rename('reference_mm'),
+            ]).reduceRegion(
+                reducer=ee.Reducer.mean(),
+                geometry=aoi,
+                scale=5000,
+                maxPixels=1e9,
+                bestEffort=True,
+            ).getInfo()
+            observed = totals.get('current_mm') if totals else None
+            reference = totals.get('reference_mm') if totals else None
+            if observed is None or reference is None or float(reference) <= 0:
+                return unavailable
+            return {
+                'rainfall_anomaly_pct': round((float(observed) - float(reference)) / float(reference) * 100.0, 1),
+                'reference_rainfall_mm': round(float(reference), 1),
+                'observed_rainfall_mm': round(float(observed), 1),
+                'baseline_years': baseline_years,
+                'source': 'CHIRPS/DAILY',
+            }
+        except Exception as exc:
+            logger.warning("CHIRPS rainfall anomaly failed [%s→%s]: %s", start_date, end_date, exc)
+            return unavailable
 
     def fetch_imerg_rainfall(self, aoi, start_date: str, end_date: str) -> Dict:
         if not self.use_gee or not getattr(self, '_ee', None) or aoi is None:
-            return {'total_rainfall_mm': 110.0, 'num_days': 30, 'daily_mean': 3.67}
+            return {'total_rainfall_mm': None, 'num_days': 0, 'daily_mean': None}
         try:
             ee = self._ee
             aoi_buffered = aoi.buffer(10000)
@@ -490,11 +554,11 @@ class AgrivisionCompleteAnalyzer:
 
         except Exception as exc:
             logger.warning("IMERG/ERA5 rainfall failed [%s→%s]: %s", start_date, end_date, exc)
-            return {'total_rainfall_mm': 110.0, 'num_days': 30, 'daily_mean': 3.67}
+            return {'total_rainfall_mm': None, 'num_days': 0, 'daily_mean': None}
     def fetch_weather_data(self, lat: float, lon: float) -> Dict:
         if not self.openweather_api_key:
-            return {'temperature': 22, 'humidity': 65,
-                    'temp_max_series': [26]*60, 'temp_min_series': [14]*60}
+            return {'temperature': None, 'humidity': None,
+                    'temp_max_series': None, 'temp_min_series': None}
         try:
             r = requests.get("https://api.openweathermap.org/data/2.5/weather",
                              params={'lat': lat, 'lon': lon,
@@ -504,8 +568,7 @@ class AgrivisionCompleteAnalyzer:
             d   = r.json()
             tmp = d['main']['temp']
             return {'temperature': tmp, 'humidity': d['main']['humidity'],
-                    'temp_max_series': [tmp + np.random.uniform(-2, 3)  for _ in range(60)],
-                    'temp_min_series': [tmp - 5   + np.random.uniform(-2, 2)  for _ in range(60)]}
+                    'temp_max_series': None, 'temp_min_series': None}
         except Exception as exc:
             logger.warning("OpenWeather fallback: %s", exc)
             return {'temperature': None, 'humidity': None,
@@ -567,7 +630,7 @@ class AgrivisionCompleteAnalyzer:
         Each pass is tried only if the previous one returned 0 scenes.
         """
         if not self.use_gee or not getattr(self, '_ee', None) or aoi is None:
-            return {'NDVI': 0.68, 'EVI': 0.52, 'NDMI': 0.40, 'SAVI': 0.58}
+            return {'NDVI': None, 'EVI': None, 'NDMI': None, 'SAVI': None, 'scenes': [], 'data_status': 'gee_unavailable'}
 
         ee = self._ee
 
@@ -615,21 +678,52 @@ class AgrivisionCompleteAnalyzer:
                 logger.info("S2 pass-3 [%s→%s] cloud<50%%: %d scenes", s3, e, n)
 
             if n == 0:
-                logger.warning("S2: no scenes found after 3 passes — using fallback")
-                return {'NDVI': 0.68, 'EVI': 0.52, 'NDMI': 0.40, 'SAVI': 0.58}
+                logger.warning("S2: no scenes found after 3 passes")
+                return {'NDVI': None, 'EVI': None, 'NDMI': None, 'SAVI': None, 'scenes': [], 'data_status': 'no_scenes'}
 
             vals = _compute_indices(col)
+            try:
+                latest_scene_date = col.sort('system:time_start', False).first().date().format('YYYY-MM-dd').getInfo()
+            except Exception:
+                latest_scene_date = None
+            def _scene_feature(image):
+                ndvi = image.normalizedDifference(['B8', 'B4']).rename('ndvi')
+                value = ndvi.reduceRegion(
+                    reducer=ee.Reducer.mean(), geometry=aoi, scale=10, maxPixels=1e9
+                ).get('ndvi')
+                return ee.Feature(None, {
+                    'date': image.date().format('YYYY-MM-dd'),
+                    'ndvi': value,
+                })
+
+            try:
+                scene_features = (col.sort('system:time_start').limit(24)
+                                  .map(_scene_feature).getInfo().get('features', []))
+            except Exception as series_exc:
+                logger.warning("S2 scene series unavailable; keeping composite indices: %s", series_exc)
+                scene_features = []
+            vals['scenes'] = [
+                {'date': feature.get('properties', {}).get('date'),
+                 'ndvi': feature.get('properties', {}).get('ndvi')}
+                for feature in scene_features
+                if feature.get('properties', {}).get('date') is not None
+                and feature.get('properties', {}).get('ndvi') is not None
+            ]
+            vals['scene_count'] = n
+            vals['latest_scene_date'] = latest_scene_date
+            vals['data_source'] = 'sentinel2'
+            vals['data_status'] = 'ready' if vals['scenes'] else 'scene_series_unavailable'
             logger.info("S2 OK — NDVI=%.3f EVI=%.3f (%d scenes)",
                         vals.get('NDVI', 0), vals.get('EVI', 0), n)
             return vals
 
         except Exception as exc:
             logger.warning("S2 fallback: %s", exc)
-            return {'NDVI': 0.68, 'EVI': 0.52, 'NDMI': 0.40, 'SAVI': 0.58}
+            return {'NDVI': None, 'EVI': None, 'NDMI': None, 'SAVI': None, 'scenes': [], 'data_status': 'query_error'}
 
     def fetch_smap_moisture(self, aoi, date: str) -> float:
         if not self.use_gee or not getattr(self, '_ee', None) or aoi is None:
-            return 0.28
+            return None
         try:
             ee = self._ee
             dt = datetime.strptime(date, '%Y-%m-%d')
@@ -638,14 +732,15 @@ class AgrivisionCompleteAnalyzer:
             smap = (ee.ImageCollection('NASA/SMAP/SPL4SMGP/008')
                     .filterDate(s, e).filterBounds(aoi))
             if smap.size().getInfo() == 0:
-                return 0.28
+                return None
             val = (smap.mean().select('sm_surface')
                 .reduceRegion(reducer=ee.Reducer.mean(), geometry=aoi,
                                 scale=11000, maxPixels=1e9).getInfo())
-            return float(val.get('sm_surface') or 0.28)
+            moisture = val.get('sm_surface')
+            return float(moisture) if moisture is not None else None
         except Exception as exc:
             logger.warning("SMAP fallback: %s", exc)
-            return 0.28
+            return None
 
     # ── Sentinel-1 SAR ────────────────────────────────────────────────────
 
@@ -664,7 +759,7 @@ class AgrivisionCompleteAnalyzer:
         └──────┴──────────────────────────────────┘
         """
         if not self.use_gee or not getattr(self, '_ee', None) or aoi is None:
-            return {'VH': 0.15, 'VV': 0.28, 'RSI': 0.54}
+            return {'VH': None, 'VV': None, 'RSI': None}
 
         ee = self._ee
 
@@ -697,21 +792,21 @@ class AgrivisionCompleteAnalyzer:
                 logger.info("S1 pass-3 [%s→%s]: %d scenes", s3, e, n)
 
             if n == 0:
-                logger.warning("S1: no scenes found after 3 passes — using fallback")
-                return {'VH': 0.15, 'VV': 0.28, 'RSI': 0.54}
+                logger.warning("S1: no scenes found after 3 passes")
+                return {'VH': None, 'VV': None, 'RSI': None}
 
             vals = (col.median().select(['VH', 'VV'])
                     .reduceRegion(reducer=ee.Reducer.mean(), geometry=aoi,
                                   scale=10, maxPixels=1e9).getInfo())
-            vh  = vals.get('VH', 0.15)
-            vv  = vals.get('VV', 0.28)
-            rsi = vh / vv if vv else 0.54
+            vh = vals.get('VH')
+            vv = vals.get('VV')
+            rsi = float(vh) / float(vv) if vh is not None and vv not in (None, 0) else None
             logger.info("S1 OK — VH=%.3f VV=%.3f RSI=%.3f (%d scenes)", vh, vv, rsi, n)
             return {'VH': vh, 'VV': vv, 'RSI': rsi}
 
         except Exception as exc:
             logger.warning("S1 fallback: %s", exc)
-            return {'VH': 0.15, 'VV': 0.28, 'RSI': 0.54}
+            return {'VH': None, 'VV': None, 'RSI': None}
 
     # ── scientific formulas ────────────────────────────────────────────────
 
@@ -769,7 +864,7 @@ class AgrivisionCompleteAnalyzer:
 
     def calculate_gdd(self, tmax_series, tmin_series, t_base):
         if not tmax_series or not tmin_series:
-            return 1200.0
+            return None
         return max(0.0, float(sum(max(0, (mx + mn)/2 - t_base) for mx, mn in zip(tmax_series, tmin_series))))
 
     def calculate_csi(self, rain_norm, temp_norm, gdd_norm):
@@ -794,6 +889,46 @@ class AgrivisionCompleteAnalyzer:
         c = float(csi if csi is not None else 0.5)
         r = float(rsi if rsi is not None else 0.5)
         return float(np.clip(w['vhi']*v + w['spi']*s + w['water']*(1-ws) + w['csi']*c + w['rsi']*r, 0, 1))
+
+    def calculate_chi_available(self, vhi, spi, wsi, csi, rsi):
+        """Calculate CHI from observed components only and report weight coverage."""
+        weights = self.weights['chi']
+        components = [
+            ('vegetation_index', weights['vhi'], vhi),
+            ('soil_index', weights['spi'], spi),
+            ('water_availability', weights['water'], (1.0 - float(wsi)) if wsi is not None else None),
+            ('climate_index', weights['csi'], csi),
+            ('radar_index', weights['rsi'], rsi),
+        ]
+        available = []
+        component_names = []
+        for name, weight, value in components:
+            if value is None:
+                continue
+            try:
+                score = float(value)
+            except (TypeError, ValueError):
+                continue
+            if not np.isfinite(score):
+                continue
+            available.append((weight, float(np.clip(score, 0.0, 1.0))))
+            component_names.append(name)
+
+        coverage = sum(weight for weight, _ in available)
+        if not available or coverage < 0.30:
+            return None, round(coverage * 100, 1), component_names
+        score = sum(weight * value for weight, value in available) / coverage
+        return float(np.clip(score, 0.0, 1.0)), round(coverage * 100, 1), component_names
+
+    @staticmethod
+    def _risk_from_chi(chi):
+        if chi >= 0.80:
+            return 'Low'
+        if chi >= 0.60:
+            return 'Moderate'
+        if chi >= 0.45:
+            return 'High'
+        return 'Very High'
 
     def estimate_yield_simple(self, chi, wsi, crop_type):
         c = float(chi if chi is not None else 0.5)
@@ -876,6 +1011,19 @@ class AgrivisionCompleteAnalyzer:
         stage_indices = {}
         for stage, dates in growth_stages.items():
             stage_indices[stage] = self.fetch_sentinel2_indices(aoi, dates[0], dates[1])
+        ndvi_observations = {}
+        for stage_data in stage_indices.values():
+            for point in stage_data.get('scenes', []):
+                ndvi_observations[point['date']] = point['ndvi']
+
+        stage_start_dates = [dates[0] for dates in growth_stages.values() if dates]
+        season_start = min(stage_start_dates) if stage_start_dates else None
+        latest_observation = max(ndvi_observations) if ndvi_observations else datetime.utcnow().date().isoformat()
+        season_rainfall_anomaly = (
+            self.fetch_chirps_season_anomaly(aoi, season_start, latest_observation)
+            if season_start and latest_observation >= season_start
+            else {'rainfall_anomaly_pct': None, 'reference_rainfall_mm': None, 'baseline_years': 0, 'source': 'CHIRPS/DAILY'}
+        )
 
         grain_dates = growth_stages.get('grain_filling', list(growth_stages.values())[-1])
         sar = self.fetch_sentinel1_sar(aoi, grain_dates[0], grain_dates[1])
@@ -898,11 +1046,11 @@ class AgrivisionCompleteAnalyzer:
         # ── EWA ──────────────────────────────────────────────────────────
         ewa_veg = self.calculate_ewa(
             rain_veg, norm_soil.get('whc_norm'), moisture, cp['water_req_veg']
-        ) if rain_veg is not None and norm_soil.get('whc_norm') is not None else None
+        ) if rain_veg is not None and norm_soil.get('whc_norm') is not None and moisture is not None else None
 
         ewa_grain = self.calculate_ewa(
             rain_grain, norm_soil.get('whc_norm'), moisture, cp['water_req_grain']
-        ) if rain_grain is not None and norm_soil.get('whc_norm') is not None else None
+        ) if rain_grain is not None and norm_soil.get('whc_norm') is not None and moisture is not None else None
 
         wsi_grain = (1.0 - ewa_grain) if ewa_grain is not None else None
 
@@ -913,9 +1061,10 @@ class AgrivisionCompleteAnalyzer:
 
         # ── VCI / TCI / VHI ──────────────────────────────────────────────
         ndvi_grain = grain_idx.get('NDVI')
+        vci_ndvi = ndvi_grain if ndvi_grain is not None else veg_idx.get('NDVI')
         vci = self.calculate_vci(
-            ndvi_grain, hist['ndvi_range']['min'], hist['ndvi_range']['max']
-        ) if ndvi_grain is not None else None
+            vci_ndvi, hist['ndvi_range']['min'], hist['ndvi_range']['max']
+        ) if vci_ndvi is not None else None
 
         tci = self.calculate_tci(
             weather['temperature'], hist['temp_range']['min'], hist['temp_range']['max']
@@ -958,13 +1107,10 @@ class AgrivisionCompleteAnalyzer:
 
         # ── CHI ───────────────────────────────────────────────────────────
         rsi = sar.get('RSI')
-        chi = self.calculate_chi(
-            vhi       if vhi       is not None else 0.5,
-            spi       if spi       is not None else 0.5,
-            wsi_grain if wsi_grain is not None else 0.5,
-            csi       if csi       is not None else 0.5,
-            rsi       if rsi       is not None else 0.5,
-        ) if any(v is not None for v in [vhi, spi, csi]) else None
+        chi_vhi = vhi if vhi is not None else vci
+        chi, chi_coverage_pct, chi_components_used = self.calculate_chi_available(
+            chi_vhi, spi, wsi_grain, csi, rsi
+        )
 
         # ── yield estimates ───────────────────────────────────────────────
         y_simple = self.estimate_yield_simple(
@@ -983,11 +1129,11 @@ class AgrivisionCompleteAnalyzer:
         anomaly    = self.calculate_yield_anomaly(y_regression, hist['mean_yield']) \
                     if y_regression is not None else None
         confidence = self.calculate_confidence(hist['rmse'], hist['mean_yield'])
-        risk       = self._risk(
-            chi,
-            wsi_grain if wsi_grain is not None else 0.5,
-            vhi       if vhi       is not None else 0.5,
-        ) if chi is not None else None
+        risk = None
+        if chi is not None:
+            risk = self._risk(chi, wsi_grain, vhi) if all(
+                value is not None for value in [vhi, wsi_grain, csi, rsi, spi]
+            ) else self._risk_from_chi(chi)
 
         return {
         'scientific_indices': {
@@ -1002,6 +1148,8 @@ class AgrivisionCompleteAnalyzer:
             'svs_vegetative':   round(svs_veg, 3)       if veg_idx.get('NDVI') is not None else None,
             'svs_grain_filling':round(svs_grain, 3)     if grain_idx.get('NDVI') is not None else None,
             'chi':              round(chi * 100, 2)     if chi   is not None else None,
+            'chi_coverage_pct': chi_coverage_pct,
+            'chi_components_used': chi_components_used,
             'rsi':              round(rsi, 3)           if rsi   is not None else None,
         },
         'scientific_yield': {
@@ -1012,6 +1160,11 @@ class AgrivisionCompleteAnalyzer:
         },
         'climate': {
             'total_season_rainfall_mm': round(total_rain, 1) if total_rain > 0 else None,
+            'rainfall_anomaly_pct': season_rainfall_anomaly.get('rainfall_anomaly_pct'),
+            'rainfall_anomaly_observed_mm': season_rainfall_anomaly.get('observed_rainfall_mm'),
+            'rainfall_reference_mm': season_rainfall_anomaly.get('reference_rainfall_mm'),
+            'rainfall_anomaly_baseline_years': season_rainfall_anomaly.get('baseline_years'),
+            'rainfall_anomaly_source': season_rainfall_anomaly.get('source'),
             'avg_temperature_c':        round(avg_temp, 1)   if avg_temp is not None else None,
             'gdd':                      round(gdd, 1)        if gdd is not None else None,
         },
@@ -1027,12 +1180,30 @@ class AgrivisionCompleteAnalyzer:
             'ndvi_vegetative':    veg_idx.get('NDVI'),
             'evi_vegetative':     veg_idx.get('EVI'),
             'ndvi_grain_filling': grain_idx.get('NDVI'),
+            'ndvi_observations': [
+                {'date': date, 'ndvi': value}
+                for date, value in sorted(ndvi_observations.items())
+            ],
+            'data_source': 'sentinel2' if any(
+                data.get('data_source') == 'sentinel2' for data in stage_indices.values()
+            ) else None,
+            'data_status': (
+                'ready' if ndvi_observations else next((
+                    data.get('data_status') for data in stage_indices.values()
+                    if data.get('data_status') in ('gee_unavailable', 'query_error', 'no_scenes', 'scene_series_unavailable')
+                ), 'no_scenes')
+            ),
             'evi_grain_filling':  grain_idx.get('EVI'),
             'vh':  None,
             'vv':  None,
             'rsi': None,
-            'scene_count':       0,
-            'latest_scene_date': None,
+            'scene_count':       len(ndvi_observations) or sum(
+                data.get('scene_count', 0) for data in stage_indices.values()
+            ),
+            'latest_scene_date': max(ndvi_observations) if ndvi_observations else max(
+                (data.get('latest_scene_date') for data in stage_indices.values() if data.get('latest_scene_date')),
+                default=None,
+            ),
         },
         'rainfall_by_stage': {
             k: round(float(v), 1)
@@ -1079,10 +1250,11 @@ class AgrivisionProductionPipeline:
                     getattr(settings, 'AGRIVISION_GEE_PROJECT', None) or 
                     'ee-henrymwoha02'
                 )
-                if gee_project:
-                    ee.Initialize(project=gee_project)
-                else:
-                    ee.Initialize()
+                with _GEE_INITIALIZATION_LOCK:
+                    if gee_project:
+                        ee.Initialize(project=gee_project)
+                    else:
+                        ee.Initialize()
                 self._ee = ee
             except Exception:
                 self.use_gee = False
@@ -1539,10 +1711,11 @@ class Command(BaseCommand):
         risk  = combined.get('risk_level', '')
         if risk in ('High', 'Very High'):
             flags.append(f'crop_health_{risk.lower().replace(" ", "_")}')
-        wsi = sci_idx.get('wsi', 0)
-        if wsi > 50:
+        wsi = sci_idx.get('wsi')
+        vhi = sci_idx.get('vhi')
+        if wsi is not None and wsi > 50:
             flags.append('water_stress')
-        if sci_idx.get('vhi', 100) < 40:
+        if vhi is not None and vhi < 40:
             flags.append('vegetation_stress')
 
         AnalysisResult.objects.update_or_create(

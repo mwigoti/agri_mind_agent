@@ -88,7 +88,7 @@ class WeatherService:
                 'wind_speed': day_data['wind_speed'],
                 'wind_direction': day_data['wind_deg'],
                 'weather_condition': day_data['weather'][0]['description'],
-                'precipitation': day_data.get('rain', {}).get('1h', 0),
+                'precipitation': float(day_data.get('rain') or 0) + float(day_data.get('snow') or 0),
                 'uv_index': day_data.get('uvi', 0)
             })
         

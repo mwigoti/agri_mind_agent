@@ -24,11 +24,14 @@ class Settings:
         "REVIEWER_TOKENS",
         "officer:dev-reviewer-token,supervisor:dev-supervisor-token",
     )
-    checkpoint_path: Path = Path(os.getenv("CHECKPOINT_PATH", "./layer_2/checkpoints.sqlite"))
-    audit_path: Path = Path(os.getenv("AUDIT_PATH", "./layer_2/audit.jsonl"))
-    demo_mode: bool = os.getenv("DEMO_MODE", "false").lower() == "true"
+    checkpoint_path: Path = Path(os.getenv("CHECKPOINT_PATH", "./agentic_layer_2/checkpoints.sqlite"))
+    audit_path: Path = Path(os.getenv("AUDIT_PATH", "./agentic_layer_2/audit.jsonl"))
+    demo_mode: bool = os.getenv("DEMO_MODE", "true").lower() == "true"
     agrimind_command: str = os.getenv("AGRIMIND_MCP_COMMAND", "")
+    agrimind_mcp_url: str = os.getenv("AGRIMIND_MCP_URL", "")
+    agrimind_mcp_token: str = os.getenv("AGRIMIND_MCP_TOKEN", "")
     historical_command: str = os.getenv("HISTORICAL_MCP_COMMAND", "")
+    historical_mcp_enabled: bool = os.getenv("HISTORICAL_MCP_ENABLED", "false").lower() == "true"
     historical_db: Path = Path(os.getenv("HISTORICAL_DB", "./data/historical_records.db"))
 
 
