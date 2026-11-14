@@ -24,26 +24,9 @@ async fn generate_vra_maps_enhanced(
                  analysis_request.indices.as_ref().unwrap_or(&vec!["NDVI".to_string()]));
         
         // Use the enhanced CRS transformation function
-        let vra_response = match analyze_field_with_crs_transform(analysis_request).await {
-            Ok(response) => {
-                total_area += response.analysis_summary.zone_consistency_score; // Use a field from response
-                response
-            },
-            Err(e) => {
-                println!("Error processing field {}: {}", analysis_request.field_id, e);
-                // Create fallback response
-                let field = Field {
-                    id: analysis_request.field_id as u32,
-                    name: format!("Field_{}", analysis_request.field_id),
-                    area: 15.0,
-                    geometry: analysis_request.geometry.clone(),
-                };
-                let config = PlanetaryComputerConfig::new();
-                process_field_with_streaming_analysis(&field, &config, 
-                    analysis_request.num_zones.unwrap_or(5), 
-                    analysis_request.indices.clone().unwrap_or_else(|| vec!["NDVI".to_string()])).await
-            }
-        };
+        let vra_response = analyze_field_with_crs_transform(analysis_request).await
+            .map_err(|e| actix_web::error::ErrorUnprocessableEntity(e.to_string()))?;
+        total_area += analysis_request.area_hectares.unwrap_or_default();
         
         processed_fields.push(vra_response);
         
@@ -75,24 +58,8 @@ async fn analyze_single_field_enhanced(
     let start_time = std::time::Instant::now();
     println!("🌾 Enhanced single field analysis request");
     
-    let vra_response = match analyze_field_with_crs_transform(&request).await {
-        Ok(response) => response,
-        Err(e) => {
-            println!("❌ Error in CRS transformation analysis: {}", e);
-            // Fallback to direct processing
-            let field = Field {
-                id: request.field_id as u32,
-                name: format!("Field_{}", request.field_id),
-                area: 15.0,
-                geometry: request.geometry.clone(),
-            };
-            
-            let config = PlanetaryComputerConfig::new();
-            process_field_with_streaming_analysis(&field, &config, 
-                request.num_zones.unwrap_or(5), 
-                request.indices.clone().unwrap_or_else(|| vec!["NDVI".to_string()])).await
-        }
-    };
+    let vra_response = analyze_field_with_crs_transform(&request).await
+        .map_err(|e| actix_web::error::ErrorUnprocessableEntity(e.to_string()))?;
     
     let processing_time = start_time.elapsed().as_millis();
     
@@ -156,11 +123,13 @@ async fn search_imagery(field: web::Json<Field>) -> Result<impl Responder> {
     println!("🔍 Searching imagery for field: {}", field.name);
     
     let config = PlanetaryComputerConfig::new();
+    let end_date = Utc::now();
+    let start_date = end_date - Duration::days(365);
     
     match config.search_sentinel2_items(
         &field.geometry,
-        "2024-01-01T00:00:00Z",
-        "2024-12-31T23:59:59Z",
+        &start_date.to_rfc3339(),
+        &end_date.to_rfc3339(),
         30.0,
     ).await {
         Ok(items) => {
@@ -204,7 +173,7 @@ async fn search_imagery(field: web::Json<Field>) -> Result<impl Responder> {
                         .filter(|img| img["suitable_for_analysis"].as_bool().unwrap_or(false))
                         .count(),
                     "best_imagery": sorted_imagery.get(0),
-                    "date_range": "2024-01-01 to 2024-12-31",
+                    "date_range": format!("{} to {}", start_date.format("%Y-%m-%d"), end_date.format("%Y-%m-%d")),
                     "max_cloud_cover_filter": 30.0
                 },
                 "imagery": sorted_imagery,
@@ -264,7 +233,7 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     env_logger::init();
     
-    let port = env::var("PORT").unwrap_or_else(|_| "8001".to_string());
+    let port = env::var("PORT").unwrap_or_else(|_| "8003".to_string());
     let bind_address = format!("127.0.0.1:{}", port);
     
     println!("🚀 Enhanced VRA Analysis Engine Starting...");
@@ -394,17 +363,14 @@ use std::env;
 use geojson::{Geometry as GeoJsonGeometry, Value as GeoJsonValue};
 
 use std::convert::TryInto;
-use std::io::Write;
 use gdal::Dataset;
 use image::{ImageBuffer, Rgba, RgbaImage};
-use tempfile::NamedTempFile;
-use futures::StreamExt;
 use anyhow::{Result as AnyhowResult, Context};
 use thiserror::Error;
 use ndarray::Array2;
 use geo::BoundingRect;
-use geo_types::{Geometry as GeoGeometry, Polygon as GeoPolygon};
-use chrono::Utc;
+use geo_types::{Coord, Geometry as GeoGeometry, LineString, Polygon as GeoPolygon};
+use chrono::{Duration, Utc};
 use proj::Proj;
 
 // Simple K-means clustering implementation
@@ -803,8 +769,7 @@ fn create_mock_processing_details(error: &anyhow::Error) -> ProcessingDetails {
         cropped_area_km2: 1.25,
         processing_time_seconds: 0.15,
         streaming_stats: StreamingStats {
-            total_bytes_streamed: 0,
-            average_chunk_size_kb: 0.0,
+            cropped_data_bytes: 0,
             streaming_time_seconds: 0.0,
             memory_peak_mb: 10.0,
         },
@@ -865,6 +830,8 @@ struct VRAAnalysisRequest {
     field_id: i32,
     user_id: Option<i32>,
     geometry: GeoJsonGeometry,
+    #[serde(default)]
+    area_hectares: Option<f64>,
     num_zones: Option<usize>,
     indices: Option<Vec<String>>,
     planetary_computer_config: Option<PlanetaryComputerRequestConfig>,
@@ -1037,7 +1004,7 @@ struct MapMetadata {
 struct TileInfo {
     tiles_processed: usize,
     streaming_mode: bool,
-    total_data_size_mb: f64,
+    cropped_data_size_mb: f64,
     compression_ratio: f64,
 }
 
@@ -1065,8 +1032,7 @@ struct ProcessingDetails {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct StreamingStats {
-    total_bytes_streamed: u64,
-    average_chunk_size_kb: f64,
+    cropped_data_bytes: u64,
     streaming_time_seconds: f64,
     memory_peak_mb: f64,
 }
@@ -1138,7 +1104,6 @@ struct StreamingRasterData {
 #[derive(Debug)]
 struct StreamingMetadata {
     total_bytes_processed: u64,
-    chunk_count: usize,
     streaming_time: f64,
     memory_usage: f64,
 }
@@ -1203,7 +1168,7 @@ impl PlanetaryComputerConfig {
             intersects: geometry.clone(),
             datetime: format!("{}/{}", start_date, end_date),
             collections: vec!["sentinel-2-l2a".to_string()],
-            limit: 50,
+            limit: 20,
             query_params: STACQuery {
                 cloud_cover: CloudCoverQuery {
                     lt: max_cloud_cover,
@@ -1232,14 +1197,9 @@ impl PlanetaryComputerConfig {
     }
 
     async fn sign_url(&self, url: &str) -> AnyhowResult<String> {
-        let sign_request = serde_json::json!({
-            "href": url
-        });
-
         let mut request_builder = self.client
-            .post("https://planetarycomputer.microsoft.com/api/sas/v1/sign")
-            .header("Content-Type", "application/json")
-            .json(&sign_request);
+            .get("https://planetarycomputer.microsoft.com/api/sas/v1/sign")
+            .query(&[("href", url)]);
 
         if let Some(key) = &self.subscription_key {
             request_builder = request_builder.header("Ocp-Apim-Subscription-Key", key);
@@ -1248,8 +1208,14 @@ impl PlanetaryComputerConfig {
         let response = request_builder.send().await?;
 
         if !response.status().is_success() {
-            let error_text = response.text().await?;
-            return Err(anyhow::anyhow!("URL signing failed: {}", error_text));
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_default();
+            let detail = if error_text.trim().is_empty() {
+                "empty response body".to_string()
+            } else {
+                error_text.chars().take(500).collect()
+            };
+            return Err(anyhow::anyhow!("Planetary Computer URL signing failed (HTTP {}): {}", status, detail));
         }
 
         let sign_response: serde_json::Value = response.json().await?;
@@ -1266,60 +1232,43 @@ impl PlanetaryComputerConfig {
         signed_url: &str,
         geometry: &GeoPolygon<f64>
     ) -> AnyhowResult<StreamingRasterData> {
-        let start_time = std::time::Instant::now();
-        let mut total_bytes = 0u64;
-        let mut chunk_count = 0;
-        
-        println!("Starting streaming download from: {}", signed_url);
-        
-        let mut temp_file = NamedTempFile::new()?;
-        let response = self.client.get(signed_url).send().await?;
-        
-        if !response.status().is_success() {
-            return Err(anyhow::anyhow!("Failed to stream raster: HTTP {}", response.status()));
-        }
-
-        let mut stream = response.bytes_stream();
-        
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(|e| ProcessingError::StreamingError(e.to_string()))?;
-            total_bytes += chunk.len() as u64;
-            chunk_count += 1;
-            
-            temp_file.write_all(&chunk)?;
-            
-            if total_bytes > (self.streaming_config.memory_limit_mb as u64 * 1024 * 1024) {
-                println!("Warning: Memory limit approaching, optimizing chunks...");
+        let signed_url = signed_url.to_owned();
+        let geometry = geometry.clone();
+        tokio::task::spawn_blocking(move || {
+            let start_time = std::time::Instant::now();
+            // Sentinel-2 assets are Cloud Optimized GeoTIFFs. GDAL /vsicurl/ reads
+            // only the TIFF headers and raster blocks intersecting this field.
+            let vsi_path = format!("/vsicurl/{}", signed_url);
+            let dataset = Dataset::open(vsi_path)?;
+            let raster_crs = dataset.projection();
+            if raster_crs.trim().is_empty() {
+                return Err(anyhow::anyhow!("Satellite raster is missing its CRS; cannot align the field boundary"));
             }
-        }
-        
-        temp_file.flush()?;
-        let streaming_time = start_time.elapsed().as_secs_f64();
-        
-        println!("Streaming complete: {} bytes in {:.2}s ({} chunks)", 
-                 total_bytes, streaming_time, chunk_count);
-        
-        let dataset = Dataset::open(temp_file.path())?;
-        let raster_data = self.crop_dataset_to_geometry(&dataset, geometry)?;
-        
-        Ok(StreamingRasterData {
-            data: raster_data.data,
-            geotransform: raster_data.geotransform,
-            projection: raster_data.projection,
-            width: raster_data.width,
-            height: raster_data.height,
-            no_data_value: raster_data.no_data_value,
-            streaming_metadata: StreamingMetadata {
-                total_bytes_processed: total_bytes,
-                chunk_count,
-                streaming_time,
-                memory_usage: (total_bytes as f64) / (1024.0 * 1024.0),
-            },
-        })
+            let transformer = Proj::new_known_crs("EPSG:4326", &raster_crs, None)
+                .map_err(|e| anyhow::anyhow!("Unable to transform field geometry to satellite raster CRS: {}", e))?;
+            let geometry_in_raster_crs = reproject_polygon(&geometry, &transformer)?;
+            let raster_data = Self::crop_dataset_to_geometry(&dataset, &geometry_in_raster_crs)?;
+            let elapsed = start_time.elapsed().as_secs_f64();
+            let processed_bytes = (raster_data.data.len() * std::mem::size_of::<f64>()) as u64;
+            println!("Read cropped raster window {}x{} via GDAL range requests in {:.2}s", raster_data.width, raster_data.height, elapsed);
+
+            Ok(StreamingRasterData {
+                data: raster_data.data,
+                geotransform: raster_data.geotransform,
+                projection: raster_data.projection,
+                width: raster_data.width,
+                height: raster_data.height,
+                no_data_value: raster_data.no_data_value,
+                streaming_metadata: StreamingMetadata {
+                    total_bytes_processed: processed_bytes,
+                    streaming_time: elapsed,
+                    memory_usage: (processed_bytes as f64) / (1024.0 * 1024.0),
+                },
+            })
+        }).await.map_err(|e| anyhow::anyhow!("Raster read worker failed: {}", e))?
     }
 
     fn crop_dataset_to_geometry(
-        &self,
         dataset: &Dataset,
         geometry: &GeoPolygon<f64>
     ) -> AnyhowResult<RasterData> {
@@ -1335,7 +1284,14 @@ impl PlanetaryComputerConfig {
         let max_row = ((bbox.min().y - gt[3]) / gt[5]).ceil().min(height as f64) as usize;
         
         if min_col >= max_col || min_row >= max_row {
-            return Err(anyhow::anyhow!("Geometry does not intersect raster"));
+            let raster_x1 = gt[0] + gt[1] * width as f64 + gt[2] * height as f64;
+            let raster_y1 = gt[3] + gt[4] * width as f64 + gt[5] * height as f64;
+            return Err(anyhow::anyhow!(
+                "Field geometry does not overlap the selected satellite raster (field bbox {:.6},{:.6} to {:.6},{:.6}; raster extent {:.6},{:.6} to {:.6},{:.6}). Check field coordinates, CRS, and selected scene.",
+                bbox.min().x, bbox.min().y, bbox.max().x, bbox.max().y,
+                gt[0].min(raster_x1), gt[3].min(raster_y1),
+                gt[0].max(raster_x1), gt[3].max(raster_y1),
+            ));
         }
         
         let crop_width = max_col - min_col;
@@ -1365,6 +1321,25 @@ impl PlanetaryComputerConfig {
     }
 }
 
+fn reproject_polygon(polygon: &GeoPolygon<f64>, transformer: &Proj) -> AnyhowResult<GeoPolygon<f64>> {
+    let transform_ring = |ring: &LineString<f64>| -> AnyhowResult<LineString<f64>> {
+        let mut points = Vec::with_capacity(ring.0.len());
+        for point in &ring.0 {
+            let (x, y) = transformer.convert((point.x, point.y))
+                .map_err(|e| anyhow::anyhow!("Field-to-raster coordinate transform failed: {}", e))?;
+            if !x.is_finite() || !y.is_finite() {
+                return Err(anyhow::anyhow!("Field-to-raster transform produced invalid coordinates"));
+            }
+            points.push(Coord { x, y });
+        }
+        Ok(LineString(points))
+    };
+
+    let exterior = transform_ring(polygon.exterior())?;
+    let interiors = polygon.interiors().iter().map(transform_ring).collect::<AnyhowResult<Vec<_>>>()?;
+    Ok(GeoPolygon::new(exterior, interiors))
+}
+
 #[derive(Debug)]
 struct RasterData {
     data: Array2<f64>,
@@ -1373,6 +1348,83 @@ struct RasterData {
     width: usize,
     height: usize,
     no_data_value: Option<f64>,
+}
+
+fn resample_raster_to_reference(
+    source: StreamingRasterData,
+    reference: &StreamingRasterData,
+) -> AnyhowResult<StreamingRasterData> {
+    let (target_height, target_width) = reference.data.dim();
+    let (source_height, source_width) = source.data.dim();
+    if source_height == target_height
+        && source_width == target_width
+        && source.geotransform == reference.geotransform
+        && source.projection == reference.projection
+    {
+        return Ok(source);
+    }
+
+    let to_source_crs = if source.projection == reference.projection {
+        None
+    } else {
+        Some(Proj::new_known_crs(&reference.projection, &source.projection, None)
+            .map_err(|e| anyhow::anyhow!("Cannot align satellite bands with different CRS definitions: {}", e))?)
+    };
+
+    let source_gt = source.geotransform;
+    let target_gt = reference.geotransform;
+    let determinant = source_gt[1] * source_gt[5] - source_gt[2] * source_gt[4];
+    if determinant.abs() < f64::EPSILON {
+        return Err(anyhow::anyhow!("Satellite band has a non-invertible geotransform"));
+    }
+
+    // Resample the lower-resolution band onto the red/NIR grid with nearest-neighbour.
+    // This matches Sentinel-2's native 20 m SWIR values to the 10 m vegetation grid.
+    let mut aligned = Array2::from_elem((target_height, target_width), f64::NAN);
+    for row in 0..target_height {
+        for col in 0..target_width {
+            let x = target_gt[0]
+                + (col as f64 + 0.5) * target_gt[1]
+                + (row as f64 + 0.5) * target_gt[2];
+            let y = target_gt[3]
+                + (col as f64 + 0.5) * target_gt[4]
+                + (row as f64 + 0.5) * target_gt[5];
+            let (source_x, source_y) = match &to_source_crs {
+                Some(transformer) => transformer.convert((x, y))
+                    .map_err(|e| anyhow::anyhow!("Satellite band coordinate alignment failed: {}", e))?,
+                None => (x, y),
+            };
+
+            let dx = source_x - source_gt[0];
+            let dy = source_y - source_gt[3];
+            let pixel_x = (dx * source_gt[5] - dy * source_gt[2]) / determinant;
+            let pixel_y = (dy * source_gt[1] - dx * source_gt[4]) / determinant;
+            let source_col = pixel_x.floor() as isize;
+            let source_row = pixel_y.floor() as isize;
+            if source_col >= 0 && source_row >= 0
+                && (source_col as usize) < source_width
+                && (source_row as usize) < source_height
+            {
+                aligned[(row, col)] = source.data[(source_row as usize, source_col as usize)];
+            }
+        }
+    }
+
+    let aligned_bytes = (aligned.len() * std::mem::size_of::<f64>()) as u64;
+    Ok(StreamingRasterData {
+        data: aligned,
+        geotransform: target_gt,
+        projection: reference.projection.clone(),
+        width: target_width,
+        height: target_height,
+        no_data_value: source.no_data_value,
+        streaming_metadata: StreamingMetadata {
+            total_bytes_processed: source.streaming_metadata.total_bytes_processed + aligned_bytes,
+            streaming_time: source.streaming_metadata.streaming_time,
+            memory_usage: source.streaming_metadata.memory_usage
+                + (aligned_bytes as f64) / (1024.0 * 1024.0),
+        },
+    })
 }
 
 #[derive(Debug)]
@@ -1533,7 +1585,8 @@ pub async fn analyze_field_with_crs_transform(
     let field = Field {
         id: request.field_id as u32,
         name: format!("Field_{}", request.field_id),
-        area: 15.0, // Should be calculated from geometry
+        area: request.area_hectares.filter(|area| area.is_finite() && *area > 0.0)
+            .ok_or_else(|| anyhow::anyhow!("area_hectares must be a positive finite value"))?,
         geometry: wgs84_geometry,
     };
     
@@ -1544,7 +1597,7 @@ pub async fn analyze_field_with_crs_transform(
     });
     
     // 5. Process field with transformed geometry
-    let vra_response = process_field_with_streaming_analysis(&field, &config, num_zones, indices).await;
+    let vra_response = process_field_with_streaming_analysis(&field, &config, num_zones, indices).await?;
     
     Ok(vra_response)
 }
@@ -1557,7 +1610,12 @@ fn calculate_vegetation_indices(
     indices: &[String]
 ) -> AnyhowResult<VegetationData> {
     if red_data.data.shape() != nir_data.data.shape() {
-        return Err(anyhow::anyhow!("Band dimensions don't match"));
+        return Err(anyhow::anyhow!("Red and NIR bands are not aligned"));
+    }
+    if green_data.is_some_and(|band| band.data.shape() != red_data.data.shape())
+        || swir_data.is_some_and(|band| band.data.shape() != red_data.data.shape())
+    {
+        return Err(anyhow::anyhow!("Optional satellite bands were not aligned to the red/NIR grid"));
     }
     
     let (height, width) = red_data.data.dim();
@@ -1761,6 +1819,13 @@ fn generate_vra_zones_kmeans(
     
     if features.is_empty() {
         return Err(anyhow::anyhow!("No valid features for clustering"));
+    }
+
+    if num_clusters < 2 || num_clusters > features.len() {
+        return Err(anyhow::anyhow!(
+            "Cannot create {} VRA zones from {} valid satellite pixels. Choose fewer zones or use a higher-resolution/clearer satellite scene.",
+            num_clusters, features.len()
+        ));
     }
     
     println!("Clustering {} pixels with {} features each", features.len(), features[0].len());
@@ -1993,21 +2058,34 @@ fn hex_to_rgba(hex: &str) -> AnyhowResult<Rgba<u8>> {
 }
 
 fn add_border_and_scale(img: &RgbaImage, _title: &str) -> AnyhowResult<RgbaImage> {
-    let border_size = 50;
-    let original_width = img.width();
-    let original_height = img.height();
-    let new_width = original_width + 2 * border_size;
-    let new_height = original_height + 2 * border_size;
-    
+    let original_width = img.width().max(1);
+    let original_height = img.height().max(1);
+    let short_side = original_width.min(original_height) as f64;
+    let long_side = original_width.max(original_height) as f64;
+    // Scale small field windows for display while preserving their shape and
+    // pixel boundaries. This changes presentation size, not source resolution.
+    let scale = (640.0 / short_side).min(1200.0 / long_side);
+    let scaled_width = ((original_width as f64 * scale).round() as u32).max(1);
+    let scaled_height = ((original_height as f64 * scale).round() as u32).max(1);
+    let scaled_img = image::imageops::resize(
+        img,
+        scaled_width,
+        scaled_height,
+        image::imageops::FilterType::Nearest,
+    );
+    let border_size = 8;
+    let new_width = scaled_width + 2 * border_size;
+    let new_height = scaled_height + 2 * border_size;
+
     let mut bordered_img: RgbaImage = ImageBuffer::new(new_width, new_height);
     
     for pixel in bordered_img.pixels_mut() {
         *pixel = Rgba([255, 255, 255, 255]);
     }
     
-    for y in 0..original_height {
-        for x in 0..original_width {
-            let pixel = *img.get_pixel(x, y);
+    for y in 0..scaled_height {
+        for x in 0..scaled_width {
+            let pixel = *scaled_img.get_pixel(x, y);
             bordered_img.put_pixel(x + border_size, y + border_size, pixel);
         }
     }
@@ -2061,10 +2139,12 @@ async fn process_satellite_data_streaming(
     
     processing_steps.push("Searching for Sentinel-2 imagery with enhanced filters".to_string());
     
+    let end_date = Utc::now();
+    let start_date = end_date - Duration::days(365);
     let items = config.search_sentinel2_items(
         &field.geometry,
-        "2024-01-01T00:00:00Z",
-        "2024-12-31T23:59:59Z",
+        &start_date.to_rfc3339(),
+        &end_date.to_rfc3339(),
         20.0,
     ).await?;
 
@@ -2073,11 +2153,7 @@ async fn process_satellite_data_streaming(
     }
 
     let best_item = items.iter()
-        .min_by(|a, b| {
-            let cloud_a = a.properties.cloud_cover.unwrap_or(100.0);
-            let cloud_b = b.properties.cloud_cover.unwrap_or(100.0);
-            cloud_a.partial_cmp(&cloud_b).unwrap_or(std::cmp::Ordering::Equal)
-        })
+        .max_by(|a, b| a.properties.datetime.cmp(&b.properties.datetime))
         .context("No valid items found")?;
 
     processing_steps.push(format!("Selected high-quality imagery: {} ({}% cloud cover)", 
@@ -2092,20 +2168,31 @@ async fn process_satellite_data_streaming(
         .context("NIR band (B08) not available")?
         .href.clone();
     
-    let green_band_url = best_item.assets.get("B03")
-        .context("Green band (B03) not available")?
-        .href.clone();
-    
-    let swir_band_url = best_item.assets.get("B11")
-        .context("SWIR band (B11) not available")?
-        .href.clone();
+    let needs_green = requested_indices.iter().any(|index| index == "EVI" || index == "GNDVI");
+    let needs_swir = requested_indices.iter().any(|index| index == "NDMI");
+    let green_band_url = if needs_green {
+        Some(best_item.assets.get("B03").context("Green band (B03) not available")?.href.clone())
+    } else { None };
+    let swir_band_url = if needs_swir {
+        Some(best_item.assets.get("B11").context("SWIR band (B11) not available")?.href.clone())
+    } else { None };
 
     processing_steps.push("Signing URLs for authenticated streaming access".to_string());
     
-    let signed_red_url = config.sign_url(&red_band_url).await?;
-    let signed_nir_url = config.sign_url(&nir_band_url).await?;
-    let signed_green_url = config.sign_url(&green_band_url).await?;
-    let signed_swir_url = config.sign_url(&swir_band_url).await?;
+    let (signed_red_url, signed_nir_url) = tokio::try_join!(
+        config.sign_url(&red_band_url),
+        config.sign_url(&nir_band_url),
+    )?;
+    let (signed_green_url, signed_swir_url) = tokio::try_join!(
+        async { match green_band_url.as_deref() {
+            Some(url) => config.sign_url(url).await.map(Some),
+            None => Ok(None),
+        }},
+        async { match swir_band_url.as_deref() {
+            Some(url) => config.sign_url(url).await.map(Some),
+            None => Ok(None),
+        }},
+    )?;
     
     let geo_geometry: GeoGeometry<f64> = field.geometry.clone().try_into()
         .context("Failed to convert field geometry")?;
@@ -2118,17 +2205,31 @@ async fn process_satellite_data_streaming(
     let (red_data, nir_data, green_data, swir_data) = tokio::try_join!(
         config.stream_raster_data(&signed_red_url, &field_polygon),
         config.stream_raster_data(&signed_nir_url, &field_polygon),
-        config.stream_raster_data(&signed_green_url, &field_polygon),
-        config.stream_raster_data(&signed_swir_url, &field_polygon)
+        async { match signed_green_url.as_deref() {
+            Some(url) => config.stream_raster_data(url, &field_polygon).await.map(Some),
+            None => Ok(None),
+        }},
+        async { match signed_swir_url.as_deref() {
+            Some(url) => config.stream_raster_data(url, &field_polygon).await.map(Some),
+            None => Ok(None),
+        }},
     )?;
+
+    let nir_data = resample_raster_to_reference(nir_data, &red_data)?;
+    let green_data = green_data
+        .map(|band| resample_raster_to_reference(band, &red_data))
+        .transpose()?;
+    let swir_data = swir_data
+        .map(|band| resample_raster_to_reference(band, &red_data))
+        .transpose()?;
     
     processing_steps.push("Computing vegetation indices from streamed multi-spectral data".to_string());
     
     let vegetation_data = calculate_vegetation_indices(
         &red_data,
         &nir_data,
-        Some(&green_data),
-        Some(&swir_data),
+        green_data.as_ref(),
+        swir_data.as_ref(),
         requested_indices
     )?;
     
@@ -2160,15 +2261,25 @@ async fn process_satellite_data_streaming(
     
     let processing_time = start_time.elapsed().as_secs_f64();
     
-    let total_streaming_bytes = red_data.streaming_metadata.total_bytes_processed +
-                                nir_data.streaming_metadata.total_bytes_processed +
-                                green_data.streaming_metadata.total_bytes_processed +
-                                swir_data.streaming_metadata.total_bytes_processed;
+    let mut raster_bands = vec![&red_data, &nir_data];
+    if let Some(data) = green_data.as_ref() { raster_bands.push(data); }
+    if let Some(data) = swir_data.as_ref() { raster_bands.push(data); }
+    let total_cropped_data_bytes = raster_bands.iter()
+        .map(|data| data.streaming_metadata.total_bytes_processed)
+        .sum::<u64>();
+    let average_streaming_time = raster_bands.iter()
+        .map(|data| data.streaming_metadata.streaming_time)
+        .sum::<f64>() / raster_bands.len() as f64;
+    let memory_peak_mb = raster_bands.iter()
+        .map(|data| data.streaming_metadata.memory_usage)
+        .sum::<f64>();
+    let mut bands_used = vec!["B04 (Red)".to_string(), "B08 (NIR)".to_string()];
+    if green_data.is_some() { bands_used.push("B03 (Green)".to_string()); }
+    if swir_data.is_some() { bands_used.push("B11 (SWIR)".to_string()); }
     
     let processing_details = ProcessingDetails {
         satellite_item_id: best_item.id.clone(),
-        bands_used: vec!["B04 (Red)".to_string(), "B08 (NIR)".to_string(), 
-                        "B03 (Green)".to_string(), "B11 (SWIR)".to_string()],
+        bands_used,
         processing_steps,
         quality_flags: vec![
             format!("Cloud coverage: {:.1}%", best_item.properties.cloud_cover.unwrap_or(0.0)),
@@ -2180,17 +2291,9 @@ async fn process_satellite_data_streaming(
         cropped_area_km2: field.area / 100.0,
         processing_time_seconds: processing_time,
         streaming_stats: StreamingStats {
-            total_bytes_streamed: total_streaming_bytes,
-            average_chunk_size_kb: (total_streaming_bytes as f64 / 4.0) / 1024.0,
-            streaming_time_seconds: (red_data.streaming_metadata.streaming_time + 
-                                   nir_data.streaming_metadata.streaming_time +
-                                   green_data.streaming_metadata.streaming_time +
-                                   swir_data.streaming_metadata.streaming_time) / 4.0,
-            memory_peak_mb: [red_data.streaming_metadata.memory_usage,
-                           nir_data.streaming_metadata.memory_usage,
-                           green_data.streaming_metadata.memory_usage,
-                           swir_data.streaming_metadata.memory_usage]
-                           .iter().fold(0.0, |a, &b| a.max(b)),
+            cropped_data_bytes: total_cropped_data_bytes,
+            streaming_time_seconds: average_streaming_time,
+            memory_peak_mb,
         },
     };
 
@@ -2369,28 +2472,13 @@ async fn process_field_with_streaming_analysis(
     config: &PlanetaryComputerConfig,
     num_zones: usize,
     requested_indices: Vec<String>,
-) -> VRAMapResponse {
+) -> AnyhowResult<VRAMapResponse> {
     println!("🌾 Processing field: {} (ID: {}, Area: {:.2} ha)", field.name, field.id, field.area);
     println!("📊 Requested indices: {:?}", requested_indices);
     println!("🎯 Target zones: {}", num_zones);
     
-    let (ndvi_png, zone_png, vegetation_indices, vra_zones, processing_details, clustering_info) = 
-        match process_satellite_data_streaming(field, config, &requested_indices, num_zones).await {
-            Ok(result) => {
-                println!("✅ Successfully processed streaming satellite data for field {}", field.id);
-                result
-            },
-            Err(e) => {
-                println!("❌ Error processing satellite data for field {}: {}", field.id, e);
-                let mock_indices = create_mock_vegetation_indices();
-                let mock_zones = generate_mock_kmeans_zones(field.area, num_zones);
-                let mock_ndvi_png = create_mock_ndvi_png(field);
-                let mock_zone_png = create_mock_zone_png(field, &mock_zones);
-                let mock_processing = create_mock_processing_details(&e);
-                let mock_clustering = create_mock_clustering_info(num_zones, &requested_indices);
-                (mock_ndvi_png, mock_zone_png, mock_indices, mock_zones, mock_processing, mock_clustering)
-            }
-        };
+    let (ndvi_png, zone_png, vegetation_indices, vra_zones, processing_details, clustering_info) =
+        process_satellite_data_streaming(field, config, &requested_indices, num_zones).await?;
     
     let geo_geometry: GeoGeometry<f64> = field.geometry.clone().try_into()
         .expect("Invalid geometry conversion");
@@ -2410,7 +2498,7 @@ async fn process_field_with_streaming_analysis(
     println!("🎯 Clustering inertia: {:.2}, Zone consistency: {:.1}%", 
              clustering_info.inertia, analysis_summary.zone_consistency_score);
     
-    VRAMapResponse {
+    Ok(VRAMapResponse {
         field_id: field.id,
         field_name: field.name.clone(),
         ndvi_map_png: ndvi_png,
@@ -2427,14 +2515,14 @@ async fn process_field_with_streaming_analysis(
             processing_date: Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string(),
             satellite_pass: "Descending".to_string(),
             tile_info: TileInfo {
-                tiles_processed: 4,
+                tiles_processed: 1,
                 streaming_mode: true,
-                total_data_size_mb: processing_details.streaming_stats.total_bytes_streamed as f64 / (1024.0 * 1024.0),
+                cropped_data_size_mb: processing_details.streaming_stats.cropped_data_bytes as f64 / (1024.0 * 1024.0),
                 compression_ratio: 0.75,
             },
         },
         analysis_summary,
         processing_details,
         clustering_info,
-    }
+    })
 }

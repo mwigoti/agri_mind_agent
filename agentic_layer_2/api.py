@@ -43,7 +43,13 @@ async def run_advisory(state: dict[str, Any]) -> None:
     thread_id = state["thread_id"]
     try:
         result = await graph.ainvoke(state, config={"configurable": {"thread_id": thread_id}})
-        active_runs[thread_id] = {"status": result.get("status", "FAILED"), "errors": result.get("errors", [])}
+        active_runs[thread_id] = {
+            "plot_id": state.get("plot_id"),
+            **{
+                key: result.get(key)
+                for key in ("status", "errors", "error_code", "failure_stage", "missing_inputs", "next_action")
+            },
+        }
     except Exception as exc:
         audit.write({"event": "workflow_failure", "execution_id": state["execution_id"], "thread_id": thread_id, "error": type(exc).__name__})
         active_runs[thread_id] = {"status": "FAILED", "errors": ["Workflow execution failed safely"]}
@@ -633,7 +639,7 @@ async def get_advisory(thread_id: str, _: str = Depends(require_api)) -> dict[st
         if thread_id in active_runs:
             return {"thread_id": thread_id, **active_runs[thread_id]}
         raise HTTPException(404, detail={"error": "not_found"})
-    return {key: values.get(key) for key in ("execution_id", "thread_id", "plot_id", "status", "selected_action", "rationale", "evidence_ids", "advisory_draft", "officer_decision", "officer_identity", "decision_timestamp", "simulated_sms", "errors")}
+    return {key: values.get(key) for key in ("execution_id", "thread_id", "plot_id", "status", "selected_action", "rationale", "evidence_ids", "advisory_draft", "officer_decision", "officer_identity", "decision_timestamp", "simulated_sms", "errors", "error_code", "failure_stage", "missing_inputs", "next_action")}
 
 
 @app.post("/api/advisories/{thread_id}/decide")

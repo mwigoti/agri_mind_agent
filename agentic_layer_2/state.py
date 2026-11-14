@@ -46,6 +46,10 @@ class AgriState(TypedDict, total=False):
     review_prompt: dict[str, Any]
     simulated_sms: dict[str, Any] | None
     history: dict[str, Any] | None
+    error_code: str
+    failure_stage: str
+    missing_inputs: list[str]
+    next_action: str
 
 
 MAX_STEPS = 12

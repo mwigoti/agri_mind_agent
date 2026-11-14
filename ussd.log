@@ -129,3 +129,156 @@ INFO 2026-11-13 23:50:17,368 views Field dashboard field=75 ndvi_points=4 latest
 INFO 2026-11-13 23:54:08,792 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
 INFO 2026-11-13 23:54:08,793 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.299 vegetation_status=6 saved Sentinel-2 observation(s)
 INFO 2026-11-13 23:54:08,793 views Field dashboard field=64 ndvi_points=9 latest_ndvi=0.2509 health_score=0.19 vegetation_status=9 saved Sentinel-2 observation(s)
+INFO 2026-11-14 07:14:22,984 views AnalysisResult #12 done field=76 risk=Very High health_score=30.09 health_coverage_pct=35.0 health_components=['vegetation_index', 'radar_index'] ml_yield=3.39 s2_scene_count=5 ndvi_observations=5 s2_status=ready
+INFO 2026-11-14 07:15:04,887 views AnalysisResult #11 done field=75 risk=Very High health_score=26.46 health_coverage_pct=35.0 health_components=['vegetation_index', 'radar_index'] ml_yield=3.75 s2_scene_count=4 ndvi_observations=4 s2_status=ready
+INFO 2026-11-14 07:15:49,328 views AnalysisResult #13 done field=64 risk=Very High health_score=18.98 health_coverage_pct=60.0 health_components=['vegetation_index', 'soil_index', 'radar_index'] ml_yield=3.74 s2_scene_count=9 ndvi_observations=9 s2_status=ready
+INFO 2026-11-14 07:16:33,518 views AnalysisResult #2 done field=64 risk=Very High health_score=18.98 health_coverage_pct=60.0 health_components=['vegetation_index', 'soil_index', 'radar_index'] ml_yield=3.74 s2_scene_count=9 ndvi_observations=9 s2_status=ready
+INFO 2026-11-14 07:17:44,845 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-14 07:17:44,846 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-14 07:17:45,656 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-14 07:26:25,904 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-14 07:26:25,909 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-14 07:26:25,913 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-14 07:29:08,364 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-14 07:29:08,365 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-14 07:29:08,365 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-14 07:36:41,079 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-14 07:36:41,098 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-14 07:36:41,156 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-14 08:12:49,534 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-14 08:12:50,049 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-14 08:12:50,848 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-14 08:27:01,849 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-14 08:27:01,849 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-14 08:27:01,851 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-14 08:27:28,494 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-14 08:27:28,498 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-14 08:27:28,700 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-14 08:27:39,023 views Checking VRA engine status...
+ERROR 2026-11-14 08:27:39,029 views Health check failed with status 405
+INFO 2026-11-14 09:27:57,550 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-14 09:27:57,962 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-14 09:27:57,963 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-14 09:28:15,269 views Checking VRA engine status...
+INFO 2026-11-14 09:28:15,272 views VRA engine is healthy: {'capabilities': ['Real-time satellite data streaming', 'Multi-spectral vegetation indices (NDVI, EVI, SAVI, NDMI, GNDVI)', 'K-means clustering for VRA zone generation', 'PNG visualization output', 'Memory-efficient processing', 'Precision agriculture recommendations', 'Environmental impact assessment', 'STAC-based satellite data discovery', 'Geometric cropping with GDAL', 'Streaming raster processing'], 'clustering_algorithms': ['K-means'], 'gdal_status': 'GDAL 3.8.4', 'output_formats': ['PNG', 'Base64-encoded images'], 'planetary_computer_status': 'Connected (Public Access - Rate Limited)', 'satellite_data_source': 'Microsoft Planetary Computer', 'service': 'Enhanced VRA Analysis Engine with Streaming K-means', 'stac_api': 'https://planetarycomputer.microsoft.com/api/stac/v1', 'status': 'healthy', 'streaming_config': {'chunk_size_mb': 1.0, 'compression_enabled': True, 'max_concurrent_chunks': 4, 'memory_limit_mb': 512}, 'supported_indices': ['NDVI', 'EVI', 'SAVI', 'NDMI', 'GNDVI'], 'timestamp': '2026-11-14T09:28:15.271597195+00:00', 'version': '4.0.0'}
+INFO 2026-11-14 09:28:26,806 views Starting VRA analysis for field 64
+INFO 2026-11-14 09:28:26,806 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 09:28:26,965 views Prepared VRA request data for field 64
+INFO 2026-11-14 09:28:26,966 views Prepared VRA request for field 64: zones=5 indices=['NDVI', 'EVI', 'SAVI']
+INFO 2026-11-14 09:28:26,970 views Rust engine health check passed: healthy
+INFO 2026-11-14 09:28:26,970 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+INFO 2026-11-14 09:28:29,296 views Response status: 422
+ERROR 2026-11-14 09:28:29,296 views HTTP error 422: URL signing failed: 
+ERROR 2026-11-14 09:28:29,297 views Rust engine error for field 64: Analysis engine returned HTTP 422: URL signing failed: 
+INFO 2026-11-14 09:28:47,284 views Starting VRA analysis for field 64
+INFO 2026-11-14 09:28:47,284 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 09:28:47,439 views Prepared VRA request data for field 64
+INFO 2026-11-14 09:28:47,439 views Prepared VRA request for field 64: zones=5 indices=['NDVI', 'EVI', 'SAVI']
+INFO 2026-11-14 09:28:47,443 views Rust engine health check passed: healthy
+INFO 2026-11-14 09:28:47,444 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+INFO 2026-11-14 09:28:49,707 views Response status: 422
+ERROR 2026-11-14 09:28:49,707 views HTTP error 422: URL signing failed: 
+ERROR 2026-11-14 09:28:49,708 views Rust engine error for field 64: Analysis engine returned HTTP 422: URL signing failed: 
+INFO 2026-11-14 09:32:40,474 views Checking VRA engine status...
+INFO 2026-11-14 09:32:40,478 views VRA engine is healthy: {'capabilities': ['Real-time satellite data streaming', 'Multi-spectral vegetation indices (NDVI, EVI, SAVI, NDMI, GNDVI)', 'K-means clustering for VRA zone generation', 'PNG visualization output', 'Memory-efficient processing', 'Precision agriculture recommendations', 'Environmental impact assessment', 'STAC-based satellite data discovery', 'Geometric cropping with GDAL', 'Streaming raster processing'], 'clustering_algorithms': ['K-means'], 'gdal_status': 'GDAL 3.8.4', 'output_formats': ['PNG', 'Base64-encoded images'], 'planetary_computer_status': 'Connected (Public Access - Rate Limited)', 'satellite_data_source': 'Microsoft Planetary Computer', 'service': 'Enhanced VRA Analysis Engine with Streaming K-means', 'stac_api': 'https://planetarycomputer.microsoft.com/api/stac/v1', 'status': 'healthy', 'streaming_config': {'chunk_size_mb': 1.0, 'compression_enabled': True, 'max_concurrent_chunks': 4, 'memory_limit_mb': 512}, 'supported_indices': ['NDVI', 'EVI', 'SAVI', 'NDMI', 'GNDVI'], 'timestamp': '2026-11-14T09:32:40.477672063+00:00', 'version': '4.0.0'}
+INFO 2026-11-14 09:32:47,920 views Starting VRA analysis for field 64
+INFO 2026-11-14 09:32:47,920 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 09:32:48,076 views Prepared VRA request data for field 64
+INFO 2026-11-14 09:32:48,077 views Prepared VRA request for field 64: zones=5 indices=['NDVI', 'EVI', 'SAVI']
+INFO 2026-11-14 09:32:48,081 views Rust engine health check passed: healthy
+INFO 2026-11-14 09:32:48,082 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 09:37:12,609 views Connection error for endpoint http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 09:37:12,610 views Rust engine error for field 64: Cannot connect to analysis engine at http://127.0.0.1:8003. Ensure the Rust VRA service is running.
+INFO 2026-11-14 09:39:26,178 views Starting VRA analysis for field 64
+INFO 2026-11-14 09:39:26,178 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 09:39:26,337 views Prepared VRA request data for field 64
+INFO 2026-11-14 09:39:26,337 views Prepared VRA request for field 64: zones=5 indices=['NDVI', 'EVI', 'SAVI', 'NDMI']
+ERROR 2026-11-14 09:39:26,340 views Cannot connect to Rust VRA engine - service appears to be down
+INFO 2026-11-14 09:39:48,587 views Starting VRA analysis for field 64
+INFO 2026-11-14 09:39:48,587 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 09:39:48,743 views Prepared VRA request data for field 64
+INFO 2026-11-14 09:39:48,743 views Prepared VRA request for field 64: zones=5 indices=['NDVI', 'EVI', 'SAVI', 'NDMI']
+INFO 2026-11-14 09:39:48,746 views Rust engine health check passed: healthy
+INFO 2026-11-14 09:39:48,747 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+INFO 2026-11-14 09:40:45,841 views Starting VRA analysis for field 64
+INFO 2026-11-14 09:40:45,842 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 09:40:46,000 views Prepared VRA request data for field 64
+INFO 2026-11-14 09:40:46,001 views Prepared VRA request for field 64: zones=5 indices=['NDVI', 'EVI', 'SAVI', 'NDMI']
+INFO 2026-11-14 09:40:46,004 views Rust engine health check passed: healthy
+INFO 2026-11-14 09:40:46,005 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+INFO 2026-11-14 09:41:37,489 views Starting VRA analysis for field 64
+INFO 2026-11-14 09:41:37,490 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 09:41:37,650 views Prepared VRA request data for field 64
+INFO 2026-11-14 09:41:37,650 views Prepared VRA request for field 64: zones=5 indices=['NDVI', 'EVI', 'SAVI', 'NDMI']
+INFO 2026-11-14 09:41:37,653 views Rust engine health check passed: healthy
+INFO 2026-11-14 09:41:37,654 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+INFO 2026-11-14 09:42:53,187 views Starting VRA analysis for field 64
+INFO 2026-11-14 09:42:53,187 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 09:42:53,345 views Prepared VRA request data for field 64
+INFO 2026-11-14 09:42:53,346 views Prepared VRA request for field 64: zones=5 indices=['NDVI', 'EVI', 'SAVI', 'NDMI']
+INFO 2026-11-14 09:42:53,348 views Rust engine health check passed: healthy
+INFO 2026-11-14 09:42:53,349 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 09:44:48,850 views Timeout for endpoint http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 09:44:48,850 views Rust engine error for field 64: Analysis engine timeout - satellite data processing took too long
+ERROR 2026-11-14 09:45:46,107 views Timeout for endpoint http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 09:45:46,107 views Rust engine error for field 64: Analysis engine timeout - satellite data processing took too long
+ERROR 2026-11-14 09:46:37,752 views Timeout for endpoint http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 09:46:37,752 views Rust engine error for field 64: Analysis engine timeout - satellite data processing took too long
+ERROR 2026-11-14 09:47:53,374 views Timeout for endpoint http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 09:47:53,374 views Rust engine error for field 64: Analysis engine timeout - satellite data processing took too long
+INFO 2026-11-14 09:50:06,660 views Starting VRA analysis for field 64
+INFO 2026-11-14 09:50:06,661 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 09:50:06,822 views Prepared VRA request data for field 64
+INFO 2026-11-14 09:50:06,822 views Prepared VRA request for field 64: zones=7 indices=['NDVI', 'EVI', 'SAVI', 'NDMI']
+INFO 2026-11-14 09:50:06,825 views Rust engine health check passed: healthy
+INFO 2026-11-14 09:50:06,825 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+INFO 2026-11-14 09:54:41,173 views Response status: 422
+ERROR 2026-11-14 09:54:41,174 views HTTP error 422: Geometry does not intersect raster
+ERROR 2026-11-14 09:54:41,174 views Rust engine error for field 64: Analysis engine returned HTTP 422: Geometry does not intersect raster
+INFO 2026-11-14 10:12:58,891 views Starting VRA analysis for field 64
+INFO 2026-11-14 10:12:58,892 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 10:12:59,088 views Prepared VRA request data for field 64
+INFO 2026-11-14 10:12:59,088 views Prepared VRA request for field 64: zones=7 indices=['NDVI', 'EVI', 'SAVI', 'NDMI']
+INFO 2026-11-14 10:12:59,092 views Rust engine health check passed: healthy
+INFO 2026-11-14 10:12:59,093 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 10:17:59,197 views Timeout for endpoint http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 10:17:59,197 views Rust engine error for field 64: Analysis engine timeout - satellite data processing took too long
+INFO 2026-11-14 10:29:27,994 views Checking VRA engine status...
+INFO 2026-11-14 10:29:27,997 views VRA engine is healthy: {'capabilities': ['Real-time satellite data streaming', 'Multi-spectral vegetation indices (NDVI, EVI, SAVI, NDMI, GNDVI)', 'K-means clustering for VRA zone generation', 'PNG visualization output', 'Memory-efficient processing', 'Precision agriculture recommendations', 'Environmental impact assessment', 'STAC-based satellite data discovery', 'Geometric cropping with GDAL', 'Streaming raster processing'], 'clustering_algorithms': ['K-means'], 'gdal_status': 'GDAL 3.8.4', 'output_formats': ['PNG', 'Base64-encoded images'], 'planetary_computer_status': 'Connected (Public Access - Rate Limited)', 'satellite_data_source': 'Microsoft Planetary Computer', 'service': 'Enhanced VRA Analysis Engine with Streaming K-means', 'stac_api': 'https://planetarycomputer.microsoft.com/api/stac/v1', 'status': 'healthy', 'streaming_config': {'chunk_size_mb': 1.0, 'compression_enabled': True, 'max_concurrent_chunks': 4, 'memory_limit_mb': 512}, 'supported_indices': ['NDVI', 'EVI', 'SAVI', 'NDMI', 'GNDVI'], 'timestamp': '2026-11-14T10:29:27.996697711+00:00', 'version': '4.0.0'}
+INFO 2026-11-14 10:29:33,799 views Starting VRA analysis for field 64
+INFO 2026-11-14 10:29:33,800 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 10:29:34,032 views Prepared VRA request data for field 64
+INFO 2026-11-14 10:29:34,032 views Prepared VRA request for field 64: zones=7 indices=['NDVI', 'EVI', 'SAVI', 'NDMI']
+INFO 2026-11-14 10:29:34,036 views Rust engine health check passed: healthy
+INFO 2026-11-14 10:29:36,080 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 10:34:36,183 views Timeout for endpoint http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 10:34:36,339 views VRA job 1 failed for field 64: Analysis engine timeout - satellite data processing took too long
+INFO 2026-11-14 10:49:12,342 views Starting VRA analysis for field 64
+INFO 2026-11-14 10:49:12,342 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 10:49:12,535 views Prepared VRA request data for field 64
+INFO 2026-11-14 10:49:12,535 views Prepared VRA request for field 64: zones=7 indices=['NDVI', 'EVI', 'SAVI', 'NDMI']
+INFO 2026-11-14 10:49:12,540 views Rust engine health check passed: healthy
+INFO 2026-11-14 10:49:14,582 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 10:49:29,242 views Connection error for endpoint http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 10:49:29,397 views VRA job 2 failed for field 64: Cannot connect to analysis engine at http://127.0.0.1:8003. Ensure the Rust VRA service is running.
+INFO 2026-11-14 10:49:46,903 views Starting VRA analysis for field 64
+INFO 2026-11-14 10:49:46,903 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 10:49:47,059 views Prepared VRA request data for field 64
+INFO 2026-11-14 10:49:47,059 views Prepared VRA request for field 64: zones=7 indices=['NDVI', 'EVI', 'SAVI', 'NDMI']
+INFO 2026-11-14 10:49:47,063 views Rust engine health check passed: healthy
+INFO 2026-11-14 10:49:49,172 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 10:50:06,475 views Connection error for endpoint http://127.0.0.1:8003/analyze-field-enhanced
+ERROR 2026-11-14 10:50:06,636 views VRA job 3 failed for field 64: Cannot connect to analysis engine at http://127.0.0.1:8003. Ensure the Rust VRA service is running.
+INFO 2026-11-14 10:56:50,705 views Checking VRA engine status...
+INFO 2026-11-14 10:56:50,708 views VRA engine is healthy: {'capabilities': ['Real-time satellite data streaming', 'Multi-spectral vegetation indices (NDVI, EVI, SAVI, NDMI, GNDVI)', 'K-means clustering for VRA zone generation', 'PNG visualization output', 'Memory-efficient processing', 'Precision agriculture recommendations', 'Environmental impact assessment', 'STAC-based satellite data discovery', 'Geometric cropping with GDAL', 'Streaming raster processing'], 'clustering_algorithms': ['K-means'], 'gdal_status': 'GDAL 3.8.4', 'output_formats': ['PNG', 'Base64-encoded images'], 'planetary_computer_status': 'Connected (Public Access - Rate Limited)', 'satellite_data_source': 'Microsoft Planetary Computer', 'service': 'Enhanced VRA Analysis Engine with Streaming K-means', 'stac_api': 'https://planetarycomputer.microsoft.com/api/stac/v1', 'status': 'healthy', 'streaming_config': {'chunk_size_mb': 1.0, 'compression_enabled': True, 'max_concurrent_chunks': 4, 'memory_limit_mb': 512}, 'supported_indices': ['NDVI', 'EVI', 'SAVI', 'NDMI', 'GNDVI'], 'timestamp': '2026-11-14T10:56:50.707863615+00:00', 'version': '4.0.0'}
+INFO 2026-11-14 10:56:59,727 views Starting VRA analysis for field 64
+INFO 2026-11-14 10:56:59,727 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 10:56:59,895 views Prepared VRA request data for field 64
+INFO 2026-11-14 10:56:59,895 views Prepared VRA request for field 64: zones=4 indices=['NDVI', 'EVI', 'SAVI', 'NDMI']
+INFO 2026-11-14 10:56:59,898 views Rust engine health check passed: healthy
+INFO 2026-11-14 10:57:02,020 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+INFO 2026-11-14 10:57:10,047 views Response status: 200
+INFO 2026-11-14 10:57:10,048 views Successfully received JSON response from Rust engine
+INFO 2026-11-14 10:57:10,208 views VRA analysis completed for field 64 - Uasin_Gishu
+INFO 2026-11-14 10:57:10,208 views Analysis results: 4 zones, 0.0% health score
+INFO 2026-11-14 10:57:10,209 views VRA job 4 completed for field 64

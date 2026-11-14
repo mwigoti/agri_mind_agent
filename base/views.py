@@ -52,6 +52,7 @@ from django.contrib.gis.geos import GEOSGeometry, Polygon
 
 # Django REST Framework
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -548,25 +549,27 @@ def health(request):
 
 logger = logging.getLogger(__name__)
 
-@method_decorator(csrf_exempt, name='dispatch')
 class VRAAnalysisView(APIView):
     """
     Enhanced VRA Analysis View with better error handling and logging
     """
     
+    permission_classes = [IsAuthenticated]
+
+    @property
+    def engine_url(self):
+        return os.environ.get("VRA_ENGINE_URL", "http://127.0.0.1:8003").rstrip("/")
+
     def post(self, request, field_id):
+        field = get_object_or_404(Field, id=field_id, owner=request.user)
         try:
-            if not request.user or not request.user.is_authenticated:
-                return Response({"success": False, "error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
             logger.info(f"Starting VRA analysis for field {field_id}")
-            
-            # Get the field from database
-            field = get_object_or_404(Field, id=field_id, owner=request.user)
             logger.info(f"Found field: {field.name} (Area: {field.area} ha)")
-            
-            # Prepare field data for Rust engine
-            field_data = self.prepare_field_data(field)
-            logger.info(f"Prepared field data: {json.dumps(field_data, indent=2)}")
+            field_data = self.prepare_field_data(field, request.data)
+            logger.info(
+                "Prepared VRA request for field %s: zones=%s indices=%s",
+                field.id, field_data["num_zones"], field_data["indices"],
+            )
             
             # Check if Rust engine is running first
             if not self.check_rust_engine_health():
@@ -574,51 +577,25 @@ class VRAAnalysisView(APIView):
                     "success": False,
                     "error": "VRA Analysis Engine is not running. Please start the Rust service.",
                     "troubleshooting": {
-                        "service_url": "http://127.0.0.1:8001",
+                        "service_url": self.engine_url,
                         "startup_command": "cargo run --release",
                         "health_endpoint": "/health"
                     }
                 }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
             
-            # Send to Rust analysis engine
-            rust_response = self.send_to_rust_engine(field_data)
-            
-            if rust_response.get('success'):
-                # Store analysis results if needed
-                self.store_analysis_results(field, rust_response.get('data'))
-                
-                return Response({
-                    "success": True,
-                    "message": "VRA analysis completed successfully",
-                    "field_id": field_id,
-                    "field_name": field.name,
-                    "field_area": field.area,
-                    "analysis_data": rust_response.get('data'),
-                    "processing_info": {
-                        "analysis_type": "Variable Rate Application",
-                        "satellite_data_source": "Microsoft Planetary Computer",
-                        "clustering_method": "K-means"
-                    }
-                }, status=status.HTTP_200_OK)
-            else:
-                error_msg = rust_response.get('error', 'Unknown analysis engine error')
-                logger.error(f"Rust engine error for field {field_id}: {error_msg}")
-                
-                return Response({
-                    "success": False,
-                    "error": error_msg,
-                    "field_id": field_id,
-                    "field_name": field.name,
-                    "troubleshooting": self.get_troubleshooting_info(error_msg)
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                
-        except Field.DoesNotExist:
-            logger.error(f"Field {field_id} not found or access denied for user {request.user}")
+            from .models import VRAAnalysisJob
+            job = VRAAnalysisJob.objects.create(field=field, request_data=field_data)
+            _ANALYSIS_EXECUTOR.submit(_execute_vra_analysis_job, job.pk)
             return Response({
-                "success": False,
-                "error": "Field not found or access denied"
-            }, status=status.HTTP_404_NOT_FOUND)
-            
+                "success": True,
+                "status": "queued",
+                "job_id": job.pk,
+                "status_url": f"/api/vra-analysis-status/{job.pk}/",
+                "message": "VRA analysis queued; poll the status URL for progress.",
+            }, status=status.HTTP_202_ACCEPTED)
+
+        except ValueError as e:
+            return Response({"success": False, "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error(f"Unexpected VRA Analysis error for field {field_id}: {str(e)}", exc_info=True)
             return Response({
@@ -627,7 +604,7 @@ class VRAAnalysisView(APIView):
                 "error_type": type(e).__name__
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    def prepare_field_data(self, field):
+    def prepare_field_data(self, field, options=None):
         """
         Prepare field data in the format expected by Rust engine
         """
@@ -635,18 +612,39 @@ class VRAAnalysisView(APIView):
             # Convert Django geometry to GeoJSON
             geometry_geojson = json.loads(field.geometry.geojson)
             
-            # Prepare VRAAnalysisRequest format (as per Rust code)
+            options = options or {}
+            try:
+                num_zones = int(options.get("num_zones", 5))
+            except (TypeError, ValueError):
+                raise ValueError("num_zones must be an integer between 2 and 7")
+            if not 2 <= num_zones <= 7:
+                raise ValueError("num_zones must be between 2 and 7")
+
+            allowed_indices = {"NDVI", "EVI", "SAVI", "NDMI"}
+            requested_indices = options.get("indices") or ["NDVI", "EVI", "SAVI"]
+            if not isinstance(requested_indices, list):
+                raise ValueError("indices must be a list")
+            indices = list(dict.fromkeys(str(index).upper() for index in requested_indices))
+            if not indices or any(index not in allowed_indices for index in indices):
+                raise ValueError("indices must include one or more of NDVI, EVI, SAVI, or NDMI")
+            area_hectares = float(field.area or 0)
+            if area_hectares <= 0:
+                raise ValueError("Field area must be greater than zero before VRA analysis")
+
             request_data = {
                 "field_id": field.id,
                 "user_id": field.owner.id,
+                "area_hectares": area_hectares,
                 "geometry": geometry_geojson,
-                "num_zones": 5,  # Default to 5 zones
-                "indices": ["NDVI", "EVI", "SAVI", "NDMI"]  # Request multiple indices
+                "num_zones": num_zones,
+                "indices": indices,
             }
             
             logger.info(f"Prepared VRA request data for field {field.id}")
             return request_data
             
+        except ValueError:
+            raise
         except Exception as e:
             logger.error(f"Error preparing field data: {str(e)}")
             raise Exception(f"Failed to prepare field data: {str(e)}")
@@ -657,7 +655,7 @@ class VRAAnalysisView(APIView):
         """
         try:
             response = requests.post(
-                "http://127.0.0.1:8001/health",
+                f"{self.engine_url}/health",
                 timeout=10,
                 headers={'Content-Type': 'application/json'}
             )
@@ -665,7 +663,7 @@ class VRAAnalysisView(APIView):
             if response.status_code == 200:
                 health_data = response.json()
                 logger.info(f"Rust engine health check passed: {health_data.get('status', 'unknown')}")
-                return True
+                return health_data.get("status") == "healthy"
             else:
                 logger.error(f"Rust engine health check failed: HTTP {response.status_code}")
                 return False
@@ -682,10 +680,7 @@ class VRAAnalysisView(APIView):
         Send field data to Rust analysis engine with enhanced error handling
         """
         # Try the single field endpoint first
-        endpoints = [
-            ("http://127.0.0.1:8001/analyze-field-enhanced", field_data),
-            ("http://127.0.0.1:8001/generate-vra-maps", [field_data])  # Fallback to batch endpoint
-        ]
+        endpoints = [(f"{self.engine_url}/analyze-field-enhanced", field_data)]
         
         for endpoint_url, payload in endpoints:
             try:
@@ -699,7 +694,7 @@ class VRAAnalysisView(APIView):
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
                     },
-                    timeout=300  # 5 minutes timeout for satellite data processing
+                    timeout=max(300, int(os.environ.get("VRA_ENGINE_TIMEOUT_SECONDS", "900")))
                 )
                 
                 logger.info(f"Response status: {response.status_code}")
@@ -728,7 +723,7 @@ class VRAAnalysisView(APIView):
                     logger.error(f"HTTP error {response.status_code}: {raw_response}")
                     return {
                         "success": False,
-                        "error": f"Analysis engine returned HTTP {response.status_code}: {raw_response}"
+                        "error": f"Analysis engine returned HTTP {response.status_code}: {raw_response[:500]}"
                     }
                 
             except requests.exceptions.Timeout:
@@ -740,7 +735,7 @@ class VRAAnalysisView(APIView):
                 
             except requests.exceptions.ConnectionError:
                 logger.error(f"Connection error for endpoint {endpoint_url}")
-                error_msg = "Cannot connect to analysis engine. Please ensure the Rust service is running on port 8001."
+                error_msg = f"Cannot connect to analysis engine at {self.engine_url}. Ensure the Rust VRA service is running."
                 if endpoint_url == endpoints[-1][0]:  # Last endpoint
                     return {"success": False, "error": error_msg}
                 continue  # Try next endpoint
@@ -798,14 +793,14 @@ class VRAAnalysisView(APIView):
         """
         troubleshooting = {
             "common_solutions": [
-                "Ensure the Rust VRA Analysis Engine is running on port 8001",
+                f"Ensure the Rust VRA Analysis Engine is running at {self.engine_url}",
                 "Check if the field geometry is valid",
                 "Verify internet connection for satellite data access",
                 "Restart the Rust service if it appears to be stuck"
             ],
             "service_commands": {
                 "start_service": "cd /path/to/rust/project && cargo run --release",
-                "check_health": "curl -X POST http://127.0.0.1:8001/health",
+                "check_health": f"curl -X POST {self.engine_url}/health",
                 "view_logs": "Check the Rust service console output"
             }
         }
@@ -824,6 +819,53 @@ class VRAAnalysisView(APIView):
         return troubleshooting
 
 
+def _execute_vra_analysis_job(job_id):
+    """Run satellite processing outside the browser request and persist its result."""
+    from .models import VRAAnalysisJob
+
+    close_old_connections()
+    try:
+        job = VRAAnalysisJob.objects.select_related("field").get(pk=job_id)
+        job.status = "running"
+        job.save(update_fields=["status", "updated_at"])
+
+        view = VRAAnalysisView()
+        result = view.send_to_rust_engine(job.request_data)
+        if not result.get("success"):
+            message = result.get("error", "VRA analysis failed")
+            job.status = "error"
+            job.error_message = message
+            job.save(update_fields=["status", "error_message", "updated_at"])
+            logger.error("VRA job %s failed for field %s: %s", job.pk, job.field_id, message)
+            return
+
+        job.status = "done"
+        job.result_data = result.get("data") or {}
+        job.save(update_fields=["status", "result_data", "updated_at"])
+        view.store_analysis_results(job.field, job.result_data)
+        logger.info("VRA job %s completed for field %s", job.pk, job.field_id)
+    except Exception as exc:
+        logger.exception("VRA background job %s failed", job_id)
+        VRAAnalysisJob.objects.filter(pk=job_id).update(status="error", error_message=str(exc))
+    finally:
+        close_old_connections()
+
+
+class VRAAnalysisStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, job_id):
+        from .models import VRAAnalysisJob
+
+        job = get_object_or_404(VRAAnalysisJob, pk=job_id, field__owner=request.user)
+        payload = {"job_id": job.pk, "status": job.status}
+        if job.status == "done":
+            payload["analysis_data"] = job.result_data
+        elif job.status == "error":
+            payload["error"] = job.error_message or "VRA analysis failed"
+        return Response(payload, status=status.HTTP_200_OK)
+
+
 # Enhanced status check function
 def check_vra_engine_status(request):
     """
@@ -832,8 +874,9 @@ def check_vra_engine_status(request):
     try:
         logger.info("Checking VRA engine status...")
         
+        engine_url = os.environ.get("VRA_ENGINE_URL", "http://127.0.0.1:8003").rstrip("/")
         response = requests.post(
-            "http://127.0.0.1:8001/health", 
+            f"{engine_url}/health",
             timeout=10,
             headers={'Content-Type': 'application/json'}
         )
@@ -841,6 +884,12 @@ def check_vra_engine_status(request):
         if response.status_code == 200:
             try:
                 health_data = response.json()
+                if health_data.get("status") != "healthy":
+                    return JsonResponse({
+                        "status": "warning",
+                        "message": "VRA engine responded but is not reporting healthy",
+                        "engine_status": health_data.get("status", "unknown"),
+                    }, status=503)
                 logger.info(f"VRA engine is healthy: {health_data}")
                 
                 return JsonResponse({
@@ -850,7 +899,7 @@ def check_vra_engine_status(request):
                     "message": "Service is running and ready",
                     "capabilities": health_data.get("capabilities", []),
                     "satellite_data_source": health_data.get("satellite_data_source", "Microsoft Planetary Computer"),
-                    "last_checked": "2025-07-28T11:58:00Z"
+                    "last_checked": timezone.now().isoformat()
                 })
             except json.JSONDecodeError:
                 logger.error("Health endpoint returned invalid JSON")
@@ -872,9 +921,9 @@ def check_vra_engine_status(request):
             "status": "offline",
             "message": "VRA Analysis Engine is not running",
             "troubleshooting": {
-                "check_service": "Ensure Rust service is running on port 8001",
+                "check_service": f"Ensure the Rust VRA service is running at {engine_url}",
                 "start_command": "cargo run --release",
-                "port": 8001
+                "service_url": engine_url
             }
         })
     except requests.exceptions.Timeout:

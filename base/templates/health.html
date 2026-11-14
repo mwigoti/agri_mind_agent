@@ -4056,9 +4056,11 @@
         if (!res.ok || data.status !== 'PENDING_APPROVAL') {
           if (content) {
             const details = Array.isArray(data.errors) ? data.errors.join('; ') : data.error;
+            const nextAction = data.next_action ? `<p style="margin:.4rem 0 0;color:hsl(var(--muted-foreground));">Next: ${escapeMapText(data.next_action)}</p>` : '';
             content.textContent = data.status === 'RUNNING'
               ? `Analysis is still running. Thread: ${data.thread_id || 'unavailable'}. Check this thread again shortly.`
               : details || data.advisory || `No advisory draft was created (${data.status || `HTTP ${res.status}`}).`;
+            if (data.status !== 'RUNNING' && nextAction) content.innerHTML = `${escapeMapText(content.textContent)}${nextAction}`;
           }
           if (btn) {
             btn.disabled = false;

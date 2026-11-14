@@ -35,7 +35,22 @@ class Workflow:
         except Exception as exc:
             failed = dict(state)
             status = "MAX_TOOL_CALLS_EXCEEDED" if str(exc) == "MAX_TOOL_CALLS_EXCEEDED" else "FAILED"
-            failed.update(status=status, errors=[f"Evidence retrieval failed safely ({type(exc).__name__})"])
+            if status == "MAX_TOOL_CALLS_EXCEEDED":
+                failed.update(
+                    status=status,
+                    error_code=status,
+                    failure_stage="evidence_retrieval",
+                    errors=["The evidence workflow reached its configured tool-call limit."],
+                    next_action="Retry later or review the tool-call configuration.",
+                )
+            else:
+                failed.update(
+                    status=status,
+                    error_code="MCP_RETRIEVAL_FAILED",
+                    failure_stage="evidence_retrieval",
+                    errors=["Farm evidence could not be retrieved from the connected data source."],
+                    next_action="Check the MCP service and its database connection, then retry.",
+                )
             failed["tool_call_count"] = max(failed.get("tool_call_count", 0), self.tools.count(state.get("thread_id", "")))
             self.audit.write({"event": "workflow_failure", "execution_id": state.get("execution_id"), "thread_id": state.get("thread_id"), "stage": "plan_and_fetch", "error": type(exc).__name__})
             return failed
@@ -52,10 +67,10 @@ class Workflow:
             if plot.get("status") != "OK":
                 state.update(
                     status="INSUFFICIENT_EVIDENCE",
-                    errors=[
-                        "DEMO_MODE is enabled and only synthetic plot IDs KE-001, KE-002, and KE-003 are available. "
-                        "This dashboard sent a saved farm ID; set DEMO_MODE=false and connect the live MCP database to assess it."
-                    ],
+                    error_code="DEMO_MODE_ACTIVE",
+                    failure_stage="runtime_configuration",
+                    errors=[f"Farm {plot_id} was not assessed because demo mode is enabled; live farm data was not queried."],
+                    next_action="Set DEMO_MODE=false and configure HF_TOKEN, then restart the agent to assess saved farms.",
                 )
                 return state
             state.update(plot_status=plot, telemetry=telemetry, calendar=calendar)
@@ -118,13 +133,28 @@ class Workflow:
                 calls += 1
                 state["tool_call_count"] = self.tools.count(thread_id)
 
+                if capability == "telemetry" and (not isinstance(result, dict) or result.get("status") != "OK"):
+                    message = result.get("message") if isinstance(result, dict) else None
+                    state.update(
+                        status="INSUFFICIENT_EVIDENCE",
+                        error_code="TELEMETRY_UNAVAILABLE",
+                        failure_stage="telemetry",
+                        errors=[message or "The farm has no current, usable telemetry snapshot."],
+                        missing_inputs=result.get("missing_inputs", []) if isinstance(result, dict) else [],
+                        next_action="Run or refresh crop analysis, then request the advisory again.",
+                    )
+                    break
+
                 # Dynamic early stopping & baseline lookup on plot status
                 if capability == "plot_status":
                     if isinstance(result, dict) and result.get("status") in {"NOT_FOUND", "ERROR"}:
                         # Dynamic recovery: early stop when plot is not recognized
                         state.update(
                             status="INSUFFICIENT_EVIDENCE",
-                            errors=[f"Plot {plot_id} was not verified by agricultural registry ({result.get('status')})"],
+                            error_code="PLOT_NOT_FOUND",
+                            failure_stage="plot_lookup",
+                            errors=[result.get("message") or f"Plot ID '{plot_id}' was not found in the agricultural registry."],
+                            next_action="Check the saved farm ID and confirm that the connected database contains the farm.",
                         )
                         break
 
@@ -147,7 +177,13 @@ class Workflow:
             return await self._reason_action(state)
         except Exception as exc:
             failed = dict(state)
-            failed.update(status="FAILED", errors=[f"Action reasoning failed safely ({type(exc).__name__})"])
+            failed.update(
+                status="FAILED",
+                error_code="HOSTED_REASONING_FAILED",
+                failure_stage="reasoning",
+                errors=["The hosted model could not complete evidence-based reasoning."],
+                next_action="Check HF_TOKEN, model/provider settings, and hosted service availability, then retry.",
+            )
             self.audit.write({"event": "workflow_failure", "execution_id": state.get("execution_id"), "thread_id": state.get("thread_id"), "stage": "reason_action", "error": type(exc).__name__})
             return failed
 
@@ -163,8 +199,20 @@ class Workflow:
             vegetation = values.get("vegetation_indices", {})
             rain = water.get("rainfall_anomaly_pct")
             health = vegetation.get("crop_health_score", vegetation.get("ndvi_latest"))
-            if rain is None or health is None:
-                state.update(status="INSUFFICIENT_EVIDENCE", errors=["Missing rainfall anomaly or crop-health observation"])
+            missing_inputs = []
+            if rain is None:
+                missing_inputs.append("rainfall anomaly")
+            if health is None:
+                missing_inputs.append("crop-health score or NDVI")
+            if missing_inputs:
+                state.update(
+                    status="INSUFFICIENT_EVIDENCE",
+                    error_code="REQUIRED_OBSERVATION_MISSING",
+                    failure_stage="evidence_check",
+                    missing_inputs=missing_inputs,
+                    errors=["Required observations are missing: " + ", ".join(missing_inputs) + "."],
+                    next_action="Save or refresh the missing field observations before requesting an advisory.",
+                )
                 return state
             action = "HOLD"
             rationale = f"Synthetic evidence reports crop-health score {health} and rainfall anomaly {rain}%; an extension officer should review these observations and the applicable calendar constraints."
@@ -180,7 +228,15 @@ class Workflow:
             action = proposal.get("selected_action")
             rationale = proposal.get("rationale", "")
             if action == "INSUFFICIENT_EVIDENCE":
-                state.update(status="INSUFFICIENT_EVIDENCE", rationale=rationale, errors=proposal.get("limitations", []))
+                limitations = proposal.get("limitations", [])
+                state.update(
+                    status="INSUFFICIENT_EVIDENCE",
+                    error_code="MODEL_EVIDENCE_GAP",
+                    failure_stage="reasoning",
+                    rationale=rationale,
+                    errors=limitations if isinstance(limitations, list) and limitations else ["Available records do not support a reliable recommendation."],
+                    next_action="Review the cited evidence and refresh any missing or stale farm observations.",
+                )
                 return state
             if action not in {"PLANT", "SPRAY", "HOLD"}:
                 # Resilient agent recovery: fail closed safely to HOLD rather than crashing
@@ -212,7 +268,13 @@ class Workflow:
         state.update(validation={"valid": ok, "errors": errors})
         self.audit.write({"event": "evidence_validation", "execution_id": state["execution_id"], "thread_id": state["thread_id"], "valid": ok, "errors": errors, "evidence_ids": state.get("evidence_ids", [])})
         if not ok:
-            state.update(status="INSUFFICIENT_EVIDENCE", errors=errors)
+            state.update(
+                status="INSUFFICIENT_EVIDENCE",
+                error_code="EVIDENCE_VALIDATION_FAILED",
+                failure_stage="evidence_validation",
+                errors=errors,
+                next_action="Review the missing inputs or evidence validation details before requesting another advisory.",
+            )
         return state
 
     async def draft_call(self, state: AgriState) -> dict[str, Any]:

@@ -98,18 +98,23 @@
         }
         .image-container {
             position: relative;
-            overflow: hidden;
+            display: flex;
+            width: 100%;
+            min-height: 360px;
+            align-items: center;
+            justify-content: center;
             border-radius: 0.5rem;
             background: #f3f4f6;
         }
         .image-container img {
+            display: block;
             width: 100%;
-            height: auto;
-            object-fit: cover;
-            transition: transform 0.3s ease;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
         }
-        .image-container:hover img {
-            transform: scale(1.05);
+        @media (max-width: 640px) {
+            .image-container { min-height: 300px; }
         }
         .troubleshooting {
             background: #fef3c7;
@@ -324,12 +329,13 @@
 
                 <!-- NDVI Analysis Tab -->
                 <div id="ndvi-tab" class="tab-content p-6">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="grid grid-cols-1 gap-8">
                         <div>
                             <h3 class="text-lg font-semibold text-gray-800 mb-4">NDVI Map</h3>
-                            <div id="ndviMapContainer" class="image-container bg-gray-100 h-64 flex items-center justify-center">
+                            <div id="ndviMapContainer" class="image-container bg-gray-100 w-full">
                                 <p class="text-gray-500">NDVI map will appear here</p>
                             </div>
+                            <p class="mt-2 text-xs text-gray-500">Display scaled to fit the map width; pixel size still reflects the satellite’s ground resolution.</p>
                             <div class="mt-4 text-sm text-gray-600 space-y-1">
                                 <p><strong>Data Source:</strong> <span id="dataSource">--</span></p>
                                 <p><strong>Acquisition Date:</strong> <span id="acquisitionDate">--</span></p>
@@ -389,12 +395,13 @@
 
                 <!-- VRA Zones Tab -->
                 <div id="zones-tab" class="tab-content p-6 hidden">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="grid grid-cols-1 gap-8">
                         <div>
                             <h3 class="text-lg font-semibold text-gray-800 mb-4">Zone Map</h3>
-                            <div id="zoneMapContainer" class="image-container bg-gray-100 h-64 flex items-center justify-center">
+                            <div id="zoneMapContainer" class="image-container bg-gray-100 w-full">
                                 <p class="text-gray-500">Zone map will appear here</p>
                             </div>
+                            <p class="mt-2 text-xs text-gray-500">Display scaled to fit the map width; pixel size still reflects the satellite’s ground resolution.</p>
                             <div id="clusteringInfo" class="mt-4 p-4 bg-blue-50 rounded-lg">
                                 <h4 class="font-medium text-blue-800 mb-2">Clustering Information</h4>
                                 <div class="text-sm text-blue-700 space-y-1">
@@ -452,6 +459,9 @@
             </div>
 
             <!-- Recommendations Section -->
+            <p class="mb-4 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                Zone rates and management suggestions are exploratory model outputs from satellite indices. They are not validated prescriptions; review with an agronomist and soil-test data before applying inputs.
+            </p>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                 <!-- Fertilizer Recommendations -->
                 <div class="bg-white rounded-lg shadow-md p-6">
@@ -531,6 +541,7 @@
                 this.analysisData = null;
                 this.isAnalyzing = false;
                 this.currentStep = 0;
+                this.mapFrames = [];
                 this.initializeElements();
                 this.setupEventListeners();
                 this.setupTabs();
@@ -572,6 +583,7 @@
                 this.startAnalysisBtn.addEventListener('click', () => this.startAnalysis());
                 this.retryBtn.addEventListener('click', () => this.startAnalysis());
                 this.debugBtn.addEventListener('click', () => this.toggleTroubleshooting());
+                window.addEventListener('resize', () => this.mapFrames.forEach(frame => this.fitMapFrame(frame)));
             }
 
             setupTabs() {
@@ -682,7 +694,9 @@
                     // Get analysis parameters
                     const numZones = parseInt(this.numZonesSelect.value);
                     const analysisType = this.analysisTypeSelect.value;
-                    const indices = this.getSelectedIndices();
+                    let indices = this.getSelectedIndices();
+                    if (analysisType === 'quick') indices = ['NDVI'];
+                    if (analysisType === 'detailed') indices = ['NDVI', 'EVI', 'SAVI', 'NDMI'];
 
                     console.log('Starting analysis with params:', { numZones, analysisType, indices });
 
@@ -708,9 +722,18 @@
                         body: JSON.stringify(requestData)
                     });
 
-                    this.updateProgress(50, 'Processing satellite imagery...', 3);
+                    const queued = await response.json();
+                    if (!response.ok || !queued.success) {
+                        throw new Error(queued.error || queued.message || `Request failed (${response.status})`);
+                    }
 
-                    const data = await response.json();
+                    this.updateProgress(35, 'Analysis queued; searching satellite imagery...', 3);
+                    const jobResult = await this.pollVRAJob(queued.job_id);
+                    const data = {
+                        success: true,
+                        analysis_data: jobResult.analysis_data,
+                        field_id: this.fieldId
+                    };
                     console.log('Analysis response:', data);
 
                     if (data.success) {
@@ -736,6 +759,26 @@
                 } finally {
                     this.isAnalyzing = false;
                 }
+            }
+
+            async pollVRAJob(jobId) {
+                const startedAt = Date.now();
+                const timeoutMs = 20 * 60 * 1000;
+                while (Date.now() - startedAt < timeoutMs) {
+                    await this.delay(2000);
+                    const response = await fetch(`/api/vra-analysis-status/${jobId}/`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const job = await response.json();
+                    if (!response.ok) throw new Error(job.error || job.detail || `Status check failed (${response.status})`);
+                    if (job.status === 'done') return job;
+                    if (job.status === 'error') throw new Error(job.error || 'VRA satellite analysis failed');
+
+                    const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+                    const progress = Math.min(75, 35 + Math.floor(elapsed / 12));
+                    this.updateProgress(progress, 'Processing satellite imagery; this can take several minutes...', 3);
+                }
+                throw new Error('VRA analysis is still running. Check again shortly; the job continues in the background.');
             }
 
             getSelectedIndices() {
@@ -842,24 +885,15 @@
             }
 
             populateMaps(fieldData) {
+                this.mapFrames = [];
                 // NDVI Map
                 if (fieldData.ndvi_map_png) {
-                    const ndviContainer = document.getElementById('ndviMapContainer');
-                    ndviContainer.innerHTML = `
-                        <img src="${fieldData.ndvi_map_png}" 
-                             alt="NDVI Analysis Map" 
-                             class="w-full h-full object-cover rounded-lg shadow-sm">
-                    `;
+                    this.showMap('ndviMapContainer', fieldData.ndvi_map_png, 'NDVI Analysis Map');
                 }
 
                 // Zone Map
                 if (fieldData.zone_map_png) {
-                    const zoneContainer = document.getElementById('zoneMapContainer');
-                    zoneContainer.innerHTML = `
-                        <img src="${fieldData.zone_map_png}" 
-                             alt="VRA Zones Map" 
-                             class="w-full h-full object-cover rounded-lg shadow-sm">
-                    `;
+                    this.showMap('zoneMapContainer', fieldData.zone_map_png, 'VRA Zones Map');
                 }
 
                 // Map metadata
@@ -868,6 +902,28 @@
                 document.getElementById('acquisitionDate').textContent = metadata.acquisition_date || '--';
                 document.getElementById('cloudCoverage').textContent = (metadata.cloud_coverage || 0).toFixed(1);
                 document.getElementById('resolution').textContent = metadata.resolution || '--';
+            }
+
+            showMap(containerId, imageSource, altText) {
+                const container = document.getElementById(containerId);
+                const image = new Image();
+                image.alt = altText;
+                image.className = 'rounded-lg shadow-sm';
+                const frame = { container, image };
+                this.mapFrames.push(frame);
+                image.addEventListener('load', () => this.fitMapFrame(frame), { once: true });
+                container.replaceChildren(image);
+                image.src = imageSource;
+            }
+
+            fitMapFrame(frame) {
+                const { container, image } = frame;
+                if (!image.naturalWidth || !image.naturalHeight) return;
+                const mapAspect = image.naturalWidth / image.naturalHeight;
+                const availableWidth = container.clientWidth;
+                const maxHeight = Math.min(window.innerHeight * 0.85, 900);
+                const fittedHeight = Math.max(300, Math.min(availableWidth / mapAspect, maxHeight));
+                container.style.height = `${fittedHeight}px`;
             }
 
             populateStatistics(fieldData) {
@@ -972,7 +1028,7 @@
                                 <span class="font-medium">${(zone.avg_ndvi || 0).toFixed(3)}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span>Recommended Rate:</span>
+                                <span>NDVI-based rate estimate*:</span>
                                 <span class="font-medium">${(zone.recommended_rate || 0).toFixed(0)} kg/ha</span>
                             </div>
                             <div class="flex justify-between">
@@ -984,6 +1040,11 @@
 
                     container.appendChild(zoneCard);
                 });
+
+                const note = document.createElement('p');
+                note.className = 'mt-3 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-3';
+                note.textContent = '* Exploratory model estimate derived from vegetation indices. It is not a validated fertilizer prescription; confirm with soil tests and an agronomist before application.';
+                container.appendChild(note);
 
                 // Clustering information
                 document.getElementById('clusterAlgorithm').textContent = clusteringInfo.algorithm || '--';

@@ -115,7 +115,6 @@ full = ["metrics", "database"]
 opt-level = 3
 lto = "fat"  # More aggressive link-time optimization
 codegen-units = 1
-panic = "abort"
 strip = true  # Remove debug symbols for smaller binary
 overflow-checks = false  # Disable overflow checks in release for performance
 

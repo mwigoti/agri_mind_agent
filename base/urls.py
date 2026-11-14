@@ -50,6 +50,7 @@ urlpatterns = [
     # VRA (Variable Rate Application)
     path('res/', res, name='res'),
     path('api/vra-analysis/<int:field_id>/', VRAAnalysisView.as_view(), name='vra-analysis-api'),
+    path('api/vra-analysis-status/<int:job_id>/', VRAAnalysisStatusView.as_view(), name='vra-analysis-status-api'),
     path('vra_page/<int:field_id>/', vra_page, name='vra-page'),
     path('api/vra-engine-status/', check_vra_engine_status, name='vra-engine-status'),
     

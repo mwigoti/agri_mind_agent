@@ -502,3 +502,26 @@ class FieldSoilData(models.Model):
 
     def __str__(self):
         return f"Soil — {self.field.name} | pH {self.soil_ph} | SOC {self.soc_gkg} g/kg"
+
+
+class VRAAnalysisJob(models.Model):
+    STATUS_CHOICES = [
+        ("queued", "Queued"),
+        ("running", "Running"),
+        ("done", "Done"),
+        ("error", "Error"),
+    ]
+
+    field = models.ForeignKey(Field, on_delete=models.CASCADE, related_name="vra_analysis_jobs")
+    request_data = models.JSONField(default=dict)
+    result_data = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="queued")
+    error_message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"VRA job {self.pk}: field {self.field_id} [{self.status}]"
