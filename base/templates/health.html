@@ -3875,13 +3875,17 @@
 
             <!-- Keep generated agronomic reasoning as a draft until the reviewer approves it. -->
             ${d.ai_report_review_status !== 'approved' ? `
-              <div class="report-section"><h4>Human review required</h4><p>The AI agronomic reasoning is held as a draft until a reviewer approves an advisory for this analysis.</p></div>
+              <div class="report-section"><h4>Human review required</h4><p>The AI agronomic narrative is withheld until an authenticated reviewer approves an advisory linked to this exact analysis. The measured field data above remains available for review.</p>
+                ${d.ai_report_review?.status === 'rejected' ? `<p><strong>Last decision:</strong> Rejected${d.ai_report_review.reason ? ` — ${escapeMapText(d.ai_report_review.reason)}` : ''}</p>` : ''}
+                ${d.field_id ? `<button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('aiFullReportOverlay').remove(); runAgriMindAdvisory(${Number(d.field_id)}, ${Number(d.result_id)})">Generate advisory for this analysis</button>` : ''}
+              </div>
             ` : sections.map(s => `
               <div class="report-section">
                 <h4>${s.icon} ${s.title}</h4>
                 ${s.content}
               </div>
             `).join('')}
+            ${d.ai_report_review_status === 'approved' && d.ai_report_review ? `<div class="report-section"><h4>Human review record</h4><p>Approved action: ${escapeMapText(d.ai_report_review.recommended_action || '—')}</p><p>Reviewer: ${escapeMapText(d.ai_report_review.reviewer || 'Authenticated reviewer')}</p><p>Reviewed: ${escapeMapText(d.ai_report_review.reviewed_at || '—')}</p><p>Reason: ${escapeMapText(d.ai_report_review.reason || '—')}</p></div>` : ''}
           </div>
           <div class="report-modal-footer">
             <button class="btn btn-outline btn-sm" onclick="document.getElementById('aiFullReportOverlay').remove()">Close</button>
@@ -3908,7 +3912,7 @@
         const boldMatch = line.match(/^\*\*(.+?):\*\*\s*(.*)/);
         if (boldMatch) {
           if (currentSection) {
-            sections.push({ icon: getSectionIcon(currentSection.title), title: currentSection.title, content: formatSectionContent(currentContent) });
+            sections.push({ icon: getSectionIcon(currentSection.title), title: escapeMapText(currentSection.title), content: formatSectionContent(currentContent) });
           }
           currentSection = { title: boldMatch[1].trim() };
           currentContent = boldMatch[2] ? [boldMatch[2].trim()] : [];
@@ -3923,10 +3927,10 @@
         }
       }
       if (currentSection) {
-        sections.push({ icon: getSectionIcon(currentSection.title), title: currentSection.title, content: formatSectionContent(currentContent) });
+        sections.push({ icon: getSectionIcon(currentSection.title), title: escapeMapText(currentSection.title), content: formatSectionContent(currentContent) });
       }
       if (sections.length === 0) {
-        sections.push({ icon: '📝', title: 'Report', content: `<p>${text.replace(/\n/g, '<br>')}</p>` });
+        sections.push({ icon: '📝', title: 'Report', content: `<p>${escapeMapText(text).replace(/\n/g, '<br>')}</p>` });
       }
       return sections;
     }
@@ -3949,7 +3953,7 @@
       let inList = false;
       for (let line of filtered) {
         // Bold markers within lines
-        let processed = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        let processed = escapeMapText(line).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         // Numbered list items
         const numMatch = processed.match(/^(\d+)\.\s+(.*)/);
         if (numMatch) {
@@ -4011,7 +4015,7 @@
       }
     }
 
-    async function runAgriMindAdvisory(fieldId) {
+    async function runAgriMindAdvisory(fieldId, analysisResultId = null) {
       const btn = document.getElementById(`agrimind-run-btn-${fieldId}`);
       const content = document.getElementById(`agrimind-content-${fieldId}`);
       const badge = document.getElementById(`agrimind-status-badge-${fieldId}`);
@@ -4031,7 +4035,7 @@
             'Content-Type': 'application/json',
             'X-CSRFToken': getCookie('csrftoken')
           },
-          body: JSON.stringify({})
+          body: JSON.stringify({ analysis_result_id: analysisResultId })
         });
         let data = await res.json();
 
@@ -4040,7 +4044,8 @@
           const terminal = new Set(['PENDING_APPROVAL', 'COMPLETED', 'REJECTED', 'FAILED', 'INSUFFICIENT_EVIDENCE', 'MAX_STEPS_EXCEEDED', 'MAX_TOOL_CALLS_EXCEEDED', 'SIMULATED_SMS_PREPARED']);
           for (let attempt = 0; attempt < 90; attempt += 1) {
             await new Promise(resolve => setTimeout(resolve, 1500));
-            const statusRes = await fetch(`/api/agent/advisory/${fieldId}/?thread_id=${encodeURIComponent(threadId)}`);
+            const resultParam = analysisResultId ? `&analysis_result_id=${encodeURIComponent(analysisResultId)}` : '';
+            const statusRes = await fetch(`/api/agent/advisory/${fieldId}/?thread_id=${encodeURIComponent(threadId)}${resultParam}`);
             if (!statusRes.ok) continue;
             data = await statusRes.json();
             if (badge) badge.textContent = data.status || 'Running';
@@ -4091,11 +4096,13 @@
             <div style="background:#fffbeb;border:1px solid #fef3c7;padding:0.75rem;border-radius:6px;margin-bottom:0.75rem;">
               <span style="font-size:0.8125rem;color:#92400e;font-weight:600;">⚠️ Draft reasoning — human review required</span>
               <p style="font-size:0.75rem;color:#b45309;margin:0.2rem 0 0.5rem 0;">Review the evidence and reasoning. It remains a draft until you approve or reject it; no recommendation is released to the report before approval.</p>
+              <label for="agrimind-review-reason-${fieldId}" style="display:block;font-size:.75rem;color:#78350f;margin:.5rem 0 .25rem;">Reviewer reason (required)</label>
+              <textarea id="agrimind-review-reason-${fieldId}" rows="2" minlength="10" maxlength="1000" placeholder="Explain why you approve or reject this proposed action (at least 10 characters)." style="width:100%;border:1px solid #d6d3d1;border-radius:6px;padding:.5rem;font-size:.8rem;"></textarea>
               <div class="agrimind-approval-actions">
-                <button class="agrimind-btn-approve" onclick="submitAgriMindDecision('${data.thread_id}', 'APPROVE', ${fieldId})">
+                <button class="agrimind-btn-approve" onclick="submitAgriMindDecision('${data.thread_id}', 'APPROVE', ${fieldId}, ${analysisResultId || 'null'})">
                   ✓ Approve Action
                 </button>
-                <button class="agrimind-btn-reject" onclick="submitAgriMindDecision('${data.thread_id}', 'REJECT', ${fieldId})">
+                <button class="agrimind-btn-reject" onclick="submitAgriMindDecision('${data.thread_id}', 'REJECT', ${fieldId}, ${analysisResultId || 'null'})">
                   ✗ Reject / Override
                 </button>
               </div>
@@ -4121,9 +4128,16 @@
       }
     }
 
-    async function submitAgriMindDecision(threadId, verdict, fieldId) {
+    async function submitAgriMindDecision(threadId, verdict, fieldId, analysisResultId = null) {
       const content = document.getElementById(`agrimind-content-${fieldId}`);
       const badge = document.getElementById(`agrimind-status-badge-${fieldId}`);
+      const reasonInput = document.getElementById(`agrimind-review-reason-${fieldId}`);
+      const reason = reasonInput?.value.trim() || '';
+      if (reason.length < 10) {
+        showError('Enter a review reason of at least 10 characters before deciding.');
+        reasonInput?.focus();
+        return;
+      }
       if (badge) {
         badge.className = 'agrimind-badge pending';
         badge.textContent = 'Submitting...';
@@ -4138,7 +4152,8 @@
           },
           body: JSON.stringify({
             verdict: verdict,
-            reason: `Field agronomist verified ${verdict} from field management portal`
+            reason,
+            analysis_result_id: analysisResultId
           })
         });
         const data = await res.json();
@@ -4156,8 +4171,17 @@
               <p style="font-size:0.8rem;color:#15803d;margin:0.25rem 0 0 0;">
                 Logged at ${escapeMapText(data.decision_timestamp || new Date().toLocaleTimeString())}. No SMS was sent.
               </p>
+              <p style="font-size:0.8rem;color:#15803d;margin:0.25rem 0 0 0;">Review reason: ${escapeMapText(reason)}</p>
             </div>
           `;
+        }
+        if (analysisResultId) {
+          const statusResponse = await fetch(`/api/analysis-status/${analysisResultId}/`, { credentials: 'same-origin' });
+          if (statusResponse.ok) {
+            window._lastAnalysisData = await statusResponse.json();
+            const reportOverlay = document.getElementById('aiFullReportOverlay');
+            if (reportOverlay) { reportOverlay.remove(); openReportModal(); }
+          }
         }
       } catch (err) {
         if (content) {

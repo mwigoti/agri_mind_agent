@@ -282,3 +282,68 @@ INFO 2026-11-14 10:57:10,048 views Successfully received JSON response from Rust
 INFO 2026-11-14 10:57:10,208 views VRA analysis completed for field 64 - Uasin_Gishu
 INFO 2026-11-14 10:57:10,208 views Analysis results: 4 zones, 0.0% health score
 INFO 2026-11-14 10:57:10,209 views VRA job 4 completed for field 64
+INFO 2026-11-14 11:16:37,838 views Checking VRA engine status...
+INFO 2026-11-14 11:16:37,842 views VRA engine is healthy: {'capabilities': ['Real-time satellite data streaming', 'Multi-spectral vegetation indices (NDVI, EVI, SAVI, NDMI, GNDVI)', 'K-means clustering for VRA zone generation', 'PNG visualization output', 'Memory-efficient processing', 'Precision agriculture recommendations', 'Environmental impact assessment', 'STAC-based satellite data discovery', 'Geometric cropping with GDAL', 'Streaming raster processing'], 'clustering_algorithms': ['K-means'], 'gdal_status': 'GDAL 3.8.4', 'output_formats': ['PNG', 'Base64-encoded images'], 'planetary_computer_status': 'Connected (Public Access - Rate Limited)', 'satellite_data_source': 'Microsoft Planetary Computer', 'service': 'Enhanced VRA Analysis Engine with Streaming K-means', 'stac_api': 'https://planetarycomputer.microsoft.com/api/stac/v1', 'status': 'healthy', 'streaming_config': {'chunk_size_mb': 1.0, 'compression_enabled': True, 'max_concurrent_chunks': 4, 'memory_limit_mb': 512}, 'supported_indices': ['NDVI', 'EVI', 'SAVI', 'NDMI', 'GNDVI'], 'timestamp': '2026-11-14T11:16:37.841494256+00:00', 'version': '4.0.0'}
+INFO 2026-11-14 11:16:46,918 views Starting VRA analysis for field 64
+INFO 2026-11-14 11:16:46,918 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 11:16:47,077 views Prepared VRA request data for field 64
+INFO 2026-11-14 11:16:47,078 views Prepared VRA request for field 64: zones=4 indices=['NDVI', 'EVI', 'SAVI', 'NDMI']
+INFO 2026-11-14 11:16:47,080 views Rust engine health check passed: healthy
+INFO 2026-11-14 11:16:49,099 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+INFO 2026-11-14 11:17:00,069 views Response status: 200
+INFO 2026-11-14 11:17:00,070 views Successfully received JSON response from Rust engine
+INFO 2026-11-14 11:17:00,619 views VRA analysis completed for field 64 - Uasin_Gishu
+INFO 2026-11-14 11:17:00,619 views Analysis results: 4 zones, 0.0% health score
+INFO 2026-11-14 11:17:00,619 views VRA job 5 completed for field 64
+INFO 2026-11-14 11:32:59,940 views Checking VRA engine status...
+INFO 2026-11-14 11:32:59,944 views VRA engine is healthy: {'capabilities': ['Real-time satellite data streaming', 'Multi-spectral vegetation indices (NDVI, EVI, SAVI, NDMI, GNDVI)', 'K-means clustering for VRA zone generation', 'PNG visualization output', 'Memory-efficient processing', 'Precision agriculture recommendations', 'Environmental impact assessment', 'STAC-based satellite data discovery', 'Geometric cropping with GDAL', 'Streaming raster processing'], 'clustering_algorithms': ['K-means'], 'gdal_status': 'GDAL 3.8.4', 'output_formats': ['PNG', 'Base64-encoded images'], 'planetary_computer_status': 'Connected (Public Access - Rate Limited)', 'satellite_data_source': 'Microsoft Planetary Computer', 'service': 'Enhanced VRA Analysis Engine with Streaming K-means', 'stac_api': 'https://planetarycomputer.microsoft.com/api/stac/v1', 'status': 'healthy', 'streaming_config': {'chunk_size_mb': 1.0, 'compression_enabled': True, 'max_concurrent_chunks': 4, 'memory_limit_mb': 512}, 'supported_indices': ['NDVI', 'EVI', 'SAVI', 'NDMI', 'GNDVI'], 'timestamp': '2026-11-14T11:32:59.943357777+00:00', 'version': '4.0.0'}
+INFO 2026-11-14 11:44:49,827 views Checking VRA engine status...
+INFO 2026-11-14 11:44:49,831 views VRA engine is healthy: {'capabilities': ['Real-time satellite data streaming', 'Multi-spectral vegetation indices (NDVI, EVI, SAVI, NDMI, GNDVI)', 'K-means clustering for VRA zone generation', 'PNG visualization output', 'Memory-efficient processing', 'Precision agriculture recommendations', 'Environmental impact assessment', 'STAC-based satellite data discovery', 'Geometric cropping with GDAL', 'Streaming raster processing'], 'clustering_algorithms': ['K-means'], 'gdal_status': 'GDAL 3.8.4', 'output_formats': ['PNG', 'Base64-encoded images'], 'planetary_computer_status': 'Connected (Public Access - Rate Limited)', 'satellite_data_source': 'Microsoft Planetary Computer', 'service': 'Enhanced VRA Analysis Engine with Streaming K-means', 'stac_api': 'https://planetarycomputer.microsoft.com/api/stac/v1', 'status': 'healthy', 'streaming_config': {'chunk_size_mb': 1.0, 'compression_enabled': True, 'max_concurrent_chunks': 4, 'memory_limit_mb': 512}, 'supported_indices': ['NDVI', 'EVI', 'SAVI', 'NDMI', 'GNDVI'], 'timestamp': '2026-11-14T11:44:49.830435242+00:00', 'version': '4.0.0'}
+INFO 2026-11-14 11:44:53,499 views Starting VRA analysis for field 64
+INFO 2026-11-14 11:44:53,499 views Found field: Uasin_Gishu (Area: 0.2602001660580783 ha)
+INFO 2026-11-14 11:44:53,662 views Prepared VRA request data for field 64
+INFO 2026-11-14 11:44:53,662 views Prepared VRA request for field 64: zones=4 indices=['NDVI', 'EVI', 'SAVI', 'NDMI']
+INFO 2026-11-14 11:44:53,666 views Rust engine health check passed: healthy
+INFO 2026-11-14 11:44:56,788 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+INFO 2026-11-14 11:45:10,074 views Response status: 200
+INFO 2026-11-14 11:45:10,074 views Successfully received JSON response from Rust engine
+INFO 2026-11-14 11:45:10,419 views VRA analysis completed for field 64 - Uasin_Gishu
+INFO 2026-11-14 11:45:10,419 views Analysis results: 4 zones, 0.0% health score
+INFO 2026-11-14 11:45:10,419 views VRA job 6 completed for field 64
+INFO 2026-11-14 11:46:52,508 views Checking VRA engine status...
+INFO 2026-11-14 11:46:52,514 views VRA engine is healthy: {'capabilities': ['Real-time satellite data streaming', 'Multi-spectral vegetation indices (NDVI, EVI, SAVI, NDMI, GNDVI)', 'K-means clustering for VRA zone generation', 'PNG visualization output', 'Memory-efficient processing', 'Precision agriculture recommendations', 'Environmental impact assessment', 'STAC-based satellite data discovery', 'Geometric cropping with GDAL', 'Streaming raster processing'], 'clustering_algorithms': ['K-means'], 'gdal_status': 'GDAL 3.8.4', 'output_formats': ['PNG', 'Base64-encoded images'], 'planetary_computer_status': 'Connected (Public Access - Rate Limited)', 'satellite_data_source': 'Microsoft Planetary Computer', 'service': 'Enhanced VRA Analysis Engine with Streaming K-means', 'stac_api': 'https://planetarycomputer.microsoft.com/api/stac/v1', 'status': 'healthy', 'streaming_config': {'chunk_size_mb': 1.0, 'compression_enabled': True, 'max_concurrent_chunks': 4, 'memory_limit_mb': 512}, 'supported_indices': ['NDVI', 'EVI', 'SAVI', 'NDMI', 'GNDVI'], 'timestamp': '2026-11-14T11:46:52.512859523+00:00', 'version': '4.0.0'}
+INFO 2026-11-14 11:46:58,139 views Starting VRA analysis for field 75
+INFO 2026-11-14 11:46:58,139 views Found field: Matara (Area: 1.686284291884201 ha)
+INFO 2026-11-14 11:46:58,344 views Prepared VRA request data for field 75
+INFO 2026-11-14 11:46:58,344 views Prepared VRA request for field 75: zones=5 indices=['NDVI', 'EVI', 'SAVI']
+INFO 2026-11-14 11:46:58,347 views Rust engine health check passed: healthy
+INFO 2026-11-14 11:47:00,289 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+INFO 2026-11-14 11:47:14,820 views Response status: 200
+INFO 2026-11-14 11:47:14,820 views Successfully received JSON response from Rust engine
+INFO 2026-11-14 11:47:15,241 views VRA analysis completed for field 75 - Matara
+INFO 2026-11-14 11:47:15,241 views Analysis results: 5 zones, 6.7% health score
+INFO 2026-11-14 11:47:15,241 views VRA job 7 completed for field 75
+INFO 2026-11-14 11:59:30,805 views Checking VRA engine status...
+INFO 2026-11-14 11:59:30,809 views VRA engine is healthy: {'capabilities': ['Real-time satellite data streaming', 'Multi-spectral vegetation indices (NDVI, EVI, SAVI, NDMI, GNDVI)', 'K-means clustering for VRA zone generation', 'PNG visualization output', 'Memory-efficient processing', 'Precision agriculture recommendations', 'Environmental impact assessment', 'STAC-based satellite data discovery', 'Geometric cropping with GDAL', 'Streaming raster processing'], 'clustering_algorithms': ['K-means'], 'gdal_status': 'GDAL 3.8.4', 'output_formats': ['PNG', 'Base64-encoded images'], 'planetary_computer_status': 'Connected (Public Access - Rate Limited)', 'satellite_data_source': 'Microsoft Planetary Computer', 'service': 'Enhanced VRA Analysis Engine with Streaming K-means', 'stac_api': 'https://planetarycomputer.microsoft.com/api/stac/v1', 'status': 'healthy', 'streaming_config': {'chunk_size_mb': 1.0, 'compression_enabled': True, 'max_concurrent_chunks': 4, 'memory_limit_mb': 512}, 'supported_indices': ['NDVI', 'EVI', 'SAVI', 'NDMI', 'GNDVI'], 'timestamp': '2026-11-14T11:59:30.808033350+00:00', 'version': '4.0.0'}
+INFO 2026-11-14 11:59:41,209 views Starting VRA analysis for field 75
+INFO 2026-11-14 11:59:41,209 views Found field: Matara (Area: 1.686284291884201 ha)
+INFO 2026-11-14 11:59:41,452 views Prepared VRA request data for field 75
+INFO 2026-11-14 11:59:41,452 views Prepared VRA request for field 75: zones=5 indices=['NDVI', 'EVI', 'SAVI']
+INFO 2026-11-14 11:59:41,457 views Rust engine health check passed: healthy
+INFO 2026-11-14 11:59:43,931 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+INFO 2026-11-14 12:00:07,447 views Response status: 200
+INFO 2026-11-14 12:00:07,448 views Successfully received JSON response from Rust engine
+INFO 2026-11-14 12:00:08,281 views VRA analysis completed for field 75 - Matara
+INFO 2026-11-14 12:00:08,281 views Analysis results: 5 zones, 6.7% health score
+INFO 2026-11-14 12:00:08,281 views VRA job 8 completed for field 75
+INFO 2026-11-14 16:02:09,011 views Checking VRA engine status...
+INFO 2026-11-14 16:02:09,015 views VRA engine is healthy: {'capabilities': ['Real-time satellite data streaming', 'Multi-spectral vegetation indices (NDVI, EVI, SAVI, NDMI, GNDVI)', 'K-means clustering for VRA zone generation', 'PNG visualization output', 'Memory-efficient processing', 'Precision agriculture recommendations', 'Environmental impact assessment', 'STAC-based satellite data discovery', 'Geometric cropping with GDAL', 'Streaming raster processing'], 'clustering_algorithms': ['K-means'], 'gdal_status': 'GDAL 3.8.4', 'output_formats': ['PNG', 'Base64-encoded images'], 'planetary_computer_status': 'Connected (Public Access - Rate Limited)', 'satellite_data_source': 'Microsoft Planetary Computer', 'service': 'Enhanced VRA Analysis Engine with Streaming K-means', 'stac_api': 'https://planetarycomputer.microsoft.com/api/stac/v1', 'status': 'healthy', 'streaming_config': {'chunk_size_mb': 1.0, 'compression_enabled': True, 'max_concurrent_chunks': 4, 'memory_limit_mb': 512}, 'supported_indices': ['NDVI', 'EVI', 'SAVI', 'NDMI', 'GNDVI'], 'timestamp': '2026-11-14T16:02:09.014703558+00:00', 'version': '4.0.0'}
+INFO 2026-11-14 16:03:57,745 views Starting VRA analysis for field 75
+INFO 2026-11-14 16:03:57,745 views Found field: Matara (Area: 1.686284291884201 ha)
+INFO 2026-11-14 16:03:59,610 views Prepared VRA request data for field 75
+INFO 2026-11-14 16:03:59,610 views Prepared VRA request for field 75: zones=5 indices=['NDVI', 'EVI', 'SAVI']
+INFO 2026-11-14 16:03:59,614 views Rust engine health check passed: healthy
+INFO 2026-11-14 16:04:08,659 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+INFO 2026-11-14 16:04:16,410 views Response status: 422
+ERROR 2026-11-14 16:04:16,411 views HTTP error 422: error sending request for url (https://planetarycomputer.microsoft.com/api/stac/v1/search): connection error: unexpected end of file
+ERROR 2026-11-14 16:04:18,035 views VRA job 9 failed for field 75: Analysis engine returned HTTP 422: error sending request for url (https://planetarycomputer.microsoft.com/api/stac/v1/search): connection error: unexpected end of file

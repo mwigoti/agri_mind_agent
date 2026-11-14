@@ -368,8 +368,8 @@ use image::{ImageBuffer, Rgba, RgbaImage};
 use anyhow::{Result as AnyhowResult, Context};
 use thiserror::Error;
 use ndarray::Array2;
-use geo::BoundingRect;
-use geo_types::{Coord, Geometry as GeoGeometry, LineString, Polygon as GeoPolygon};
+use geo::{BoundingRect, Contains};
+use geo_types::{Coord, Geometry as GeoGeometry, LineString, Point, Polygon as GeoPolygon};
 use chrono::{Duration, Utc};
 use proj::Proj;
 
@@ -753,6 +753,8 @@ fn generate_zone_legend_items(zones: &[VRAZone]) -> String {
 fn create_mock_processing_details(error: &anyhow::Error) -> ProcessingDetails {
     ProcessingDetails {
         satellite_item_id: "MOCK_SENTINEL2_ITEM".to_string(),
+        acquisition_date: "Unavailable".to_string(),
+        cloud_coverage_percent: 0.0,
         bands_used: vec!["B04 (Red)".to_string(), "B08 (NIR)".to_string(), 
                         "B03 (Green)".to_string(), "B11 (SWIR)".to_string()],
         processing_steps: vec![
@@ -833,6 +835,8 @@ struct VRAAnalysisRequest {
     #[serde(default)]
     area_hectares: Option<f64>,
     num_zones: Option<usize>,
+    grid_cell_size_m: Option<f64>,
+    include_previous_scene: Option<bool>,
     indices: Option<Vec<String>>,
     planetary_computer_config: Option<PlanetaryComputerRequestConfig>,
 }
@@ -869,6 +873,13 @@ impl Default for SearchConfig {
 struct VRAMapResponse {
     field_id: u32,
     field_name: String,
+    field_boundary: GeoJsonGeometry,
+    map_bbox: BoundingBox,
+    grid_cells: Vec<GridCell>,
+    grid_cell_size_m: f64,
+    previous_ndvi_map_png: Option<String>,
+    ndvi_change_map_png: Option<String>,
+    previous_scene_date: Option<String>,
     ndvi_map_png: String,
     vegetation_indices: VegetationIndices,
     vra_zones: Vec<VRAZone>,
@@ -879,6 +890,17 @@ struct VRAMapResponse {
     analysis_summary: AnalysisSummary,
     processing_details: ProcessingDetails,
     clustering_info: ClusteringInfo,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct GridCell {
+    row: usize,
+    col: usize,
+    bounds: BoundingBox,
+    mean_ndvi: f64,
+    source_pixel_count: usize,
+    coverage_percent: f64,
+    zone_id: u8,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1022,6 +1044,8 @@ struct AnalysisSummary {
 #[derive(Debug, Serialize, Deserialize)]
 struct ProcessingDetails {
     satellite_item_id: String,
+    acquisition_date: String,
+    cloud_coverage_percent: f64,
     bands_used: Vec<String>,
     processing_steps: Vec<String>,
     quality_flags: Vec<String>,
@@ -1116,6 +1140,8 @@ struct VegetationData {
     ndmi: Option<Array2<f64>>,
     gndvi: Option<Array2<f64>>,
     mask: Array2<bool>,
+    source_pixel_counts: Array2<usize>,
+    source_pixel_area_m2: f64,
     indices_stats: VegetationIndices,
     geotransform: [f64; 6],
     projection: String,
@@ -1338,6 +1364,278 @@ fn reproject_polygon(polygon: &GeoPolygon<f64>, transformer: &Proj) -> AnyhowRes
     let exterior = transform_ring(polygon.exterior())?;
     let interiors = polygon.interiors().iter().map(transform_ring).collect::<AnyhowResult<Vec<_>>>()?;
     Ok(GeoPolygon::new(exterior, interiors))
+}
+
+fn mask_raster_to_polygon(raster: &mut StreamingRasterData, polygon: &GeoPolygon<f64>) {
+    let gt = raster.geotransform;
+    let (height, width) = raster.data.dim();
+    for row in 0..height {
+        for col in 0..width {
+            let x = gt[0] + (col as f64 + 0.5) * gt[1] + (row as f64 + 0.5) * gt[2];
+            let y = gt[3] + (col as f64 + 0.5) * gt[4] + (row as f64 + 0.5) * gt[5];
+            if !polygon.contains(&Point::new(x, y)) {
+                raster.data[(row, col)] = f64::NAN;
+            }
+        }
+    }
+}
+
+fn raster_bounds_wgs84(raster: &StreamingRasterData) -> AnyhowResult<BoundingBox> {
+    let transformer = Proj::new_known_crs(&raster.projection, "EPSG:4326", None)
+        .map_err(|e| anyhow::anyhow!("Cannot transform raster extent to map coordinates: {}", e))?;
+    let gt = raster.geotransform;
+    let width = raster.width as f64;
+    let height = raster.height as f64;
+    let pixel_corners = [(0.0, 0.0), (width, 0.0), (0.0, height), (width, height)];
+    let mut longitudes = Vec::with_capacity(4);
+    let mut latitudes = Vec::with_capacity(4);
+    for (col, row) in pixel_corners {
+        let x = gt[0] + col * gt[1] + row * gt[2];
+        let y = gt[3] + col * gt[4] + row * gt[5];
+        let (lon, lat) = transformer.convert((x, y))
+            .map_err(|e| anyhow::anyhow!("Raster extent conversion failed: {}", e))?;
+        longitudes.push(lon);
+        latitudes.push(lat);
+    }
+    Ok(BoundingBox {
+        min_lon: longitudes.iter().copied().fold(f64::INFINITY, f64::min),
+        min_lat: latitudes.iter().copied().fold(f64::INFINITY, f64::min),
+        max_lon: longitudes.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+        max_lat: latitudes.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+    })
+}
+
+// Re-bin the source satellite pixels into regular cells defined by the field
+// geometry's bounding box. Each displayed cell is the mean of its valid source
+// pixels; cells without observations remain transparent.
+fn aggregate_vegetation_to_field_grid(
+    vegetation: &mut VegetationData,
+    field_polygon: &GeoPolygon<f64>,
+    requested_cell_size_m: Option<f64>,
+) -> AnyhowResult<([f64; 6], f64)> {
+    let bounds = field_polygon.bounding_rect()
+        .context("Field geometry has no bounding rectangle for grid generation")?;
+    let source_gt = vegetation.geotransform;
+    let pixel_width = (source_gt[1].powi(2) + source_gt[4].powi(2)).sqrt();
+    let pixel_height = (source_gt[2].powi(2) + source_gt[5].powi(2)).sqrt();
+    // Default to roughly two source pixels per grid cell. A requested size is
+    // clamped to a practical range and remains in projected map units (metres).
+    let cell_size = requested_cell_size_m
+        .filter(|size| size.is_finite() && (5.0..=100.0).contains(size))
+        .unwrap_or((pixel_width.max(pixel_height) * 2.0).clamp(5.0, 100.0));
+    let cols = (((bounds.max().x - bounds.min().x) / cell_size).ceil() as usize).max(1);
+    let rows = (((bounds.max().y - bounds.min().y) / cell_size).ceil() as usize).max(1);
+    let cell_width = (bounds.max().x - bounds.min().x) / cols as f64;
+    let cell_height = (bounds.max().y - bounds.min().y) / rows as f64;
+    let grid_gt = [bounds.min().x, cell_width, 0.0, bounds.max().y, 0.0, -cell_height];
+
+    let mut counts = Array2::<usize>::zeros((rows, cols));
+    let mut ndvi_sums = Array2::<f64>::zeros((rows, cols));
+    let mut evi_sums = vegetation.evi.as_ref().map(|_| (Array2::<f64>::zeros((rows, cols)), Array2::<usize>::zeros((rows, cols))));
+    let mut savi_sums = vegetation.savi.as_ref().map(|_| (Array2::<f64>::zeros((rows, cols)), Array2::<usize>::zeros((rows, cols))));
+    let mut ndmi_sums = vegetation.ndmi.as_ref().map(|_| (Array2::<f64>::zeros((rows, cols)), Array2::<usize>::zeros((rows, cols))));
+    let mut gndvi_sums = vegetation.gndvi.as_ref().map(|_| (Array2::<f64>::zeros((rows, cols)), Array2::<usize>::zeros((rows, cols))));
+
+    for ((row, col), &is_valid) in vegetation.mask.indexed_iter() {
+        if !is_valid { continue; }
+        let x = source_gt[0] + (col as f64 + 0.5) * source_gt[1] + (row as f64 + 0.5) * source_gt[2];
+        let y = source_gt[3] + (col as f64 + 0.5) * source_gt[4] + (row as f64 + 0.5) * source_gt[5];
+        if !field_polygon.contains(&Point::new(x, y)) { continue; }
+        let grid_col = ((x - bounds.min().x) / cell_width).floor() as usize;
+        let grid_row = ((bounds.max().y - y) / cell_height).floor() as usize;
+        if grid_row >= rows || grid_col >= cols { continue; }
+
+        counts[(grid_row, grid_col)] += 1;
+        ndvi_sums[(grid_row, grid_col)] += vegetation.ndvi[(row, col)];
+        if let (Some((sum, bin_counts)), Some(array)) = (evi_sums.as_mut(), vegetation.evi.as_ref()) {
+            if array[(row, col)].is_finite() { sum[(grid_row, grid_col)] += array[(row, col)]; bin_counts[(grid_row, grid_col)] += 1; }
+        }
+        if let (Some((sum, bin_counts)), Some(array)) = (savi_sums.as_mut(), vegetation.savi.as_ref()) {
+            if array[(row, col)].is_finite() { sum[(grid_row, grid_col)] += array[(row, col)]; bin_counts[(grid_row, grid_col)] += 1; }
+        }
+        if let (Some((sum, bin_counts)), Some(array)) = (ndmi_sums.as_mut(), vegetation.ndmi.as_ref()) {
+            if array[(row, col)].is_finite() { sum[(grid_row, grid_col)] += array[(row, col)]; bin_counts[(grid_row, grid_col)] += 1; }
+        }
+        if let (Some((sum, bin_counts)), Some(array)) = (gndvi_sums.as_mut(), vegetation.gndvi.as_ref()) {
+            if array[(row, col)].is_finite() { sum[(grid_row, grid_col)] += array[(row, col)]; bin_counts[(grid_row, grid_col)] += 1; }
+        }
+    }
+
+    let ndvi = averaged_grid(ndvi_sums, &counts);
+    let average_optional = |entry: (Array2<f64>, Array2<usize>)| averaged_grid(entry.0, &entry.1);
+    let evi = evi_sums.map(average_optional);
+    let savi = savi_sums.map(average_optional);
+    let ndmi = ndmi_sums.map(average_optional);
+    let gndvi = gndvi_sums.map(average_optional);
+    let mask = counts.mapv(|count| count > 0);
+    let valid_values = |array: &Array2<f64>| -> Vec<f64> {
+        array.iter().filter(|value| value.is_finite()).copied().collect()
+    };
+    vegetation.indices_stats = VegetationIndices {
+        ndvi_stats: calculate_index_stats(&valid_values(&ndvi), rows * cols),
+        evi_stats: evi.as_ref().map(|array| calculate_index_stats(&valid_values(array), rows * cols)),
+        savi_stats: savi.as_ref().map(|array| calculate_index_stats(&valid_values(array), rows * cols)),
+        ndmi_stats: ndmi.as_ref().map(|array| calculate_index_stats(&valid_values(array), rows * cols)),
+        gndvi_stats: gndvi.as_ref().map(|array| calculate_index_stats(&valid_values(array), rows * cols)),
+    };
+    vegetation.ndvi = ndvi;
+    vegetation.evi = evi;
+    vegetation.savi = savi;
+    vegetation.ndmi = ndmi;
+    vegetation.gndvi = gndvi;
+    vegetation.mask = mask;
+    vegetation.source_pixel_counts = counts;
+    vegetation.geotransform = grid_gt;
+    Ok((grid_gt, cell_width.max(cell_height)))
+}
+
+fn averaged_grid(mut sums: Array2<f64>, counts: &Array2<usize>) -> Array2<f64> {
+    for ((row, col), value) in sums.indexed_iter_mut() {
+        let count = counts[(row, col)];
+        *value = if count > 0 { *value / count as f64 } else { f64::NAN };
+    }
+    sums
+}
+
+fn aggregate_values_to_grid(
+    values: &Array2<f64>,
+    source_gt: [f64; 6],
+    field_polygon: &GeoPolygon<f64>,
+    grid_gt: [f64; 6],
+    grid_rows: usize,
+    grid_cols: usize,
+) -> Array2<f64> {
+    let mut sums = Array2::<f64>::zeros((grid_rows, grid_cols));
+    let mut counts = Array2::<usize>::zeros((grid_rows, grid_cols));
+    for ((row, col), &value) in values.indexed_iter() {
+        if !value.is_finite() { continue; }
+        let x = source_gt[0] + (col as f64 + 0.5) * source_gt[1] + (row as f64 + 0.5) * source_gt[2];
+        let y = source_gt[3] + (col as f64 + 0.5) * source_gt[4] + (row as f64 + 0.5) * source_gt[5];
+        if !field_polygon.contains(&Point::new(x, y)) { continue; }
+        let grid_col = ((x - grid_gt[0]) / grid_gt[1]).floor() as usize;
+        let grid_row = ((grid_gt[3] - y) / -grid_gt[5]).floor() as usize;
+        if grid_row < grid_rows && grid_col < grid_cols {
+            sums[(grid_row, grid_col)] += value;
+            counts[(grid_row, grid_col)] += 1;
+        }
+    }
+    averaged_grid(sums, &counts)
+}
+
+async fn load_previous_scene_grid(
+    config: &PlanetaryComputerConfig,
+    item: &STACItem,
+    field_polygon: &GeoPolygon<f64>,
+    current_reference: &StreamingRasterData,
+    grid_gt: [f64; 6],
+    grid_rows: usize,
+    grid_cols: usize,
+) -> AnyhowResult<(Array2<f64>, String)> {
+    let red_href = &item.assets.get("B04").context("Previous scene has no B04 band")?.href;
+    let nir_href = &item.assets.get("B08").context("Previous scene has no B08 band")?.href;
+    let (red_url, nir_url) = tokio::try_join!(config.sign_url(red_href), config.sign_url(nir_href))?;
+    let (red, nir) = tokio::try_join!(
+        config.stream_raster_data(&red_url, field_polygon),
+        config.stream_raster_data(&nir_url, field_polygon),
+    )?;
+    let mut red = resample_raster_to_reference(red, current_reference)?;
+    let mut nir = resample_raster_to_reference(nir, current_reference)?;
+    let to_raster_crs = Proj::new_known_crs("EPSG:4326", &current_reference.projection, None)
+        .map_err(|error| anyhow::anyhow!("Cannot align previous scene to current raster: {}", error))?;
+    let polygon_in_raster_crs = reproject_polygon(field_polygon, &to_raster_crs)?;
+    mask_raster_to_polygon(&mut red, &polygon_in_raster_crs);
+    mask_raster_to_polygon(&mut nir, &polygon_in_raster_crs);
+    let ndvi = Array2::from_shape_fn(red.data.dim(), |(row, col)| {
+        let r = red.data[(row, col)];
+        let n = nir.data[(row, col)];
+        if !r.is_finite() || !n.is_finite() || r + n == 0.0 { f64::NAN } else { (n - r) / (n + r) }
+    });
+    let grid = aggregate_values_to_grid(
+        &ndvi,
+        red.geotransform,
+        &polygon_in_raster_crs,
+        grid_gt,
+        grid_rows,
+        grid_cols,
+    );
+    Ok((grid, item.properties.datetime.clone()))
+}
+
+fn create_index_grid_png(values: &Array2<f64>, change_map: bool) -> AnyhowResult<String> {
+    let (height, width) = values.dim();
+    let mut image: RgbaImage = ImageBuffer::new(width as u32, height as u32);
+    for ((row, col), &value) in values.indexed_iter() {
+        let color = if !value.is_finite() {
+            Rgba([0, 0, 0, 0])
+        } else if change_map {
+            let normalized = ((value / 0.3).clamp(-1.0, 1.0) + 1.0) / 2.0;
+            if normalized < 0.5 {
+                let t = normalized * 2.0;
+                Rgba([(215.0 + 40.0 * t) as u8, (48.0 + 207.0 * t) as u8, (39.0 + 191.0 * t) as u8, 255])
+            } else {
+                let t = (normalized - 0.5) * 2.0;
+                Rgba([(255.0 - 229.0 * t) as u8, (255.0 - 103.0 * t) as u8, (230.0 - 150.0 * t) as u8, 255])
+            }
+        } else {
+            let rgb = ndvi_to_enhanced_color(value);
+            Rgba([rgb[0], rgb[1], rgb[2], 255])
+        };
+        image.put_pixel(col as u32, row as u32, color);
+    }
+    let image = add_border_and_scale(&image, "Vegetation grid")?;
+    let mut buffer = Vec::new();
+    image.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageOutputFormat::Png)?;
+    Ok(format!("data:image/png;base64,{}", general_purpose::STANDARD.encode(buffer)))
+}
+
+fn build_grid_cell_details(
+    vegetation: &VegetationData,
+    zone_assignments: &Array2<u8>,
+) -> AnyhowResult<Vec<GridCell>> {
+    let transformer = Proj::new_known_crs(&vegetation.projection, "EPSG:4326", None)
+        .map_err(|error| anyhow::anyhow!("Cannot transform grid cells for map inspection: {}", error))?;
+    let gt = vegetation.geotransform;
+    let (height, width) = vegetation.ndvi.dim();
+    let mut cells = Vec::new();
+    for row in 0..height {
+        for col in 0..width {
+            let count = vegetation.source_pixel_counts[(row, col)];
+            let mean_ndvi = vegetation.ndvi[(row, col)];
+            if count == 0 || !mean_ndvi.is_finite() { continue; }
+            let corners = [
+                (col as f64, row as f64),
+                ((col + 1) as f64, row as f64),
+                (col as f64, (row + 1) as f64),
+                ((col + 1) as f64, (row + 1) as f64),
+            ];
+            let mut lons = Vec::with_capacity(4);
+            let mut lats = Vec::with_capacity(4);
+            for (grid_col, grid_row) in corners {
+                let x = gt[0] + grid_col * gt[1] + grid_row * gt[2];
+                let y = gt[3] + grid_col * gt[4] + grid_row * gt[5];
+                let (lon, lat) = transformer.convert((x, y))
+                    .map_err(|error| anyhow::anyhow!("Grid-cell coordinate conversion failed: {}", error))?;
+                lons.push(lon);
+                lats.push(lat);
+            }
+            cells.push(GridCell {
+                row,
+                col,
+                bounds: BoundingBox {
+                    min_lon: lons.iter().copied().fold(f64::INFINITY, f64::min),
+                    min_lat: lats.iter().copied().fold(f64::INFINITY, f64::min),
+                    max_lon: lons.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+                    max_lat: lats.iter().copied().fold(f64::NEG_INFINITY, f64::max),
+                },
+                mean_ndvi,
+                source_pixel_count: count,
+                coverage_percent: (count as f64 / ((gt[1] * gt[5] - gt[2] * gt[4]).abs()
+                    / vegetation.source_pixel_area_m2.max(1.0)).ceil().max(1.0) * 100.0).min(100.0),
+                zone_id: zone_assignments[(row, col)],
+            });
+        }
+    }
+    Ok(cells)
 }
 
 #[derive(Debug)]
@@ -1592,12 +1890,16 @@ pub async fn analyze_field_with_crs_transform(
     
     let config = PlanetaryComputerConfig::new();
     let num_zones = request.num_zones.unwrap_or(5);
+    let grid_cell_size_m = request.grid_cell_size_m;
+    let include_previous_scene = request.include_previous_scene.unwrap_or(false);
     let indices = request.indices.clone().unwrap_or_else(|| {
         vec!["NDVI".to_string(), "EVI".to_string(), "SAVI".to_string()]
     });
     
     // 5. Process field with transformed geometry
-    let vra_response = process_field_with_streaming_analysis(&field, &config, num_zones, indices).await?;
+    let vra_response = process_field_with_streaming_analysis(
+        &field, &config, num_zones, indices, grid_cell_size_m, include_previous_scene
+    ).await?;
     
     Ok(vra_response)
 }
@@ -1727,6 +2029,9 @@ fn calculate_vegetation_indices(
         savi,
         ndmi,
         gndvi,
+        source_pixel_counts: mask.mapv(|valid| if valid { 1 } else { 0 }),
+        source_pixel_area_m2: (red_data.geotransform[1] * red_data.geotransform[5]
+            - red_data.geotransform[2] * red_data.geotransform[4]).abs(),
         mask,
         indices_stats: VegetationIndices {
             ndvi_stats,
@@ -1788,7 +2093,7 @@ fn generate_vra_zones_kmeans(
     vegetation_data: &VegetationData,
     field_area: f64,
     num_clusters: usize
-) -> AnyhowResult<(Vec<VRAZone>, ClusteringInfo)> {
+) -> AnyhowResult<(Vec<VRAZone>, ClusteringInfo, Array2<u8>)> {
     let (height, width) = vegetation_data.ndvi.dim();
     let mut features = Vec::new();
     let mut valid_positions = Vec::new();
@@ -1821,12 +2126,13 @@ fn generate_vra_zones_kmeans(
         return Err(anyhow::anyhow!("No valid features for clustering"));
     }
 
-    if num_clusters < 2 || num_clusters > features.len() {
+    if num_clusters < 2 || features.len() < 2 {
         return Err(anyhow::anyhow!(
-            "Cannot create {} VRA zones from {} valid satellite pixels. Choose fewer zones or use a higher-resolution/clearer satellite scene.",
-            num_clusters, features.len()
+            "Cannot create VRA zones from only {} valid grid cells. Choose a smaller grid cell size or use a higher-resolution/clearer satellite scene.",
+            features.len()
         ));
     }
+    let num_clusters = num_clusters.min(features.len());
     
     println!("Clustering {} pixels with {} features each", features.len(), features[0].len());
     
@@ -1854,17 +2160,6 @@ fn generate_vra_zones_kmeans(
     
     let mut zones = Vec::new();
     let total_valid_pixels = valid_positions.len();
-    
-    let zone_colors = vec![
-        "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", 
-        "#00FFFF", "#FFA500", "#800080", "#008000", "#FFC0CB"
-    ];
-    
-    let zone_names = vec![
-        "Critical Management Zone", "High Input Zone", "Standard Zone", 
-        "Moderate Zone", "Low Input Zone", "Precision Zone", "Optimal Zone",
-        "Variable Zone", "Transition Zone", "Conservation Zone"
-    ];
     
     for cluster_id in 0..num_clusters {
         if zone_pixel_counts[cluster_id] == 0 {
@@ -1899,6 +2194,12 @@ fn generate_vra_zones_kmeans(
             ndvi if ndvi < 0.7 => "Medium",
             _ => "Low",
         };
+        let (zone_name, zone_color) = match priority {
+            "Critical" => ("Critical stress", "#d73027"),
+            "High" => ("High stress", "#fc8d59"),
+            "Medium" => ("Moderate condition", "#fee08b"),
+            _ => ("Healthy condition", "#1a9850"),
+        };
         
         let recommended_rate = match avg_ndvi {
             ndvi if ndvi < 0.2 => 250.0,
@@ -1916,12 +2217,12 @@ fn generate_vra_zones_kmeans(
         
         zones.push(VRAZone {
             zone_id: (cluster_id + 1) as u8,
-            zone_name: zone_names.get(cluster_id).unwrap_or(&"Unknown Zone").to_string(),
+            zone_name: zone_name.to_string(),
             cluster_center,
             area_percentage,
             area_hectares,
             recommended_rate,
-            zone_color: zone_colors.get(cluster_id).unwrap_or(&"#808080").to_string(),
+            zone_color: zone_color.to_string(),
             priority: priority.to_string(),
             pixel_count: zone_pixel_counts[cluster_id],
             avg_ndvi,
@@ -1943,8 +2244,17 @@ fn generate_vra_zones_kmeans(
         a_priority.cmp(&b_priority).then(b.area_percentage.partial_cmp(&a.area_percentage).unwrap())
     });
     
+    let mut old_to_new = HashMap::new();
     for (i, zone) in zones.iter_mut().enumerate() {
+        old_to_new.insert(zone.zone_id, (i + 1) as u8);
         zone.zone_id = (i + 1) as u8;
+    }
+    for cell_zone in zone_map.iter_mut() {
+        if let Some(new_id) = old_to_new.get(cell_zone) {
+            *cell_zone = *new_id;
+        } else {
+            *cell_zone = 0;
+        }
     }
     
     let features_used = vec![
@@ -1964,7 +2274,7 @@ fn generate_vra_zones_kmeans(
         silhouette_score: None,
     };
     
-    Ok((zones, clustering_info))
+    Ok((zones, clustering_info, zone_map))
 }
 
 fn create_ndvi_png_visualization(vegetation_data: &VegetationData) -> AnyhowResult<String> {
@@ -1974,7 +2284,7 @@ fn create_ndvi_png_visualization(vegetation_data: &VegetationData) -> AnyhowResu
     for (y, row) in vegetation_data.ndvi.outer_iter().enumerate() {
         for (x, &ndvi_val) in row.iter().enumerate() {
             let color = if !vegetation_data.mask[(y, x)] || ndvi_val.is_nan() {
-                Rgba([128, 128, 128, 128])
+                Rgba([0, 0, 0, 0])
             } else {
                 let rgb = ndvi_to_enhanced_color(ndvi_val);
                 Rgba([rgb[0], rgb[1], rgb[2], 255])
@@ -2010,7 +2320,7 @@ fn create_zone_png_visualization(
     
     for ((y, x), &zone_id) in zone_assignments.indexed_iter() {
         let color = if zone_id == 0 || !vegetation_data.mask[(y, x)] {
-            Rgba([128, 128, 128, 128])
+            Rgba([0, 0, 0, 0])
         } else {
             zone_colors.get(&zone_id).copied().unwrap_or(Rgba([128, 128, 128, 255]))
         };
@@ -2067,30 +2377,43 @@ fn add_border_and_scale(img: &RgbaImage, _title: &str) -> AnyhowResult<RgbaImage
     let scale = (640.0 / short_side).min(1200.0 / long_side);
     let scaled_width = ((original_width as f64 * scale).round() as u32).max(1);
     let scaled_height = ((original_height as f64 * scale).round() as u32).max(1);
-    let scaled_img = image::imageops::resize(
+    let mut scaled_img = image::imageops::resize(
         img,
         scaled_width,
         scaled_height,
         image::imageops::FilterType::Nearest,
     );
-    let border_size = 8;
-    let new_width = scaled_width + 2 * border_size;
-    let new_height = scaled_height + 2 * border_size;
-
-    let mut bordered_img: RgbaImage = ImageBuffer::new(new_width, new_height);
-    
-    for pixel in bordered_img.pixels_mut() {
-        *pixel = Rgba([255, 255, 255, 255]);
-    }
-    
-    for y in 0..scaled_height {
-        for x in 0..scaled_width {
-            let pixel = *scaled_img.get_pixel(x, y);
-            bordered_img.put_pixel(x + border_size, y + border_size, pixel);
+    // Keep the source pixels explicit: each grid cell represents one raster cell.
+    let grid_color = Rgba([255, 255, 255, 210]);
+    for col in 1..original_width {
+        let x = ((col as u64 * scaled_width as u64) / original_width as u64) as u32;
+        if x < scaled_width {
+            for row in 0..original_height {
+                let start_y = ((row as u64 * scaled_height as u64) / original_height as u64) as u32;
+                let end_y = (((row + 1) as u64 * scaled_height as u64) / original_height as u64) as u32;
+                if img.get_pixel(col - 1, row)[3] > 0 || img.get_pixel(col, row)[3] > 0 {
+                    for y in start_y..end_y.max(start_y + 1).min(scaled_height) {
+                        scaled_img.put_pixel(x, y, grid_color);
+                    }
+                }
+            }
         }
     }
-    
-    Ok(bordered_img)
+    for row in 1..original_height {
+        let y = ((row as u64 * scaled_height as u64) / original_height as u64) as u32;
+        if y < scaled_height {
+            for col in 0..original_width {
+                let start_x = ((col as u64 * scaled_width as u64) / original_width as u64) as u32;
+                let end_x = (((col + 1) as u64 * scaled_width as u64) / original_width as u64) as u32;
+                if img.get_pixel(col, row - 1)[3] > 0 || img.get_pixel(col, row)[3] > 0 {
+                    for x in start_x..end_x.max(start_x + 1).min(scaled_width) {
+                        scaled_img.put_pixel(x, y, grid_color);
+                    }
+                }
+            }
+        }
+    }
+    Ok(scaled_img)
 }
 
 fn extract_bounding_box(geometry: &GeoGeometry<f64>) -> Option<BoundingBox> {
@@ -2133,7 +2456,9 @@ async fn process_satellite_data_streaming(
     config: &PlanetaryComputerConfig,
     requested_indices: &[String],
     num_zones: usize,
-) -> AnyhowResult<(String, String, VegetationIndices, Vec<VRAZone>, ProcessingDetails, ClusteringInfo)> {
+    grid_cell_size_m: Option<f64>,
+    include_previous_scene: bool,
+) -> AnyhowResult<(String, String, VegetationIndices, Vec<VRAZone>, ProcessingDetails, ClusteringInfo, BoundingBox, f64, Vec<GridCell>, Option<String>, Option<String>, Option<String>)> {
     let start_time = std::time::Instant::now();
     let mut processing_steps = Vec::new();
     
@@ -2215,47 +2540,93 @@ async fn process_satellite_data_streaming(
         }},
     )?;
 
-    let nir_data = resample_raster_to_reference(nir_data, &red_data)?;
-    let green_data = green_data
+    let mut nir_data = resample_raster_to_reference(nir_data, &red_data)?;
+    let mut green_data = green_data
         .map(|band| resample_raster_to_reference(band, &red_data))
         .transpose()?;
-    let swir_data = swir_data
+    let mut swir_data = swir_data
         .map(|band| resample_raster_to_reference(band, &red_data))
         .transpose()?;
-    
+
+    let raster_to_wgs84 = Proj::new_known_crs("EPSG:4326", &red_data.projection, None)
+        .map_err(|e| anyhow::anyhow!("Cannot align field boundary with processed raster: {}", e))?;
+    let field_polygon_in_raster_crs = reproject_polygon(&field_polygon, &raster_to_wgs84)?;
+    let mut red_data = red_data;
+    mask_raster_to_polygon(&mut red_data, &field_polygon_in_raster_crs);
+    mask_raster_to_polygon(&mut nir_data, &field_polygon_in_raster_crs);
+    if let Some(data) = green_data.as_mut() { mask_raster_to_polygon(data, &field_polygon_in_raster_crs); }
+    if let Some(data) = swir_data.as_mut() { mask_raster_to_polygon(data, &field_polygon_in_raster_crs); }
     processing_steps.push("Computing vegetation indices from streamed multi-spectral data".to_string());
     
-    let vegetation_data = calculate_vegetation_indices(
+    let mut vegetation_data = calculate_vegetation_indices(
         &red_data,
         &nir_data,
         green_data.as_ref(),
         swir_data.as_ref(),
         requested_indices
     )?;
+    let (display_grid_transform, actual_grid_cell_size_m) = aggregate_vegetation_to_field_grid(
+        &mut vegetation_data,
+        &field_polygon_in_raster_crs,
+        grid_cell_size_m,
+    )?;
+    processing_steps.push(format!(
+        "Averaged valid satellite observations into a {} × {} field-bounds grid",
+        vegetation_data.ndvi.dim().1, vegetation_data.ndvi.dim().0
+    ));
+
+    let previous_item = if include_previous_scene {
+        items.iter().filter(|item| item.properties.datetime.as_str() < best_item.properties.datetime.as_str())
+            .max_by(|a, b| a.properties.datetime.cmp(&b.properties.datetime))
+    } else { None };
+    let (previous_ndvi_map_png, ndvi_change_map_png, previous_scene_date) =
+        if let Some(previous) = previous_item {
+            match load_previous_scene_grid(
+                config,
+                previous,
+                &field_polygon,
+                &red_data,
+                display_grid_transform,
+                vegetation_data.ndvi.dim().0,
+                vegetation_data.ndvi.dim().1,
+            ).await {
+                Ok((previous_grid, previous_date)) => {
+                    let change_grid = Array2::from_shape_fn(vegetation_data.ndvi.dim(), |(row, col)| {
+                        let current = vegetation_data.ndvi[(row, col)];
+                        let previous = previous_grid[(row, col)];
+                        if current.is_finite() && previous.is_finite() { current - previous } else { f64::NAN }
+                    });
+                    processing_steps.push(format!("Compared with previous scene acquired {}", previous_date));
+                    (
+                        Some(create_index_grid_png(&previous_grid, false)?),
+                        Some(create_index_grid_png(&change_grid, true)?),
+                        Some(previous_date),
+                    )
+                }
+                Err(error) => {
+                    processing_steps.push(format!("Previous scene comparison unavailable: {}", error));
+                    (None, None, None)
+                }
+            }
+        } else {
+            (None, None, None)
+        };
+
+    // Use the exact field-bounds grid extent for the georeferenced map overlay.
+    red_data.geotransform = display_grid_transform;
+    red_data.width = vegetation_data.ndvi.dim().1;
+    red_data.height = vegetation_data.ndvi.dim().0;
+    let map_bbox = raster_bounds_wgs84(&red_data)?;
     
     processing_steps.push(format!("Applying K-means clustering for {} VRA zones", num_zones));
     
-    let (vra_zones, clustering_info) = generate_vra_zones_kmeans(&vegetation_data, field.area, num_zones)?;
+    let (vra_zones, clustering_info, zone_assignments) =
+        generate_vra_zones_kmeans(&vegetation_data, field.area, num_zones)?;
+    let grid_cells = build_grid_cell_details(&vegetation_data, &zone_assignments)?;
     
     processing_steps.push("Generating high-resolution PNG visualizations".to_string());
     
     let ndvi_png = create_ndvi_png_visualization(&vegetation_data)?;
-    
-    let (height, width) = vegetation_data.ndvi.dim();
-    let mut zone_assignments = Array2::zeros((height, width));
-    
-    for ((i, j), &ndvi_val) in vegetation_data.ndvi.indexed_iter() {
-        if vegetation_data.mask[(i, j)] && ndvi_val.is_finite() {
-            let zone_id = match ndvi_val {
-                n if n < 0.2 => 1,
-                n if n < 0.4 => 2,
-                n if n < 0.6 => 3,
-                n if n < 0.8 => 4,
-                _ => 5,
-            };
-            zone_assignments[(i, j)] = zone_id.min(vra_zones.len() as u8);
-        }
-    }
     
     let zone_png = create_zone_png_visualization(&vra_zones, &vegetation_data, &zone_assignments)?;
     
@@ -2279,6 +2650,8 @@ async fn process_satellite_data_streaming(
     
     let processing_details = ProcessingDetails {
         satellite_item_id: best_item.id.clone(),
+        acquisition_date: best_item.properties.datetime.clone(),
+        cloud_coverage_percent: best_item.properties.cloud_cover.unwrap_or(0.0),
         bands_used,
         processing_steps,
         quality_flags: vec![
@@ -2297,7 +2670,8 @@ async fn process_satellite_data_streaming(
         },
     };
 
-    Ok((ndvi_png, zone_png, vegetation_data.indices_stats, vra_zones, processing_details, clustering_info))
+    Ok((ndvi_png, zone_png, vegetation_data.indices_stats, vra_zones, processing_details, clustering_info,
+        map_bbox, actual_grid_cell_size_m, grid_cells, previous_ndvi_map_png, ndvi_change_map_png, previous_scene_date))
 }
 
 fn generate_enhanced_recommendations(field_area: f64, zones: &[VRAZone], _clustering_info: &ClusteringInfo) -> VRARecommendations {
@@ -2472,13 +2846,16 @@ async fn process_field_with_streaming_analysis(
     config: &PlanetaryComputerConfig,
     num_zones: usize,
     requested_indices: Vec<String>,
+    grid_cell_size_m: Option<f64>,
+    include_previous_scene: bool,
 ) -> AnyhowResult<VRAMapResponse> {
     println!("🌾 Processing field: {} (ID: {}, Area: {:.2} ha)", field.name, field.id, field.area);
     println!("📊 Requested indices: {:?}", requested_indices);
     println!("🎯 Target zones: {}", num_zones);
     
-    let (ndvi_png, zone_png, vegetation_indices, vra_zones, processing_details, clustering_info) =
-        process_satellite_data_streaming(field, config, &requested_indices, num_zones).await?;
+    let (ndvi_png, zone_png, vegetation_indices, vra_zones, processing_details, clustering_info, map_bbox,
+        grid_cell_size_m, grid_cells, previous_ndvi_map_png, ndvi_change_map_png, previous_scene_date) =
+        process_satellite_data_streaming(field, config, &requested_indices, num_zones, grid_cell_size_m, include_previous_scene).await?;
     
     let geo_geometry: GeoGeometry<f64> = field.geometry.clone().try_into()
         .expect("Invalid geometry conversion");
@@ -2501,6 +2878,13 @@ async fn process_field_with_streaming_analysis(
     Ok(VRAMapResponse {
         field_id: field.id,
         field_name: field.name.clone(),
+        field_boundary: field.geometry.clone(),
+        map_bbox,
+        grid_cells,
+        grid_cell_size_m,
+        previous_ndvi_map_png,
+        ndvi_change_map_png,
+        previous_scene_date,
         ndvi_map_png: ndvi_png,
         vegetation_indices,
         vra_zones,
@@ -2508,8 +2892,8 @@ async fn process_field_with_streaming_analysis(
         recommendations,
         bbox,
         map_metadata: MapMetadata {
-            acquisition_date: processing_details.satellite_item_id.clone(),
-            cloud_coverage: 5.2,
+            acquisition_date: processing_details.acquisition_date.clone(),
+            cloud_coverage: processing_details.cloud_coverage_percent,
             resolution: 10.0,
             data_source: "Microsoft Planetary Computer - Sentinel-2 L2A (Streaming GDAL Processing)".to_string(),
             processing_date: Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string(),

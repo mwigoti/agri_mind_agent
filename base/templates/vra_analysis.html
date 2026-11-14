@@ -6,6 +6,8 @@
     <title>VRA Analysis - {{ field_name }}</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <style>
           * {
             margin: 0;
@@ -96,25 +98,36 @@
             border-bottom-color: #3b82f6 !important;
             color: #3b82f6 !important;
         }
-        .image-container {
-            position: relative;
-            display: flex;
+        .vra-map-canvas {
             width: 100%;
-            min-height: 360px;
-            align-items: center;
-            justify-content: center;
+            height: clamp(360px, 58vh, 760px);
             border-radius: 0.5rem;
-            background: #f3f4f6;
-        }
-        .image-container img {
-            display: block;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            image-rendering: pixelated;
+            background: #e9edf0;
+            z-index: 0;
         }
         @media (max-width: 640px) {
-            .image-container { min-height: 300px; }
+            .vra-map-canvas { height: 55vh; min-height: 320px; }
+        }
+        .map-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 0.9rem 1rem;
+            background: #fff;
+        }
+        .map-opacity {
+            accent-color: #16a34a;
+            width: 130px;
+        }
+        .ndvi-legend-bar {
+            display: inline-block;
+            width: 124px;
+            height: 9px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #9f3a24 0%, #ef8b2c 30%, #f5df4d 55%, #75bd43 78%, #19783b 100%);
         }
         .troubleshooting {
             background: #fef3c7;
@@ -192,7 +205,7 @@
             </div>
 
             <!-- Analysis Parameters -->
-            <div id="analysisParams" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div id="analysisParams" class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Number of Zones</label>
                     <select id="numZones" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -202,6 +215,21 @@
                         <option value="6">6 Zones</option>
                         <option value="7">7 Zones</option>
                     </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Grid cell size</label>
+                    <select id="gridCellSize" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Auto (about 2 source pixels)</option>
+                        <option value="10">10 m</option>
+                        <option value="20">20 m</option>
+                        <option value="30">30 m</option>
+                        <option value="50">50 m</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Cells average valid satellite observations within the field.</p>
+                    <label class="mt-3 flex items-start gap-2 text-xs text-gray-700">
+                        <input id="includePreviousScene" type="checkbox" class="mt-0.5">
+                        <span>Compare with the previous available scene <span class="text-gray-500">(adds satellite processing time)</span></span>
+                    </label>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Vegetation Indices</label>
@@ -329,21 +357,43 @@
 
                 <!-- NDVI Analysis Tab -->
                 <div id="ndvi-tab" class="tab-content p-6">
-                    <div class="grid grid-cols-1 gap-8">
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-800 mb-4">NDVI Map</h3>
-                            <div id="ndviMapContainer" class="image-container bg-gray-100 w-full">
-                                <p class="text-gray-500">NDVI map will appear here</p>
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                        <div class="xl:col-span-2 overflow-hidden rounded-lg border border-gray-200">
+                            <div class="map-toolbar">
+                                <div>
+                                    <h3 class="font-semibold text-gray-800">Vegetation map</h3>
+                                    <p class="text-xs text-gray-500">Sentinel-2 NDVI · averaged per field grid cell · <span id="mapSceneDate">Latest available scene</span></p>
+                                    <label id="ndviSceneViewWrap" class="mt-2 hidden items-center gap-2 text-xs text-gray-600">
+                                        View <select id="ndviSceneView" class="rounded border border-gray-300 px-2 py-1">
+                                            <option value="latest">Latest scene</option>
+                                            <option value="previous">Previous scene</option>
+                                            <option value="change">NDVI change</option>
+                                        </select>
+                                    </label>
+                                </div>
+                                <label class="flex items-center gap-2 text-xs text-gray-600">
+                                    Overlay <input id="ndviOpacity" class="map-opacity" type="range" min="0" max="100" value="90" aria-label="NDVI overlay opacity">
+                                    <span id="ndviOpacityValue">90%</span>
+                                </label>
                             </div>
-                            <p class="mt-2 text-xs text-gray-500">Display scaled to fit the map width; pixel size still reflects the satellite’s ground resolution.</p>
+                            <div id="ndviMapContainer" class="vra-map-canvas" aria-label="Interactive NDVI field map"></div>
+                            <div class="flex items-center justify-between gap-4 border-t border-gray-200 bg-white px-4 py-3">
+                                <div class="flex items-center gap-3 text-xs text-gray-600"><span>Low vegetation</span><span class="ndvi-legend-bar"></span><span>High vegetation</span></div>
+                                <span class="text-xs text-gray-500">Cell up to <span id="gridCellSizeLabel">--</span> m · source <span id="resolutionNote">10</span> m</span>
+                            </div>
+                            <div class="border-t border-gray-100 bg-gray-50 px-4 py-2 text-xs text-gray-600">
+                                <span id="gridCoverageSummary">Cell observation coverage will appear here.</span>
+                            </div>
+                            <div id="comparisonSummary" class="border-t border-gray-100 bg-white px-4 py-2 text-xs text-gray-600">Optional previous-scene comparison is off.</div>
+                        </div>
+                        <div class="space-y-4">
+                            <h3 class="text-lg font-semibold text-gray-800">Vegetation health</h3>
                             <div class="mt-4 text-sm text-gray-600 space-y-1">
                                 <p><strong>Data Source:</strong> <span id="dataSource">--</span></p>
                                 <p><strong>Acquisition Date:</strong> <span id="acquisitionDate">--</span></p>
                                 <p><strong>Cloud Coverage:</strong> <span id="cloudCoverage">--</span>%</p>
                                 <p><strong>Resolution:</strong> <span id="resolution">--</span>m</p>
                             </div>
-                        </div>
-                        <div>
                             <h3 class="text-lg font-semibold text-gray-800 mb-4">Vegetation Health Distribution</h3>
                             <div class="space-y-4">
                                 <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
@@ -395,25 +445,38 @@
 
                 <!-- VRA Zones Tab -->
                 <div id="zones-tab" class="tab-content p-6 hidden">
-                    <div class="grid grid-cols-1 gap-8">
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Zone Map</h3>
-                            <div id="zoneMapContainer" class="image-container bg-gray-100 w-full">
-                                <p class="text-gray-500">Zone map will appear here</p>
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                        <div class="xl:col-span-2 overflow-hidden rounded-lg border border-gray-200">
+                            <div class="map-toolbar">
+                                <div>
+                                    <h3 class="font-semibold text-gray-800">Variable-rate zones</h3>
+                                    <p class="text-xs text-gray-500">Zones from averaged field grid cells · review before application</p>
+                                </div>
+                                <label class="flex items-center gap-2 text-xs text-gray-600">
+                                    Overlay <input id="zoneOpacity" class="map-opacity" type="range" min="0" max="100" value="90" aria-label="Zone overlay opacity">
+                                    <span id="zoneOpacityValue">90%</span>
+                                </label>
                             </div>
-                            <p class="mt-2 text-xs text-gray-500">Display scaled to fit the map width; pixel size still reflects the satellite’s ground resolution.</p>
-                            <div id="clusteringInfo" class="mt-4 p-4 bg-blue-50 rounded-lg">
-                                <h4 class="font-medium text-blue-800 mb-2">Clustering Information</h4>
-                                <div class="text-sm text-blue-700 space-y-1">
+                            <div id="zoneMapContainer" class="vra-map-canvas" aria-label="Interactive variable-rate zones map"></div>
+                            <div id="zoneLegend" class="flex flex-wrap gap-3 border-t border-gray-200 bg-white px-4 py-3 text-xs text-gray-700"></div>
+                            <p class="border-t border-gray-100 bg-amber-50 px-4 py-2 text-xs text-amber-900">Hover or tap a grid cell for its mean NDVI, observation count, coverage, and zone. Rates are exploratory estimates, not validated prescriptions.</p>
+                            <div id="clusteringInfo" class="grid grid-cols-2 gap-3 border-t border-gray-200 bg-white p-4 text-sm">
+                                <div class="text-blue-700">
                                     <p><strong>Algorithm:</strong> <span id="clusterAlgorithm">--</span></p>
+                                </div>
+                                <div class="text-blue-700">
                                     <p><strong>Features Used:</strong> <span id="clusterFeatures">--</span></p>
+                                </div>
+                                <div class="text-blue-700">
                                     <p><strong>Iterations:</strong> <span id="clusterIterations">--</span></p>
+                                </div>
+                                <div class="text-blue-700">
                                     <p><strong>Inertia:</strong> <span id="clusterInertia">--</span></p>
                                 </div>
                             </div>
                         </div>
                         <div>
-                            <h3 class="text-lg font-semibold text-gray-800 mb-4">Management Zones</h3>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-3">Management zones</h3>
                             <div id="vraZones" class="space-y-3">
                                 <!-- VRA zones will be populated here -->
                             </div>
@@ -541,7 +604,12 @@
                 this.analysisData = null;
                 this.isAnalyzing = false;
                 this.currentStep = 0;
-                this.mapFrames = [];
+                this.leafletMaps = {};
+                this.leafletOverlays = {};
+                this.leafletBounds = {};
+                this.leafletGridLayers = {};
+                this.ndviSceneLayers = {};
+                this.rasterBounds = null;
                 this.initializeElements();
                 this.setupEventListeners();
                 this.setupTabs();
@@ -576,6 +644,8 @@
                
                 this.numZonesSelect = document.getElementById('numZones');
                 this.analysisTypeSelect = document.getElementById('analysisType');
+                this.gridCellSizeSelect = document.getElementById('gridCellSize');
+                this.includePreviousSceneInput = document.getElementById('includePreviousScene');
             }
 
             setupEventListeners() {
@@ -583,7 +653,14 @@
                 this.startAnalysisBtn.addEventListener('click', () => this.startAnalysis());
                 this.retryBtn.addEventListener('click', () => this.startAnalysis());
                 this.debugBtn.addEventListener('click', () => this.toggleTroubleshooting());
-                window.addEventListener('resize', () => this.mapFrames.forEach(frame => this.fitMapFrame(frame)));
+                ['ndvi', 'zone'].forEach(layer => {
+                    const slider = document.getElementById(`${layer}Opacity`);
+                    slider.addEventListener('input', () => this.setMapOpacity(layer, slider.value));
+                });
+                document.getElementById('ndviSceneView').addEventListener('change', event => this.updateNDVIView(event.target.value));
+                window.addEventListener('resize', () => {
+                    Object.values(this.leafletMaps).forEach(map => map.invalidateSize());
+                });
             }
 
             setupTabs() {
@@ -622,6 +699,12 @@
                 if (activeContent) {
                     activeContent.classList.remove('hidden');
                 }
+                window.setTimeout(() => {
+                    Object.entries(this.leafletMaps).forEach(([layer, map]) => {
+                        map.invalidateSize();
+                        if (this.leafletBounds[layer]) map.fitBounds(this.leafletBounds[layer].pad(0.18), { maxZoom: 18 });
+                    });
+                }, 100);
             }
 
             async checkEngineStatus() {
@@ -694,11 +777,13 @@
                     // Get analysis parameters
                     const numZones = parseInt(this.numZonesSelect.value);
                     const analysisType = this.analysisTypeSelect.value;
+                    const gridCellSize = this.gridCellSizeSelect.value;
+                    const includePreviousScene = this.includePreviousSceneInput.checked;
                     let indices = this.getSelectedIndices();
                     if (analysisType === 'quick') indices = ['NDVI'];
                     if (analysisType === 'detailed') indices = ['NDVI', 'EVI', 'SAVI', 'NDMI'];
 
-                    console.log('Starting analysis with params:', { numZones, analysisType, indices });
+                    console.log('Starting analysis with params:', { numZones, analysisType, indices, gridCellSize, includePreviousScene });
 
                     // Step 1: Initialize
                     this.updateProgress(10, 'Initializing VRA analysis...', 1);
@@ -709,6 +794,8 @@
                     
                     const requestData = {
                         num_zones: numZones,
+                        grid_cell_size_m: gridCellSize ? Number(gridCellSize) : null,
+                        include_previous_scene: includePreviousScene,
                         indices: indices,
                         analysis_type: analysisType
                     };
@@ -885,16 +972,24 @@
             }
 
             populateMaps(fieldData) {
-                this.mapFrames = [];
-                // NDVI Map
-                if (fieldData.ndvi_map_png) {
-                    this.showMap('ndviMapContainer', fieldData.ndvi_map_png, 'NDVI Analysis Map');
-                }
-
-                // Zone Map
-                if (fieldData.zone_map_png) {
-                    this.showMap('zoneMapContainer', fieldData.zone_map_png, 'VRA Zones Map');
-                }
+                Object.values(this.leafletMaps).forEach(map => map.remove());
+                this.leafletMaps = {};
+                this.leafletOverlays = {};
+                this.leafletBounds = {};
+                this.leafletGridLayers = {};
+                this.ndviSceneLayers = {};
+                this.rasterBounds = fieldData.map_bbox || fieldData.bbox;
+                const gridCells = fieldData.grid_cells || [];
+                const zones = fieldData.vra_zones || [];
+                this.createLeafletMap('ndviMapContainer', 'ndvi', fieldData.ndvi_map_png, fieldData.field_boundary, gridCells, zones, fieldData);
+                this.createLeafletMap('zoneMapContainer', 'zone', fieldData.zone_map_png, fieldData.field_boundary, gridCells, zones, fieldData);
+                const sceneViewWrap = document.getElementById('ndviSceneViewWrap');
+                const sceneView = document.getElementById('ndviSceneView');
+                const hasComparison = Boolean(fieldData.previous_ndvi_map_png && fieldData.ndvi_change_map_png);
+                sceneViewWrap.classList.toggle('hidden', !hasComparison);
+                sceneViewWrap.classList.toggle('flex', hasComparison);
+                sceneView.value = 'latest';
+                this.updateNDVIView('latest');
 
                 // Map metadata
                 const metadata = fieldData.map_metadata || {};
@@ -902,28 +997,116 @@
                 document.getElementById('acquisitionDate').textContent = metadata.acquisition_date || '--';
                 document.getElementById('cloudCoverage').textContent = (metadata.cloud_coverage || 0).toFixed(1);
                 document.getElementById('resolution').textContent = metadata.resolution || '--';
+                document.getElementById('resolutionNote').textContent = metadata.resolution || '10';
+                document.getElementById('gridCellSizeLabel').textContent = Number(fieldData.grid_cell_size_m || 0).toFixed(0);
+                const lowCoverage = gridCells.filter(cell => Number(cell.coverage_percent || 0) < 50).length;
+                const meanCoverage = gridCells.length
+                    ? gridCells.reduce((sum, cell) => sum + Number(cell.coverage_percent || 0), 0) / gridCells.length
+                    : 0;
+                document.getElementById('gridCoverageSummary').textContent =
+                    `${gridCells.length} observed grid cells · mean source-pixel coverage ${meanCoverage.toFixed(0)}% · ${lowCoverage} below 50% (outlined amber; inspect before interpreting).`;
+                const comparison = document.getElementById('comparisonSummary');
+                const comparisonFailed = (fieldData.processing_details?.processing_steps || [])
+                    .some(step => step.startsWith('Previous scene comparison unavailable:'));
+                comparison.textContent = fieldData.previous_scene_date
+                    ? `Comparison ready: latest NDVI minus previous scene (${fieldData.previous_scene_date}). Select the previous or change layer from the map controls; red indicates a decline and green an increase.`
+                    : (this.includePreviousSceneInput.checked
+                        ? (comparisonFailed ? 'A previous scene was found, but its data could not be processed. The latest-scene assessment is still available.' : 'No earlier suitable satellite scene was available for this field.')
+                        : 'Optional previous-scene comparison is off.');
             }
 
-            showMap(containerId, imageSource, altText) {
+            createLeafletMap(containerId, layer, imageSource, fieldBoundary, gridCells = [], zones = [], comparisonData = {}) {
                 const container = document.getElementById(containerId);
-                const image = new Image();
-                image.alt = altText;
-                image.className = 'rounded-lg shadow-sm';
-                const frame = { container, image };
-                this.mapFrames.push(frame);
-                image.addEventListener('load', () => this.fitMapFrame(frame), { once: true });
-                container.replaceChildren(image);
-                image.src = imageSource;
+                if (!window.L || !imageSource || !this.rasterBounds) {
+                    container.innerHTML = '<div class="flex h-full items-center justify-center text-sm text-gray-500">Map imagery is unavailable.</div>';
+                    return;
+                }
+
+                const map = L.map(containerId, { zoomControl: false, minZoom: 3, maxZoom: 19 });
+                const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles © Esri', maxZoom: 19
+                });
+                const topographic = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles © Esri', maxZoom: 19
+                });
+                satellite.addTo(map);
+
+                const bounds = [
+                    [this.rasterBounds.min_lat, this.rasterBounds.min_lon],
+                    [this.rasterBounds.max_lat, this.rasterBounds.max_lon]
+                ];
+                const overlay = L.imageOverlay(imageSource, bounds, { opacity: 0.9, interactive: false }).addTo(map);
+                const outline = fieldBoundary ? L.geoJSON(fieldBoundary, {
+                    style: { color: '#ffffff', weight: 3, opacity: 1, fillOpacity: 0 }
+                }).addTo(map) : null;
+
+                const zonesById = Object.fromEntries(zones.map(zone => [zone.zone_id, zone]));
+                const gridLayer = L.featureGroup();
+                gridCells.forEach(cell => {
+                    const b = cell.bounds;
+                    const zone = zonesById[cell.zone_id] || {};
+                    const coverage = Number(cell.coverage_percent || 0);
+                    const rectangle = L.rectangle(
+                        [[b.min_lat, b.min_lon], [b.max_lat, b.max_lon]],
+                        {
+                            color: coverage < 50 ? '#f97316' : '#ffffff',
+                            weight: coverage < 50 ? 2 : 1,
+                            opacity: 0.9,
+                            fillColor: zone.zone_color || '#ffffff',
+                            fillOpacity: layer === 'zone' ? 0.08 : 0.015,
+                            dashArray: coverage < 50 ? '4 3' : null
+                        }
+                    );
+                    const cellDetails = `<strong>Grid cell ${cell.row + 1}, ${cell.col + 1}</strong><br>` +
+                        `Mean NDVI: ${Number(cell.mean_ndvi).toFixed(3)}<br>` +
+                        `Zone ${cell.zone_id}: ${zone.zone_name || 'Unclassified'}<br>` +
+                        `Source pixels: ${cell.source_pixel_count}<br>` +
+                        `Coverage: ${coverage.toFixed(0)}%${coverage < 50 ? ' · low coverage' : ''}`;
+                    rectangle.bindTooltip(cellDetails, { sticky: true, direction: 'top' });
+                    rectangle.bindPopup(cellDetails);
+                    rectangle.addTo(gridLayer);
+                });
+                gridLayer.addTo(map);
+
+                const sceneLayers = { latest: overlay };
+                if (layer === 'ndvi' && comparisonData.previous_ndvi_map_png) {
+                    const previousOverlay = L.imageOverlay(comparisonData.previous_ndvi_map_png, bounds, { opacity: 0.9, interactive: false });
+                    previousOverlay.setOpacity(0);
+                    sceneLayers.previous = previousOverlay.addTo(map);
+                    if (comparisonData.ndvi_change_map_png) {
+                        const changeOverlay = L.imageOverlay(comparisonData.ndvi_change_map_png, bounds, { opacity: 0.9, interactive: false });
+                        sceneLayers.change = changeOverlay.setOpacity(0).addTo(map);
+                    }
+                }
+                const overlays = { [layer === 'ndvi' ? 'Grid cell inspection' : 'Zone cell inspection']: gridLayer };
+                L.control.layers({ 'Satellite': satellite, 'Topographic': topographic }, overlays, { position: 'topright' }).addTo(map);
+                L.control.zoom({ position: 'topright' }).addTo(map);
+                L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
+
+                const fieldBounds = outline && outline.getBounds().isValid() ? outline.getBounds() : L.latLngBounds(bounds);
+                map.fitBounds(fieldBounds.pad(0.18), { maxZoom: 18 });
+                this.leafletMaps[layer] = map;
+                this.leafletOverlays[layer] = overlay;
+                this.leafletGridLayers[layer] = gridLayer;
+                this.leafletBounds[layer] = fieldBounds;
+                if (layer === 'ndvi') this.ndviSceneLayers = sceneLayers;
             }
 
-            fitMapFrame(frame) {
-                const { container, image } = frame;
-                if (!image.naturalWidth || !image.naturalHeight) return;
-                const mapAspect = image.naturalWidth / image.naturalHeight;
-                const availableWidth = container.clientWidth;
-                const maxHeight = Math.min(window.innerHeight * 0.85, 900);
-                const fittedHeight = Math.max(300, Math.min(availableWidth / mapAspect, maxHeight));
-                container.style.height = `${fittedHeight}px`;
+            updateNDVIView(view) {
+                Object.entries(this.ndviSceneLayers).forEach(([name, overlay]) => {
+                    const opacity = name === view
+                        ? Number(document.getElementById('ndviOpacity').value) / 100
+                        : 0;
+                    overlay.setOpacity(opacity);
+                });
+            }
+
+            setMapOpacity(layer, value) {
+                const opacity = Number(value) / 100;
+                if (this.leafletOverlays[layer]) this.leafletOverlays[layer].setOpacity(opacity);
+                if (layer === 'ndvi') this.updateNDVIView(document.getElementById('ndviSceneView').value);
+                const label = document.getElementById(`${layer}OpacityValue`);
+                if (label) label.textContent = `${value}%`;
             }
 
             populateStatistics(fieldData) {
@@ -997,11 +1180,26 @@
             populateVRAZones(zones, clusteringInfo) {
                 const container = document.getElementById('vraZones');
                 container.innerHTML = '';
+                const legend = document.getElementById('zoneLegend');
+                legend.replaceChildren();
 
                 if (!zones || zones.length === 0) {
                     container.innerHTML = '<p class="text-gray-500 text-center py-4">No zones generated</p>';
+                    legend.textContent = 'No zone legend is available.';
                     return;
                 }
+
+                zones.forEach(zone => {
+                    const item = document.createElement('div');
+                    item.className = 'flex items-center gap-2 rounded bg-gray-50 px-2 py-1';
+                    const swatch = document.createElement('span');
+                    swatch.className = 'inline-block h-3 w-3 rounded-sm';
+                    swatch.style.backgroundColor = zone.zone_color || '#9ca3af';
+                    const label = document.createElement('span');
+                    label.textContent = `Zone ${zone.zone_id}: ${zone.zone_name} · ${zone.priority} · ${Number(zone.recommended_rate || 0).toFixed(0)} kg/ha*`;
+                    item.append(swatch, label);
+                    legend.appendChild(item);
+                });
 
                 zones.forEach(zone => {
                     const zoneCard = document.createElement('div');
@@ -1028,11 +1226,11 @@
                                 <span class="font-medium">${(zone.avg_ndvi || 0).toFixed(3)}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span>NDVI-based rate estimate*:</span>
+                                <span>Exploratory model rate*:</span>
                                 <span class="font-medium">${(zone.recommended_rate || 0).toFixed(0)} kg/ha</span>
                             </div>
                             <div class="flex justify-between">
-                                <span>Pixels:</span>
+                                <span>Grid cells:</span>
                                 <span class="font-medium">${zone.pixel_count || 0}</span>
                             </div>
                         </div>

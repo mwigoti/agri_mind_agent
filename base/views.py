@@ -174,6 +174,11 @@ def advisory_review_decision(request, review_id):
     except (json.JSONDecodeError, UnicodeDecodeError):
         return JsonResponse({"detail": "Request body must be valid JSON."}, status=400)
     review = get_object_or_404(AdvisoryReview, pk=review_id, field__owner=request.user)
+    if review.thread_id:
+        return JsonResponse(
+            {"detail": "Agent-backed advisories must be decided through the authenticated AgriMind review workflow."},
+            status=409,
+        )
     decision = str(data.get("decision", "")).lower()
     if decision not in {"approved", "rejected"}:
         return JsonResponse({"detail": "decision must be 'approved' or 'rejected'."}, status=400)
@@ -620,6 +625,17 @@ class VRAAnalysisView(APIView):
             if not 2 <= num_zones <= 7:
                 raise ValueError("num_zones must be between 2 and 7")
 
+            raw_grid_size = options.get("grid_cell_size_m")
+            try:
+                grid_cell_size_m = float(raw_grid_size) if raw_grid_size not in (None, "") else None
+            except (TypeError, ValueError):
+                raise ValueError("grid_cell_size_m must be between 5 and 100 metres")
+            if grid_cell_size_m is not None and not 5 <= grid_cell_size_m <= 100:
+                raise ValueError("grid_cell_size_m must be between 5 and 100 metres")
+            include_previous_scene = options.get("include_previous_scene", False)
+            if not isinstance(include_previous_scene, bool):
+                raise ValueError("include_previous_scene must be a boolean")
+
             allowed_indices = {"NDVI", "EVI", "SAVI", "NDMI"}
             requested_indices = options.get("indices") or ["NDVI", "EVI", "SAVI"]
             if not isinstance(requested_indices, list):
@@ -637,6 +653,8 @@ class VRAAnalysisView(APIView):
                 "area_hectares": area_hectares,
                 "geometry": geometry_geojson,
                 "num_zones": num_zones,
+                "grid_cell_size_m": grid_cell_size_m,
+                "include_previous_scene": include_previous_scene,
                 "indices": indices,
             }
             
@@ -1539,7 +1557,7 @@ def generate_report(request):
             return JsonResponse({'success': False, 'error': 'analysis_result_id is required for human-review gating.'}, status=400)
         AnalysisResult = _get_model('AnalysisResult')
         analysis_result = get_object_or_404(AnalysisResult, pk=result_id, field__owner=request.user, pipeline_status='done')
-        latest_review = AdvisoryReview.objects.filter(field=analysis_result.field).order_by('-reviewed_at', '-created_at').first()
+        latest_review = AdvisoryReview.objects.filter(analysis_result=analysis_result).order_by('-reviewed_at', '-created_at').first()
         if not latest_review or latest_review.status != 'approved' or not latest_review.reviewed_at or latest_review.reviewed_at < analysis_result.updated_at:
             return JsonResponse({'success': False, 'error': 'A human reviewer must approve an advisory for this analysis before the report can be released.'}, status=409)
         
@@ -2192,7 +2210,7 @@ def _result_to_frontend(ar) -> Dict[str, Any]:
         or yields.get('simple_model_t_ha')
     )
     field_area_ha = float(ar.field.area) if ar.field_id and ar.field.area is not None else None
-    latest_review = AdvisoryReview.objects.filter(field=ar.field).order_by('-reviewed_at', '-created_at').first()
+    latest_review = AdvisoryReview.objects.filter(analysis_result=ar).order_by('-reviewed_at', '-created_at').first()
     report_approved = bool(
         latest_review
         and latest_review.status == 'approved'
@@ -2207,6 +2225,7 @@ def _result_to_frontend(ar) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
         'status':    ar.pipeline_status,
         'result_id': ar.pk,
+        'field_id': ar.field_id,
 
         # Sentinel-2
         'ndvi_latest':       sat.get('ndvi_grain_filling'),
@@ -2238,6 +2257,13 @@ def _result_to_frontend(ar) -> Dict[str, Any]:
                                if yield_rate is not None and field_area_ha is not None else None,
         'ai_agronomic_report': bundle.get('ai_agronomic_report') if report_approved else None,
         'ai_report_review_status': 'approved' if report_approved else 'pending',
+        'ai_report_review': ({
+            'status': latest_review.status,
+            'recommended_action': latest_review.recommended_action,
+            'reviewer': latest_review.reviewer.email if latest_review.reviewer else None,
+            'reviewed_at': latest_review.reviewed_at.isoformat() if latest_review.reviewed_at else None,
+            'reason': latest_review.decision_reason,
+        } if latest_review else None),
         'is_extrapolated':     bundle.get('is_extrapolated', False),
 
         # SAR

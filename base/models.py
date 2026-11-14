@@ -106,6 +106,10 @@ class AdvisoryReview(models.Model):
     ]
 
     field = models.ForeignKey(Field, on_delete=models.CASCADE, related_name='advisory_reviews')
+    analysis_result = models.ForeignKey(
+        'AnalysisResult', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='advisory_reviews',
+    )
     thread_id = models.CharField(max_length=120, blank=True, null=True)
     recommended_action = models.CharField(max_length=20, choices=ACTION_CHOICES, default='HOLD')
     rationale = models.TextField(blank=True)
