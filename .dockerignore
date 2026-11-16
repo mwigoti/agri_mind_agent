@@ -1,0 +1,37 @@
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+.aws/
+*.pem
+*.key
+
+# Git and local Python environments
+.git/
+venv/
+.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Local databases and generated agent state
+db.sqlite3
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+agentic_layer_2/audit.jsonl
+*.log
+
+# Build outputs and generated static assets
+analysis_engine/target/
+target/
+staticfiles/
+node_modules/
+
+# Local uploads and editor metadata
+media/
+.DS_Store
+.agents/
+.codex/

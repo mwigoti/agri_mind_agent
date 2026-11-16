@@ -1,0 +1,47 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Keep this native dependency layer aligned with Dockerfile.web so Docker can
+# reuse the same cached base when building both Python service images.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gdal-bin \
+    libgdal-dev \
+    libgeos-dev \
+    libproj-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt ./requirements.txt
+RUN python -m pip install --upgrade pip \
+    && python -m pip install -r requirements.txt scikit-learn==1.8.0
+
+COPY agentic_layer_2/requirements.txt ./agent-requirements.txt
+RUN python -m pip install -r agent-requirements.txt
+
+ENV CHECKPOINT_PATH=/app/agentic_layer_2/checkpoints.sqlite \
+    AUDIT_PATH=/app/agentic_layer_2/audit.jsonl \
+    HISTORICAL_DB=/app/data/historical_records.db
+
+# The MCP subprocess uses the same interpreter and imports Django models.
+COPY AgriVision/ ./AgriVision/
+COPY base/ ./base/
+COPY agentic_layer_2/ ./agentic_layer_2/
+COPY mcp_server/ ./mcp_server/
+COPY data/ ./data/
+COPY manage.py ./manage.py
+
+RUN addgroup --system app && adduser --system --ingroup app app \
+    && chown -R app:app /app/agentic_layer_2
+
+USER app
+
+EXPOSE 8001
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD python -c "from urllib.request import urlopen; urlopen('http://127.0.0.1:8001/health', timeout=3)" || exit 1
+
+CMD ["uvicorn", "agentic_layer_2.api:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]

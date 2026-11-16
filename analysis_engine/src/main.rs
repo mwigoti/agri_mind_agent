@@ -234,7 +234,8 @@ async fn main() -> std::io::Result<()> {
     env_logger::init();
     
     let port = env::var("PORT").unwrap_or_else(|_| "8003".to_string());
-    let bind_address = format!("127.0.0.1:{}", port);
+    let bind_host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let bind_address = format!("{}:{}", bind_host, port);
     
     println!("🚀 Enhanced VRA Analysis Engine Starting...");
     println!("📍 Server Address: http://{}", bind_address);
