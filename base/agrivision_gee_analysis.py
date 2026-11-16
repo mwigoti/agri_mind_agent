@@ -1220,10 +1220,13 @@ class AgrivisionCompleteAnalyzer:
 
 class AgrivisionProductionPipeline:
     def __init__(self, ml_model_path: str, hf_token: str, **kwargs):
-        self.hf_token = hf_token or os.environ.get('HF_TOKEN') or os.environ.get('HUGGINGFACE_API_TOKEN', '')
-        self.model_id = os.environ.get('MODEL_ID', 'Qwen/Qwen2.5-7B-Instruct')
+        self.model_id = os.environ.get('MODEL_ID', 'openrouter/free')
         self.model_provider = os.environ.get('MODEL_PROVIDER', 'auto')
-        self.model_base_url = os.environ.get('MODEL_BASE_URL', 'https://router.huggingface.co/v1').rstrip('/')
+        self.model_base_url = os.environ.get('MODEL_BASE_URL', 'https://openrouter.ai/api/v1').rstrip('/')
+        if 'openrouter.ai' in self.model_base_url:
+            self.hf_token = os.environ.get('OPENROUTER_API_KEY', '')
+        else:
+            self.hf_token = hf_token or os.environ.get('HF_TOKEN') or os.environ.get('HUGGINGFACE_API_TOKEN', '')
         self.use_gee = kwargs.get('use_gee', True)
         self.model = None
 
@@ -1409,7 +1412,8 @@ class AgrivisionProductionPipeline:
         }
     def generate_llm_report(self, yield_val, feats, extrapolated, scientific=None):
         if not self.hf_token:
-            return "AI agronomic report unavailable: configure HF_TOKEN to generate a hosted report."
+            required_key = 'OPENROUTER_API_KEY' if 'openrouter.ai' in self.model_base_url else 'HF_TOKEN'
+            return f"AI agronomic report unavailable: configure {required_key} to generate a hosted report."
 
         API_URL = f"{self.model_base_url}/chat/completions"
         headers = {"Authorization": f"Bearer {self.hf_token}"}

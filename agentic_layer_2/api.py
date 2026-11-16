@@ -590,15 +590,15 @@ async def health() -> dict[str, Any]:
     missing_tools = sorted(required_tools - discovered_tools) if not settings.demo_mode else []
     missing_configuration = []
     if not settings.demo_mode:
-        if not settings.hf_token:
-            missing_configuration.append("HF_TOKEN")
+        if not settings.model_api_key:
+            missing_configuration.append(settings.model_api_key_name)
         if missing_tools:
             missing_configuration.append("AgriMind MCP tools: " + ", ".join(missing_tools))
     ready = settings.demo_mode or not missing_configuration
     return {
         "status": "ok" if ready else "degraded",
         "mode": "demo_mode" if settings.demo_mode else "live" if ready else "live_not_ready",
-        "model_configured": bool(settings.hf_token),
+        "model_configured": bool(settings.model_api_key),
         "mcp_discovered": bool(tools.contracts) if not settings.demo_mode else False,
         "mcp_required_tools_missing": missing_tools,
         "missing_configuration": missing_configuration,

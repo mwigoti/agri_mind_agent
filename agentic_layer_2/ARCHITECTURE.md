@@ -19,11 +19,9 @@ The `human_approval` node uses LangGraph `interrupt()` and a SQLite checkpointer
 
 | Candidate | Weights/licence | Hosted/provider evidence | Fit and limits |
 |---|---|---|---|
-| `Qwen/Qwen2.5-7B-Instruct` (default) | Hub model card lists Apache-2.0 | Hub Inference Providers chat-completion interface supports function calling at the API level; actual model/provider pairing still must be exercised | Chosen for Qwen alignment and moderate size. This implementation uses bounded JSON planning/reasoning, not native tool-call envelopes. No AgriMind evaluation or price/latency measurements have been run. |
-| `Qwen/Qwen3-4B-Instruct-2507` | Apache-2.0 | Listed in Hub Inference Providers | Smaller alternative; verify specific provider availability and structured output before substituting. |
-| `meta-llama/Llama-3.1-8B-Instruct` | Llama 3.1 Community License, not OSI-approved | Hosted availability is provider-dependent | Open weights, but custom license obligations and access conditions make distribution/use less straightforward than Apache-2.0 Qwen. |
+| `openrouter/free` (default) | Dynamic free model route | Routes only to free models on OpenRouter; availability changes over time | Chosen to honor the no-payment requirement. Rate limits apply; the model selected for each call may change. Uses bounded JSON reasoning, not native tool-call envelopes. AgriMind-specific model evaluation is pending. |
 
-The choice is provisional, not a completed model evaluation. HF Inference Providers is hosted inference: the weights remain open-weights but prompts and synthetic records are transmitted through hosted infrastructure. The API provides routed billing and its free credits/pricing can change. Model-specific provider price, rate limits, latency, context behavior, and tool selection have not been verified by a live request. The implementation does not claim to meet the eligible-model task until that run is recorded.
+The free router is hosted inference: prompt data is sent to an OpenRouter-selected provider. Availability and rate limits can change; no paid fallback is configured. Model-specific behavior and AgriMind task performance have not been evaluated.
 
 ## State and limits
 

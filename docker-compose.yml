@@ -31,10 +31,11 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres:agrivision_secret_password@db:5432/agrivision
       - AGRIMIND_AGENT_URL=http://agent:8001
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - HF_TOKEN=${HF_TOKEN:-}
-      - MODEL_ID=${MODEL_ID:-Qwen/Qwen2.5-7B-Instruct}
+      - MODEL_ID=${MODEL_ID:-openrouter/free}
       - MODEL_PROVIDER=${MODEL_PROVIDER:-auto}
-      - MODEL_BASE_URL=${MODEL_BASE_URL:-https://router.huggingface.co/v1}
+      - MODEL_BASE_URL=${MODEL_BASE_URL:-https://openrouter.ai/api/v1}
       - DEMO_MODE=${DEMO_MODE:-true}
       - API_BEARER_TOKEN=${API_BEARER_TOKEN:-dev-api-token}
       - REVIEWER_TOKEN=${REVIEWER_TOKEN:-dev-reviewer-token}
@@ -55,10 +56,11 @@ services:
       - "8001:8001"
     environment:
       - DATABASE_URL=postgres://postgres:agrivision_secret_password@db:5432/agrivision
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - HF_TOKEN=${HF_TOKEN:-}
-      - MODEL_ID=${MODEL_ID:-Qwen/Qwen2.5-7B-Instruct}
+      - MODEL_ID=${MODEL_ID:-openrouter/free}
       - MODEL_PROVIDER=${MODEL_PROVIDER:-auto}
-      - MODEL_BASE_URL=${MODEL_BASE_URL:-https://router.huggingface.co/v1}
+      - MODEL_BASE_URL=${MODEL_BASE_URL:-https://openrouter.ai/api/v1}
       - DEMO_MODE=${DEMO_MODE:-true}
       - API_BEARER_TOKEN=${API_BEARER_TOKEN:-dev-api-token}
       - REVIEWER_TOKENS=${REVIEWER_TOKENS:-officer:dev-reviewer-token,supervisor:dev-supervisor-token}

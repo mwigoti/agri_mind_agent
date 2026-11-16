@@ -347,3 +347,37 @@ INFO 2026-11-14 16:04:08,659 views Sending request to http://127.0.0.1:8003/anal
 INFO 2026-11-14 16:04:16,410 views Response status: 422
 ERROR 2026-11-14 16:04:16,411 views HTTP error 422: error sending request for url (https://planetarycomputer.microsoft.com/api/stac/v1/search): connection error: unexpected end of file
 ERROR 2026-11-14 16:04:18,035 views VRA job 9 failed for field 75: Analysis engine returned HTTP 422: error sending request for url (https://planetarycomputer.microsoft.com/api/stac/v1/search): connection error: unexpected end of file
+INFO 2026-11-16 09:14:30,680 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:14:30,878 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:14:31,491 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:15:36,379 views Checking VRA engine status...
+INFO 2026-11-16 09:15:36,380 views VRA engine is healthy: {'capabilities': ['Real-time satellite data streaming', 'Multi-spectral vegetation indices (NDVI, EVI, SAVI, NDMI, GNDVI)', 'K-means clustering for VRA zone generation', 'PNG visualization output', 'Memory-efficient processing', 'Precision agriculture recommendations', 'Environmental impact assessment', 'STAC-based satellite data discovery', 'Geometric cropping with GDAL', 'Streaming raster processing'], 'clustering_algorithms': ['K-means'], 'gdal_status': 'GDAL 3.8.4', 'output_formats': ['PNG', 'Base64-encoded images'], 'planetary_computer_status': 'Connected (Public Access - Rate Limited)', 'satellite_data_source': 'Microsoft Planetary Computer', 'service': 'Enhanced VRA Analysis Engine with Streaming K-means', 'stac_api': 'https://planetarycomputer.microsoft.com/api/stac/v1', 'status': 'healthy', 'streaming_config': {'chunk_size_mb': 1.0, 'compression_enabled': True, 'max_concurrent_chunks': 4, 'memory_limit_mb': 512}, 'supported_indices': ['NDVI', 'EVI', 'SAVI', 'NDMI', 'GNDVI'], 'timestamp': '2026-11-16T09:15:36.380452836+00:00', 'version': '4.0.0'}
+INFO 2026-11-16 09:15:45,016 views Starting VRA analysis for field 75
+INFO 2026-11-16 09:15:45,017 views Found field: Matara (Area: 1.686284291884201 ha)
+INFO 2026-11-16 09:15:46,475 views Prepared VRA request data for field 75
+INFO 2026-11-16 09:15:46,475 views Prepared VRA request for field 75: zones=5 indices=['NDVI', 'EVI', 'SAVI']
+INFO 2026-11-16 09:15:46,479 views Rust engine health check passed: healthy
+INFO 2026-11-16 09:15:52,295 views Sending request to http://127.0.0.1:8003/analyze-field-enhanced
+INFO 2026-11-16 09:16:00,402 views Response status: 200
+INFO 2026-11-16 09:16:00,403 views Successfully received JSON response from Rust engine
+INFO 2026-11-16 09:16:02,541 views VRA analysis completed for field 75 - Matara
+INFO 2026-11-16 09:16:02,542 views Analysis results: 5 zones, 2.9% health score
+INFO 2026-11-16 09:16:02,542 views VRA job 10 completed for field 75
+INFO 2026-11-16 09:17:51,900 views Spawned pipeline thread for AnalysisResult #11 (field=75, activity=20, crop=Maize)
+INFO 2026-11-16 09:19:11,987 views AnalysisResult #11 done field=75 risk=Very High health_score=26.46 health_coverage_pct=35.0 health_components=['vegetation_index', 'radar_index'] ml_yield=3.75 s2_scene_count=4 ndvi_observations=4 s2_status=ready
+INFO 2026-11-16 09:22:42,846 views Spawned pipeline thread for AnalysisResult #11 (field=75, activity=20, crop=Maize)
+INFO 2026-11-16 09:23:50,130 views AnalysisResult #11 done field=75 risk=Very High health_score=26.46 health_coverage_pct=35.0 health_components=['vegetation_index', 'radar_index'] ml_yield=3.75 s2_scene_count=4 ndvi_observations=4 s2_status=ready
+INFO 2026-11-16 09:33:25,272 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:33:25,990 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:33:26,815 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:38:02,084 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:38:02,085 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:38:02,090 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:39:15,613 views Spawned pipeline thread for AnalysisResult #13 (field=64, activity=21, crop=Maize)
+INFO 2026-11-16 09:40:15,308 views AnalysisResult #13 done field=64 risk=Very High health_score=18.98 health_coverage_pct=60.0 health_components=['vegetation_index', 'soil_index', 'radar_index'] ml_yield=3.74 s2_scene_count=9 ndvi_observations=9 s2_status=ready
+INFO 2026-11-16 09:48:13,593 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:48:13,594 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:48:15,675 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:56:33,915 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:56:34,725 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-16 09:56:34,726 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)

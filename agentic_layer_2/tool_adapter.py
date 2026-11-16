@@ -36,11 +36,19 @@ def _decode(result: Any) -> Any:
         raise MCPToolError("MCP returned a tool error")
     structured = getattr(result, "structuredContent", None)
     if structured is not None:
+        # Some MCP SDK/server combinations wrap a tool's returned dictionary
+        # as {"result": <value>}. Unwrap that transport envelope so workflow
+        # code sees the tool's actual status and payload.
+        if isinstance(structured, dict) and set(structured) == {"result"}:
+            return structured["result"]
         return structured
     chunks = [getattr(c, "text", "") for c in getattr(result, "content", [])]
     if len(chunks) == 1:
         try:
-            return json.loads(chunks[0])
+            decoded = json.loads(chunks[0])
+            if isinstance(decoded, dict) and set(decoded) == {"result"}:
+                return decoded["result"]
+            return decoded
         except (ValueError, TypeError):
             return chunks[0]
     return chunks

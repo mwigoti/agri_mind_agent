@@ -29,6 +29,49 @@ def collect_evidence(state: AgriState) -> dict[str, dict[str, Any]]:
     return store
 
 
+def complete_evidence_ids(
+    proposed_ids: list[str], evidence_store: dict[str, dict[str, Any]], action: str | None
+) -> list[str]:
+    """Keep valid model citations and fill gaps from independent saved evidence."""
+    priorities = {
+        "HOLD": [
+            "ndvi_latest", "rainfall_anomaly_pct", "total_rainfall_mm",
+            "water_stress_index", "predicted_yield_t_ha", "rule",
+        ],
+        "PLANT": [
+            "soil_moisture_vwc", "rainfall_anomaly_pct", "ndvi_latest",
+            "total_rainfall_mm", "rule",
+        ],
+        "SPRAY": [
+            "forecast_rain_next_48h_mm", "soil_moisture_vwc", "ndvi_latest",
+            "rainfall_anomaly_pct", "rule",
+        ],
+    }
+    selected: list[str] = []
+    observation_keys: set[str] = set()
+
+    def add_if_independent(evidence_id: str) -> None:
+        record = evidence_store.get(evidence_id)
+        if not record or not record.get("valid") or evidence_id in selected:
+            return
+        key = record.get("observation_key")
+        if key and key not in observation_keys:
+            selected.append(evidence_id)
+            observation_keys.add(key)
+
+    for evidence_id in proposed_ids:
+        add_if_independent(evidence_id)
+
+    action_priority = priorities.get(action or "HOLD", priorities["HOLD"])
+    for evidence_type in action_priority:
+        for evidence_id, record in evidence_store.items():
+            if record.get("type") == evidence_type:
+                add_if_independent(evidence_id)
+                if len(observation_keys) >= 2:
+                    return selected
+    return selected
+
+
 def validate(state: AgriState) -> tuple[bool, list[str]]:
     errors: list[str] = []
     action = state.get("selected_action")
