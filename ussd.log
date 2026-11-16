@@ -387,3 +387,6 @@ INFO 2026-11-16 11:13:26,006 views Field dashboard field=76 ndvi_points=6 latest
 INFO 2026-11-16 11:16:20,198 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)
 INFO 2026-11-16 11:16:20,487 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
 INFO 2026-11-16 11:16:20,488 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-16 11:26:23,478 views Field dashboard field=64 ndvi_points=12 latest_ndvi=0.2509 health_score=0.19 vegetation_status=12 saved Sentinel-2 observation(s)
+INFO 2026-11-16 11:26:23,487 views Field dashboard field=75 ndvi_points=4 latest_ndvi=0.3405 health_score=0.265 vegetation_status=4 saved Sentinel-2 observation(s)
+INFO 2026-11-16 11:26:24,086 views Field dashboard field=76 ndvi_points=6 latest_ndvi=0.3549 health_score=0.301 vegetation_status=6 saved Sentinel-2 observation(s)

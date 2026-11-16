@@ -1,2013 +1,441 @@
-
 {% load static %}
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="AgriMind - Agricultural intelligence for crop monitoring, soil analysis, weather insights, and field decisions.">
-    <title>AgriMind - Agricultural Intelligence</title>
-    
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-    
-    <style>
-        /* ========================================
-           CSS VARIABLES / DESIGN SYSTEM
-        ======================================== */
-        :root {
-            /* Colors */
-            --color-primary: #1a472a;
-            --color-primary-light: #2d6a4f;
-            --color-primary-dark: #0d2818;
-            --color-secondary: #40916c;
-            --color-accent: #74c69d;
-            --color-accent-light: #b7e4c7;
-            
-            --color-slate-dark: #1e293b;
-            --color-slate: #334155;
-            --color-slate-light: #64748b;
-            
-            --color-surface: #ffffff;
-            --color-surface-alt: #f8fafc;
-            --color-surface-dark: #0f172a;
-            
-            --color-text-primary: #1e293b;
-            --color-text-secondary: #64748b;
-            --color-text-light: #f8fafc;
-            --color-text-muted: #94a3b8;
-            
-            --color-border: #e2e8f0;
-            --color-border-light: #f1f5f9;
-            
-            /* Gradients */
-            --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-            --gradient-hero: linear-gradient(180deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.9) 100%);
-            --gradient-card: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 100%);
-            
-            /* Shadows */
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-            --shadow-glow: 0 0 40px rgba(64, 145, 108, 0.3);
-            
-            /* Typography */
-            --font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            
-            /* Spacing */
-            --spacing-xs: 0.25rem;
-            --spacing-sm: 0.5rem;
-            --spacing-md: 1rem;
-            --spacing-lg: 1.5rem;
-            --spacing-xl: 2rem;
-            --spacing-2xl: 3rem;
-            --spacing-3xl: 4rem;
-            --spacing-4xl: 6rem;
-            
-            /* Container */
-            --container-max: 1200px;
-            --container-padding: 1.5rem;
-            
-            /* Transitions */
-            --transition-fast: 150ms ease;
-            --transition-base: 300ms ease;
-            --transition-slow: 500ms ease;
-            
-            /* Border Radius */
-            --radius-sm: 0.375rem;
-            --radius-md: 0.5rem;
-            --radius-lg: 0.75rem;
-            --radius-xl: 1rem;
-            --radius-full: 9999px;
-        }
-
-        /* ========================================
-           BASE STYLES
-        ======================================== */
-        *, *::before, *::after {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
-
-        body {
-            font-family: var(--font-family);
-            font-size: 1rem;
-            line-height: 1.6;
-            color: var(--color-text-primary);
-            background-color: var(--color-surface);
-            overflow-x: hidden;
-        }
-
-        img {
-            max-width: 100%;
-            height: auto;
-            display: block;
-        }
-
-        a {
-            text-decoration: none;
-            color: inherit;
-            transition: color var(--transition-fast);
-        }
-
-        ul, ol {
-            list-style: none;
-        }
-
-        button {
-            font-family: inherit;
-            cursor: pointer;
-            border: none;
-            background: none;
-        }
-
-        /* ========================================
-           UTILITY CLASSES
-        ======================================== */
-        .container {
-            max-width: var(--container-max);
-            margin: 0 auto;
-            padding: 0 var(--container-padding);
-        }
-
-        .section {
-            padding: var(--spacing-4xl) 0;
-        }
-
-        .section-alt {
-            background-color: var(--color-surface-alt);
-        }
-
-        .section-dark {
-            background-color: var(--color-surface-dark);
-            color: var(--color-text-light);
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
-        .fade-in {
-            opacity: 0;
-            transform: translateY(30px);
-            transition: opacity 0.6s ease, transform 0.6s ease;
-        }
-
-        .fade-in.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* ========================================
-           TYPOGRAPHY
-        ======================================== */
-        h1, h2, h3, h4, h5, h6 {
-            font-weight: 600;
-            line-height: 1.2;
-            color: var(--color-text-primary);
-        }
-
-        .section-dark h1, .section-dark h2, .section-dark h3 {
-            color: var(--color-text-light);
-        }
-
-        h1 { font-size: clamp(2.5rem, 5vw, 4rem); }
-        h2 { font-size: clamp(2rem, 4vw, 3rem); }
-        h3 { font-size: clamp(1.5rem, 3vw, 2rem); }
-        h4 { font-size: 1.25rem; }
-
-        .section-title {
-            margin-bottom: var(--spacing-md);
-        }
-
-        .section-subtitle {
-            font-size: 1.125rem;
-            color: var(--color-text-secondary);
-            max-width: 700px;
-            margin: 0 auto var(--spacing-3xl);
-        }
-
-        .section-dark .section-subtitle {
-            color: var(--color-text-muted);
-        }
-
-        .overline {
-            font-size: 0.875rem;
-            font-weight: 600;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--color-secondary);
-            margin-bottom: var(--spacing-sm);
-            display: block;
-        }
-
-        /* ========================================
-           BUTTONS
-        ======================================== */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--spacing-sm);
-            padding: 0.875rem 1.75rem;
-            font-size: 1rem;
-            font-weight: 500;
-            border-radius: var(--radius-md);
-            transition: all var(--transition-base);
-        }
-
-        .btn-primary {
-            background: var(--gradient-primary);
-            color: var(--color-text-light);
-            box-shadow: var(--shadow-md);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg), var(--shadow-glow);
-        }
-
-        .btn-secondary {
-            background: transparent;
-            color: var(--color-text-light);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.5);
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--color-primary);
-            border: 2px solid var(--color-primary);
-        }
-
-        .btn-outline:hover {
-            background: var(--color-primary);
-            color: var(--color-text-light);
-        }
-
-        .btn-icon {
-            width: 2.5rem;
-            height: 2.5rem;
-            padding: 0;
-            border-radius: var(--radius-full);
-        }
-
-        /* ========================================
-           HEADER / NAVIGATION
-        ======================================== */
-        .header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            padding: var(--spacing-lg) 0;
-            transition: all var(--transition-base);
-        }
-
-        .header.scrolled {
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(10px);
-            padding: var(--spacing-md) 0;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .nav {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--color-text-light);
-        }
-
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: var(--gradient-primary);
-            border-radius: var(--radius-md);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-        }
-
-        .nav-menu {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xl);
-        }
-
-        .nav-link {
-            color: var(--color-text-light);
-            font-weight: 500;
-            opacity: 0.9;
-            position: relative;
-        }
-
-        .nav-link::after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: var(--color-accent);
-            transition: width var(--transition-base);
-        }
-
-        .nav-link:hover::after,
-        .nav-link.active::after {
-            width: 100%;
-        }
-
-        .nav-link:hover {
-            opacity: 1;
-        }
-
-        .nav-cta {
-            margin-left: var(--spacing-lg);
-        }
-
-        .mobile-toggle {
-            display: none;
-            color: var(--color-text-light);
-            font-size: 1.5rem;
-            padding: var(--spacing-sm);
-        }
-
-        .mobile-close {
-            display: none;
-        }
-
-        @media (max-width: 768px) {
-            .nav-menu {
-                position: fixed;
-                top: 0;
-                right: -100%;
-                width: 280px;
-                height: 100vh;
-                background: var(--color-surface-dark);
-                flex-direction: column;
-                align-items: flex-start;
-                padding: var(--spacing-4xl) var(--spacing-xl);
-                transition: right var(--transition-base);
-                box-shadow: var(--shadow-xl);
-            }
-
-            .nav-menu.active {
-                right: 0;
-            }
-
-            .nav-cta {
-                margin-left: 0;
-                margin-top: var(--spacing-lg);
-            }
-
-            .mobile-toggle {
-                display: block;
-            }
-
-            .mobile-close {
-                display: block;
-                position: absolute;
-                top: var(--spacing-lg);
-                right: var(--spacing-lg);
-                font-size: 1.5rem;
-                color: var(--color-text-light);
-                background: none;
-                border: none;
-                cursor: pointer;
-            }
-        }
-
-        /* ========================================
-           HERO SECTION
-        ======================================== */
-        .hero {
-            position: relative;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-
-        .hero-bg {
-            position: absolute;
-            inset: 0;
-            z-index: -1;
-        }
-
-        .hero-bg img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .hero-overlay {
-            position: absolute;
-            inset: 0;
-            background: var(--gradient-hero);
-        }
-
-        .hero-content {
-            text-align: center;
-            color: var(--color-text-light);
-            max-width: 800px;
-            padding: var(--spacing-4xl) var(--container-padding);
-        }
-
-        .hero-overline {
-            font-size: 1rem;
-            font-weight: 500;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            color: var(--color-accent);
-            margin-bottom: var(--spacing-lg);
-            display: block;
-        }
-
-        .hero-title {
-            font-size: clamp(2.5rem, 6vw, 4.5rem);
-            font-weight: 700;
-            margin-bottom: var(--spacing-lg);
-            line-height: 1.1;
-            color: var(--color-text-light);
-        }
-
-        .hero-title span {
-            display: block;
-            background: linear-gradient(135deg, var(--color-accent-light) 0%, var(--color-accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero-description {
-            font-size: 1.125rem;
-            opacity: 0.9;
-            margin-bottom: var(--spacing-2xl);
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .hero-buttons {
-            display: flex;
-            gap: var(--spacing-md);
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .hero-scroll {
-            position: absolute;
-            bottom: var(--spacing-2xl);
-            left: 50%;
-            transform: translateX(-50%);
-            color: var(--color-text-light);
-            opacity: 0.7;
-            animation: bounce 2s infinite;
-        }
-
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
-            40% { transform: translateX(-50%) translateY(-10px); }
-            60% { transform: translateX(-50%) translateY(-5px); }
-        }
-
-        /* ========================================
-           ABOUT SECTION
-        ======================================== */
-        .about-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-4xl);
-            align-items: center;
-        }
-
-        @media (max-width: 768px) {
-            .about-grid {
-                grid-template-columns: 1fr;
-                gap: var(--spacing-2xl);
-            }
-        }
-
-        .about-image {
-            position: relative;
-            border-radius: var(--radius-xl);
-            overflow: hidden;
-            box-shadow: var(--shadow-xl);
-        }
-
-        .about-image::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(26, 71, 42, 0.2) 0%, transparent 50%);
-            z-index: 1;
-        }
-
-        .about-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .about-content {
-            padding: var(--spacing-lg) 0;
-        }
-
-        .about-content p {
-            color: var(--color-text-secondary);
-            margin-bottom: var(--spacing-lg);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: var(--spacing-lg);
-            margin-top: var(--spacing-2xl);
-        }
-
-        .stat-item {
-            text-align: center;
-            padding: var(--spacing-lg);
-            background: var(--color-surface-alt);
-            border-radius: var(--radius-lg);
-        }
-
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--color-primary);
-            display: block;
-        }
-
-        .stat-label {
-            font-size: 0.875rem;
-            color: var(--color-text-secondary);
-        }
-
-        @media (max-width: 480px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* ========================================
-           SERVICES SECTION
-        ======================================== */
-        .services-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: var(--spacing-xl);
-        }
-
-        .service-card {
-            background: var(--color-surface);
-            border-radius: var(--radius-xl);
-            overflow: hidden;
-            box-shadow: var(--shadow-md);
-            transition: all var(--transition-base);
-        }
-
-        .service-card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--shadow-xl);
-        }
-
-        .service-image {
-            height: 200px;
-            overflow: hidden;
-        }
-
-        .service-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform var(--transition-slow);
-        }
-
-        .service-card:hover .service-image img {
-            transform: scale(1.05);
-        }
-
-        .service-content {
-            padding: var(--spacing-xl);
-        }
-
-        .service-icon {
-            width: 50px;
-            height: 50px;
-            background: var(--gradient-primary);
-            border-radius: var(--radius-lg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.25rem;
-            margin-bottom: var(--spacing-lg);
-        }
-
-        .service-content h3 {
-            margin-bottom: var(--spacing-sm);
-        }
-
-        .service-content p {
-            color: var(--color-text-secondary);
-            font-size: 0.9375rem;
-        }
-
-        /* ========================================
-           RESEARCH SECTION
-        ======================================== */
-        .research-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: var(--spacing-xl);
-        }
-
-        .research-card {
-            background: var(--color-surface);
-            border-radius: var(--radius-xl);
-            overflow: hidden;
-            box-shadow: var(--shadow-md);
-            transition: all var(--transition-base);
-        }
-
-        .research-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .research-image {
-            height: 200px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .research-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform var(--transition-slow);
-        }
-
-        .research-card:hover .research-image img {
-            transform: scale(1.05);
-        }
-
-        .research-category {
-            position: absolute;
-            top: var(--spacing-md);
-            left: var(--spacing-md);
-            background: var(--color-primary);
-            color: var(--color-text-light);
-            padding: var(--spacing-xs) var(--spacing-md);
-            border-radius: var(--radius-full);
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .research-content {
-            padding: var(--spacing-xl);
-        }
-
-        .research-content h4 {
-            margin-bottom: var(--spacing-sm);
-            line-height: 1.4;
-        }
-
-        .research-description {
-            color: var(--color-text-secondary);
-            font-size: 0.9rem;
-            line-height: 1.6;
-            margin-bottom: var(--spacing-md);
-        }
-
-        .research-link {
-            display: inline-flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            color: var(--color-primary);
-            font-weight: 600;
-            font-size: 0.9375rem;
-        }
-
-        .research-link:hover {
-            color: var(--color-secondary);
-        }
-
-        .research-link i {
-            transition: transform var(--transition-fast);
-        }
-
-        .research-link:hover i {
-            transform: translateX(4px);
-        }
-
-        /* ========================================
-           CONTACT SECTION
-        ======================================== */
-        .contact-grid {
-            display: grid;
-            grid-template-columns: 1fr 1.2fr;
-            gap: var(--spacing-4xl);
-        }
-
-        @media (max-width: 768px) {
-            .contact-grid {
-                grid-template-columns: 1fr;
-                gap: var(--spacing-2xl);
-            }
-        }
-
-        .contact-info h2 {
-            color: var(--color-text-light);
-        }
-
-        .contact-info p {
-            color: var(--color-text-muted);
-            margin-bottom: var(--spacing-xl);
-        }
-
-        .contact-details {
-            margin-top: var(--spacing-2xl);
-        }
-
-        .contact-item {
-            display: flex;
-            align-items: flex-start;
-            gap: var(--spacing-md);
-            margin-bottom: var(--spacing-lg);
-        }
-
-        .contact-item-icon {
-            width: 40px;
-            height: 40px;
-            background: rgba(116, 198, 157, 0.2);
-            border-radius: var(--radius-md);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--color-accent);
-            flex-shrink: 0;
-        }
-
-        .contact-item-text span {
-            display: block;
-            font-size: 0.875rem;
-            color: var(--color-text-muted);
-            margin-bottom: 2px;
-        }
-
-        .contact-item-text a,
-        .contact-item-text p {
-            color: var(--color-text-light);
-            font-weight: 500;
-        }
-
-        .social-links {
-            display: flex;
-            gap: var(--spacing-md);
-            margin-top: var(--spacing-2xl);
-        }
-
-        .social-link {
-            width: 44px;
-            height: 44px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: var(--radius-full);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--color-text-light);
-            transition: all var(--transition-base);
-        }
-
-        .social-link:hover {
-            background: var(--color-accent);
-            color: var(--color-primary-dark);
-        }
-
-        .contact-form-wrapper {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: var(--radius-xl);
-            padding: var(--spacing-2xl);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .contact-form-wrapper h3 {
-            color: var(--color-text-light);
-            margin-bottom: var(--spacing-xl);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-md);
-        }
-
-        @media (max-width: 480px) {
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .form-group {
-            margin-bottom: var(--spacing-lg);
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--color-text-light);
-            margin-bottom: var(--spacing-sm);
-        }
-
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: var(--spacing-md);
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: var(--radius-md);
-            color: var(--color-text-light);
-            font-family: inherit;
-            font-size: 1rem;
-            transition: all var(--transition-fast);
-        }
-
-        .form-group input::placeholder,
-        .form-group textarea::placeholder {
-            color: var(--color-text-muted);
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--color-accent);
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        .form-group textarea {
-            min-height: 140px;
-            resize: vertical;
-        }
-
-        .btn-submit {
-            width: 100%;
-            padding: var(--spacing-lg);
-            font-size: 1rem;
-        }
-
-        /* ========================================
-           FOOTER
-        ======================================== */
-        .footer {
-            background: var(--color-surface-dark);
-            padding: var(--spacing-2xl) 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .footer-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: var(--spacing-lg);
-        }
-
-        .footer-logo {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            color: var(--color-text-light);
-            font-weight: 600;
-        }
-
-        .footer-copyright {
-            color: var(--color-text-muted);
-            font-size: 0.875rem;
-        }
-
-        .footer-links {
-            display: flex;
-            gap: var(--spacing-xl);
-        }
-
-        .footer-links a {
-            color: var(--color-text-muted);
-            font-size: 0.875rem;
-            transition: color var(--transition-fast);
-        }
-
-        .footer-links a:hover {
-            color: var(--color-accent);
-        }
-
-        @media (max-width: 768px) {
-            .footer-content {
-                flex-direction: column;
-                text-align: center;
-            }
-        }
-
-        /* ========================================
-           CTA BANNER
-        ======================================== */
-        .cta-banner {
-            background: var(--gradient-primary);
-            padding: var(--spacing-4xl) 0;
-            text-align: center;
-        }
-
-        .cta-banner h2 {
-            color: var(--color-text-light);
-            margin-bottom: var(--spacing-md);
-        }
-
-        .cta-banner p {
-            color: rgba(255, 255, 255, 0.9);
-            max-width: 600px;
-            margin: 0 auto var(--spacing-xl);
-        }
-
-        .cta-buttons {
-            display: flex;
-            gap: var(--spacing-md);
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .cta-btn-primary {
-            background: white;
-            color: var(--color-primary);
-        }
-
-        .cta-btn-primary:hover {
-            background: var(--color-accent-light);
-        }
-
-        /* ========================================
-           SUCCESS MESSAGE
-        ======================================== */
-        .form-success {
-            display: none;
-            background: rgba(116, 198, 157, 0.2);
-            border: 1px solid var(--color-accent);
-            border-radius: var(--radius-md);
-            padding: var(--spacing-lg);
-            text-align: center;
-            color: var(--color-accent);
-            margin-top: var(--spacing-lg);
-        }
-
-        .form-success.show {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ========================================
-           FIELD ANALYSIS MAP SECTION
-        ======================================== */
-        .map-section {
-            padding: var(--spacing-4xl) 0;
-            background: var(--color-surface-alt);
-        }
-
-        .map-container {
-            display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: var(--spacing-xl);
-            margin-top: var(--spacing-2xl);
-        }
-
-        @media (max-width: 1024px) {
-            .map-container {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .map-wrapper {
-            height: 500px;
-            border-radius: var(--radius-xl);
-            overflow: hidden;
-            box-shadow: var(--shadow-lg);
-            position: relative;
-        }
-
-        #fieldMap {
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-
-        .map-sidebar {
-            background: var(--color-surface);
-            border-radius: var(--radius-xl);
-            padding: var(--spacing-xl);
-            box-shadow: var(--shadow-md);
-        }
-
-        .map-sidebar h3 {
-            margin-bottom: var(--spacing-lg);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-        }
-
-        .map-sidebar h3 i {
-            color: var(--color-secondary);
-        }
-
-        .field-stats {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-md);
-        }
-
-        .field-stat {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: var(--spacing-md);
-            background: var(--color-surface-alt);
-            border-radius: var(--radius-md);
-            transition: all var(--transition-fast);
-        }
-
-        .field-stat:hover {
-            background: rgba(64, 145, 108, 0.1);
-        }
-
-        .field-stat-label {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            color: var(--color-text-secondary);
-            font-size: 0.9375rem;
-        }
-
-        .field-stat-label i {
-            color: var(--color-secondary);
-            width: 20px;
-        }
-
-        .field-stat-value {
-            font-weight: 600;
-            color: var(--color-primary);
-        }
-
-        .field-stat-value.good {
-            color: #22c55e;
-        }
-
-        .field-stat-value.warning {
-            color: #f59e0b;
-        }
-
-        .field-stat-value.critical {
-            color: #ef4444;
-        }
-
-        .map-legend {
-            margin-top: var(--spacing-xl);
-            padding-top: var(--spacing-lg);
-            border-top: 1px solid var(--color-border);
-        }
-
-        .map-legend h4 {
-            font-size: 0.875rem;
-            font-weight: 600;
-            margin-bottom: var(--spacing-md);
-            color: var(--color-text-secondary);
-        }
-
-        .legend-items {
-            display: flex;
-            flex-wrap: wrap;
-            gap: var(--spacing-md);
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-xs);
-            font-size: 0.8125rem;
-        }
-
-        .legend-color {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        .legend-color.healthy {
-            background: #22c55e;
-        }
-
-        .legend-color.moderate {
-            background: #f59e0b;
-        }
-
-        .legend-color.attention {
-            background: #ef4444;
-        }
-
-        .map-actions {
-            margin-top: var(--spacing-xl);
-        }
-
-        .map-actions .btn {
-            width: 100%;
-        }
-
-        /* Custom Leaflet Popup */
-        .leaflet-popup-content-wrapper {
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-lg);
-        }
-
-        .leaflet-popup-content {
-            margin: var(--spacing-md);
-        }
-
-        .popup-title {
-            font-weight: 600;
-            margin-bottom: var(--spacing-sm);
-            color: var(--color-primary);
-        }
-
-        .popup-info {
-            font-size: 0.875rem;
-            color: var(--color-text-secondary);
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="AgriMind helps agricultural extension teams monitor field conditions, review evidence, and prepare practical guidance for farmers.">
+  <meta name="theme-color" content="#f7f8f3">
+  <title>AgriMind — Field intelligence for better decisions</title>
+  <style>
+    :root {
+      --ink: #19372c;
+      --ink-strong: #102b21;
+      --muted: #627168;
+      --green: #286349;
+      --green-dark: #174734;
+      --green-soft: #e7f0e9;
+      --lime: #d6e68b;
+      --cream: #f7f8f3;
+      --paper: #fff;
+      --line: #e4e9e1;
+      --amber: #b87928;
+      --shadow: 0 22px 65px rgba(24, 54, 41, .12);
+      --radius: 22px;
+      --content: 1160px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 92px; }
+    body { margin: 0; color: var(--ink); background: var(--cream); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
+    img { display: block; max-width: 100%; }
+    .shell { width: min(var(--content), calc(100% - 48px)); margin-inline: auto; }
+    .section { padding: 100px 0; }
+    .section-kicker { margin: 0 0 14px; color: var(--green); font-size: .76rem; font-weight: 750; letter-spacing: .15em; text-transform: uppercase; }
+    .section-heading { max-width: 720px; margin: 0; color: var(--ink-strong); font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.08; letter-spacing: -.045em; }
+    .section-lead { max-width: 660px; margin: 18px 0 0; color: var(--muted); font-size: 1.08rem; }
+    .btn { display: inline-flex; min-height: 50px; align-items: center; justify-content: center; gap: 10px; padding: 0 21px; border: 1px solid transparent; border-radius: 999px; font-size: .93rem; font-weight: 700; transition: transform .2s ease, background .2s ease, border-color .2s ease; }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background: var(--green); color: white; box-shadow: 0 8px 20px rgba(40, 99, 73, .18); }
+    .btn-primary:hover { background: var(--green-dark); }
+    .btn-quiet { border-color: #d7dfd7; background: rgba(255,255,255,.58); color: var(--ink); }
+    .btn-quiet:hover { border-color: var(--green); background: white; }
+    .arrow { width: 16px; height: 16px; flex: 0 0 auto; }
+
+    /* Navigation */
+    .site-header { position: sticky; z-index: 20; top: 0; border-bottom: 1px solid rgba(217, 225, 216, .82); background: rgba(247,248,243,.91); backdrop-filter: blur(16px); }
+    .nav { display: flex; min-height: 78px; align-items: center; justify-content: space-between; gap: 30px; }
+    .brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink-strong); font-size: 1.17rem; font-weight: 800; letter-spacing: -.04em; }
+    .brand-mark { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 13px; background: var(--green); color: white; }
+    .brand-mark svg { width: 23px; height: 23px; }
+    .nav-links { display: flex; align-items: center; gap: 31px; color: #52645a; font-size: .9rem; font-weight: 620; }
+    .nav-links a:hover { color: var(--green); }
+    .nav-actions { display: flex; align-items: center; gap: 18px; }
+    .nav-login { color: var(--ink); font-size: .9rem; font-weight: 700; }
+    .nav-actions .btn { min-height: 43px; padding-inline: 18px; font-size: .86rem; }
+    .menu-toggle { display: none; width: 44px; height: 44px; place-items: center; border: 1px solid var(--line); border-radius: 13px; color: var(--ink); background: white; cursor: pointer; }
+
+    /* Hero */
+    .hero { position: relative; overflow: hidden; padding: 76px 0 68px; background: radial-gradient(ellipse at 5% 5%, #edf3df 0, transparent 37%), linear-gradient(180deg, #fbfcf8 0%, #f3f6ed 100%); }
+    .hero::after { position: absolute; right: -180px; bottom: -310px; width: 620px; height: 620px; border: 1px solid rgba(61, 119, 82, .12); border-radius: 50%; content: ""; box-shadow: 0 0 0 48px rgba(61,119,82,.025), 0 0 0 98px rgba(61,119,82,.02); pointer-events: none; }
+    .hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, .95fr) minmax(480px, 1.05fr); align-items: center; gap: clamp(45px, 7vw, 94px); }
+    .hero-copy { padding: 18px 0 27px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 9px; margin-bottom: 22px; padding: 8px 12px; border: 1px solid #dbe6d7; border-radius: 999px; background: rgba(255,255,255,.62); color: var(--green-dark); font-size: .77rem; font-weight: 750; letter-spacing: .035em; }
+    .eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: #7c9b4d; box-shadow: 0 0 0 4px #e8efd9; }
+    h1 { max-width: 650px; margin: 0; color: var(--ink-strong); font-size: clamp(3.1rem, 6.2vw, 5.25rem); line-height: .99; letter-spacing: -.065em; }
+    h1 em { color: var(--green); font-style: normal; }
+    .hero-text { max-width: 560px; margin: 24px 0 0; color: #5d6d63; font-size: clamp(1.03rem, 1.5vw, 1.2rem); line-height: 1.75; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 31px; }
+    .hero-note { display: flex; align-items: center; gap: 10px; margin-top: 26px; color: #65736a; font-size: .82rem; }
+    .hero-note svg { width: 17px; color: var(--green); }
+
+    /* Illustrative product preview */
+    .preview-wrap { position: relative; padding: 10px 0 18px; }
+    .preview-glow { position: absolute; inset: 8% -5% 4% 6%; border-radius: 40px; background: #d9e8c8; filter: blur(42px); opacity: .64; }
+    .preview { position: relative; overflow: hidden; border: 1px solid #dfe6dc; border-radius: 24px; background: #fff; box-shadow: var(--shadow); transform: rotate(.35deg); }
+    .preview-top { display: flex; align-items: center; justify-content: space-between; padding: 17px 21px; border-bottom: 1px solid #edf0eb; }
+    .preview-brand { display: flex; align-items: center; gap: 9px; color: var(--ink); font-size: .86rem; font-weight: 780; }
+    .preview-brand-mark { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 9px; background: #eaf2e9; color: var(--green); }
+    .preview-brand-mark svg { width: 16px; height: 16px; }
+    .preview-status { color: #7a867d; font-size: .7rem; font-weight: 650; }
+    .preview-content { display: grid; grid-template-columns: minmax(0, 1fr) 225px; min-height: 363px; }
+    .preview-main { padding: 22px; }
+    .preview-label { color: #829087; font-size: .65rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    .field-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-top: 8px; }
+    .field-title { margin: 0; color: var(--ink-strong); font-size: 1.22rem; letter-spacing: -.035em; }
+    .field-meta { margin: 3px 0 0; color: #7b887f; font-size: .74rem; }
+    .review-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 999px; background: #fff3dc; color: #94651e; font-size: .65rem; font-weight: 750; white-space: nowrap; }
+    .review-chip span { width: 6px; height: 6px; border-radius: 50%; background: #cf8b26; }
+    .field-map { position: relative; overflow: hidden; height: 186px; margin-top: 20px; border: 1px solid #e4e9df; border-radius: 15px; background-color: #e8eddf; background-image: linear-gradient(31deg, transparent 47%, rgba(255,255,255,.85) 48%, rgba(255,255,255,.85) 49%, transparent 50%), linear-gradient(151deg, transparent 47%, rgba(255,255,255,.75) 48%, rgba(255,255,255,.75) 49%, transparent 50%), repeating-linear-gradient(0deg, transparent 0 29px, rgba(91,130,89,.12) 30px 31px), repeating-linear-gradient(90deg, transparent 0 29px, rgba(91,130,89,.12) 30px 31px); }
+    .field-map::before, .field-map::after { position: absolute; width: 52%; height: 68%; border: 2px solid rgba(45,101,70,.72); border-radius: 48% 52% 39% 61% / 42% 35% 65% 58%; background: rgba(95,145,90,.18); content: ""; transform: rotate(-13deg); }
+    .field-map::before { top: 16%; left: 11%; }
+    .field-map::after { top: 20%; right: -2%; width: 44%; height: 58%; border-color: rgba(177,139,68,.75); background: rgba(208,184,112,.18); transform: rotate(19deg); }
+    .map-pin { position: absolute; z-index: 2; top: 39%; left: 43%; display: grid; width: 29px; height: 29px; place-items: center; border: 3px solid white; border-radius: 50% 50% 50% 3px; background: var(--green); box-shadow: 0 3px 12px rgba(16,43,33,.25); color: white; transform: rotate(-45deg); }
+    .map-pin svg { width: 12px; transform: rotate(45deg); }
+    .map-caption { position: absolute; z-index: 2; right: 11px; bottom: 10px; padding: 6px 9px; border: 1px solid #e4e9df; border-radius: 8px; background: rgba(255,255,255,.9); color: #617067; font-size: .61rem; }
+    .evidence-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .evidence-mini { display: flex; align-items: center; gap: 9px; padding: 10px 11px; border: 1px solid #edf0eb; border-radius: 12px; }
+    .evidence-icon { display: grid; width: 29px; height: 29px; flex: 0 0 auto; place-items: center; border-radius: 9px; background: #edf4ec; color: var(--green); }
+    .evidence-icon.weather { background: #f4f0e5; color: #97773e; }
+    .evidence-icon svg { width: 15px; height: 15px; }
+    .evidence-mini strong { display: block; color: #344a3d; font-size: .68rem; line-height: 1.3; }
+    .evidence-mini small { display: block; margin-top: 2px; color: #879188; font-size: .59rem; }
+    .preview-side { display: flex; flex-direction: column; padding: 22px 17px; border-left: 1px solid #edf0eb; background: #fafbf8; }
+    .side-label { color: #869189; font-size: .62rem; font-weight: 750; letter-spacing: .11em; text-transform: uppercase; }
+    .recommendation { margin-top: 11px; padding: 15px 13px; border: 1px solid #ecdcb8; border-radius: 14px; background: #fffaf0; }
+    .recommendation-action { display: flex; align-items: center; gap: 8px; color: #755520; font-size: .95rem; font-weight: 780; }
+    .hold-icon { display: grid; width: 25px; height: 25px; place-items: center; border-radius: 8px; background: #f5e7c8; }
+    .hold-icon svg { width: 13px; }
+    .recommendation p { margin: 10px 0 0; color: #817354; font-size: .68rem; line-height: 1.55; }
+    .review-divider { height: 1px; margin: 18px 0 14px; background: #e9ede6; }
+    .reviewer { display: flex; align-items: center; gap: 9px; margin-top: 12px; }
+    .reviewer-avatar { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 50%; background: #dfeade; color: #42634b; font-size: .65rem; font-weight: 800; }
+    .reviewer strong { display: block; color: #4a5c50; font-size: .67rem; }
+    .reviewer small { display: block; color: #929b94; font-size: .58rem; }
+    .preview-foot { padding: 11px 20px; border-top: 1px solid #edf0eb; color: #889289; font-size: .64rem; text-align: center; }
+
+    /* Capability ribbon */
+    .capability-ribbon { border-top: 1px solid #e6eade; border-bottom: 1px solid #e6eade; background: #fff; }
+    .ribbon-inner { display: grid; grid-template-columns: repeat(4, 1fr); }
+    .ribbon-item { display: flex; min-height: 84px; align-items: center; justify-content: center; gap: 11px; padding: 14px; color: #52665a; font-size: .83rem; font-weight: 680; }
+    .ribbon-item + .ribbon-item { border-left: 1px solid #edf0e9; }
+    .ribbon-item svg { width: 19px; height: 19px; flex: 0 0 auto; color: var(--green); }
+
+    /* Problem */
+    .problem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 43px; }
+    .problem-card { padding: 25px 25px 27px; border: 1px solid var(--line); border-radius: 18px; background: #fff; }
+    .card-icon { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 14px; background: var(--green-soft); color: var(--green); }
+    .card-icon svg { width: 21px; height: 21px; }
+    .problem-card h3 { margin: 20px 0 8px; color: var(--ink-strong); font-size: 1.08rem; letter-spacing: -.02em; }
+    .problem-card p { margin: 0; color: var(--muted); font-size: .91rem; }
+
+    /* Workflow */
+    .workflow-section { background: #eef3e9; }
+    .workflow-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-top: 48px; }
+    .workflow-step { position: relative; padding: 0 35px 0 0; }
+    .workflow-step + .workflow-step { padding-left: 35px; border-left: 1px solid #d7e1d2; }
+    .step-number { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid #cbdac7; border-radius: 13px; background: #fff; color: var(--green); font-size: .8rem; font-weight: 800; }
+    .workflow-step h3 { margin: 20px 0 9px; color: var(--ink-strong); font-size: 1.18rem; }
+    .workflow-step p { max-width: 310px; margin: 0; color: var(--muted); font-size: .92rem; }
+    .workflow-step a { display: inline-flex; align-items: center; gap: 7px; margin-top: 18px; color: var(--green-dark); font-size: .85rem; font-weight: 750; }
+    .workflow-step a svg { width: 15px; }
+
+    /* Responsible workflow */
+    .review-section { padding: 92px 0; }
+    .review-panel { display: grid; grid-template-columns: 1fr .85fr; align-items: center; gap: 60px; padding: clamp(32px, 6vw, 72px); border-radius: 28px; background: var(--ink-strong); color: white; }
+    .review-panel .section-kicker { color: #b8cf88; }
+    .review-panel h2 { max-width: 560px; margin: 0; color: white; font-size: clamp(2rem, 4vw, 3.3rem); line-height: 1.08; letter-spacing: -.05em; }
+    .review-panel-copy { max-width: 550px; margin: 19px 0 0; color: #c2d0c6; font-size: 1rem; }
+    .review-points { display: grid; gap: 12px; margin: 25px 0 0; padding: 0; list-style: none; }
+    .review-points li { display: flex; align-items: flex-start; gap: 11px; color: #e5ede6; font-size: .9rem; }
+    .review-points svg { width: 18px; height: 18px; flex: 0 0 auto; margin-top: 2px; color: #c8dc93; }
+    .review-visual { padding: 24px; border: 1px solid rgba(229,239,226,.15); border-radius: 20px; background: rgba(255,255,255,.06); }
+    .review-visual-top { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding-bottom: 17px; border-bottom: 1px solid rgba(229,239,226,.14); }
+    .review-visual-top span:first-child { color: #d7e3d8; font-size: .75rem; font-weight: 700; }
+    .pending-tag { padding: 6px 9px; border: 1px solid rgba(232,199,125,.35); border-radius: 99px; background: rgba(191,140,56,.14); color: #f0d69f; font-size: .65rem; font-weight: 700; }
+    .review-visual h3 { margin: 18px 0 5px; color: white; font-size: 1.13rem; }
+    .review-visual p { margin: 0; color: #b6c7ba; font-size: .81rem; }
+    .evidence-stack { display: grid; gap: 8px; margin-top: 18px; }
+    .evidence-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,.07); color: #dce7dd; font-size: .72rem; }
+    .evidence-line span:last-child { color: #bed391; font-size: .65rem; }
+    .review-buttons { display: flex; gap: 9px; margin-top: 19px; }
+    .review-buttons span { flex: 1; padding: 9px 7px; border: 1px solid rgba(226,238,226,.25); border-radius: 9px; color: #ebf2eb; font-size: .68rem; font-weight: 700; text-align: center; }
+
+    /* Farmer access */
+    .access-grid { display: grid; grid-template-columns: .92fr 1.08fr; align-items: center; gap: clamp(42px, 8vw, 100px); }
+    .access-image { position: relative; overflow: hidden; min-height: 390px; border-radius: 25px; background: #dfe8d8; }
+    .access-image img { position: absolute; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+    .access-image::after { position: absolute; inset: 40% 0 0; background: linear-gradient(transparent, rgba(14,43,31,.56)); content: ""; }
+    .access-caption { position: absolute; z-index: 1; right: 18px; bottom: 17px; left: 18px; color: white; font-size: .82rem; font-weight: 650; }
+    .access-list { display: grid; gap: 19px; margin-top: 27px; }
+    .access-item { display: flex; align-items: flex-start; gap: 13px; }
+    .access-item .card-icon { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 12px; }
+    .access-item .card-icon svg { width: 18px; }
+    .access-item strong { display: block; color: var(--ink); font-size: .93rem; }
+    .access-item p { margin: 3px 0 0; color: var(--muted); font-size: .85rem; }
+
+    /* CTA and footer */
+    .closing { padding: 0 0 92px; }
+    .closing-panel { display: flex; align-items: center; justify-content: space-between; gap: 36px; padding: 42px 48px; border: 1px solid #dce6d7; border-radius: 22px; background: linear-gradient(110deg, #eaf1e3, #f8f9f4); }
+    .closing-panel h2 { max-width: 610px; margin: 0; color: var(--ink-strong); font-size: clamp(1.7rem, 3vw, 2.5rem); line-height: 1.13; letter-spacing: -.04em; }
+    .closing-panel p { margin: 10px 0 0; color: var(--muted); font-size: .93rem; }
+    .closing-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 10px; }
+    .footer { border-top: 1px solid var(--line); background: #fff; }
+    .footer-main { display: flex; min-height: 95px; align-items: center; justify-content: space-between; gap: 24px; }
+    .footer-brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 800; letter-spacing: -.03em; }
+    .footer-note { margin: 0; color: #7c8980; font-size: .76rem; }
+    .footer-links { display: flex; gap: 22px; color: #64736a; font-size: .8rem; font-weight: 650; }
+    .footer-links a:hover { color: var(--green); }
+
+    @media (max-width: 980px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 26px; }
+      .hero-copy { max-width: 760px; padding-bottom: 0; }
+      .preview-wrap { width: min(100%, 650px); margin-inline: auto; }
+      .review-panel { grid-template-columns: 1fr; gap: 35px; }
+      .review-visual { max-width: 620px; }
+      .access-grid { gap: 44px; }
+    }
+    @media (max-width: 760px) {
+      .shell { width: min(var(--content), calc(100% - 36px)); }
+      .nav { min-height: 70px; }
+      .menu-toggle { display: grid; }
+      .nav-links { position: absolute; top: 69px; right: 0; left: 0; display: none; align-items: stretch; gap: 0; padding: 9px 18px 17px; border-bottom: 1px solid var(--line); background: var(--cream); box-shadow: 0 15px 25px rgba(24,54,41,.08); }
+      .nav-links.is-open { display: flex; flex-direction: column; }
+      .nav-links a { padding: 12px 6px; }
+      .nav-actions { gap: 12px; margin-left: auto; }
+      .nav-login { display: none; }
+      .nav-actions .btn { min-height: 41px; padding-inline: 15px; }
+      .hero { padding: 52px 0 44px; }
+      h1 { font-size: clamp(2.85rem, 12vw, 4.2rem); }
+      .hero-grid { gap: 19px; }
+      .preview-content { grid-template-columns: minmax(0,1fr) 190px; }
+      .preview-main { padding: 17px; }
+      .preview-side { padding: 18px 13px; }
+      .field-map { height: 160px; }
+      .ribbon-inner { grid-template-columns: repeat(2, 1fr); }
+      .ribbon-item { justify-content: flex-start; min-height: 70px; padding-left: 13px; font-size: .75rem; }
+      .ribbon-item:nth-child(3) { border-left: 0; }
+      .ribbon-item:nth-child(n+3) { border-top: 1px solid #edf0e9; }
+      .section { padding: 75px 0; }
+      .problem-grid { grid-template-columns: 1fr; margin-top: 30px; }
+      .problem-card { padding: 21px; }
+      .workflow-grid { grid-template-columns: 1fr; gap: 27px; margin-top: 34px; }
+      .workflow-step, .workflow-step + .workflow-step { padding: 0; border-left: 0; }
+      .workflow-step + .workflow-step { padding-top: 25px; border-top: 1px solid #d7e1d2; }
+      .workflow-step p { max-width: 500px; }
+      .review-section { padding: 66px 0; }
+      .review-panel { padding: 30px 23px; border-radius: 22px; }
+      .access-grid { grid-template-columns: 1fr; }
+      .access-image { min-height: 300px; }
+      .closing { padding-bottom: 65px; }
+      .closing-panel { align-items: flex-start; flex-direction: column; padding: 30px 24px; }
+      .footer-main { align-items: flex-start; flex-direction: column; padding-block: 24px; }
+      .footer-links { flex-wrap: wrap; gap: 15px 20px; }
+    }
+    @media (max-width: 520px) {
+      .brand { font-size: 1.05rem; }
+      .nav-actions .btn { font-size: .78rem; }
+      .hero-actions { align-items: stretch; flex-direction: column; }
+      .hero-actions .btn { width: 100%; }
+      .hero-note { align-items: flex-start; }
+      .preview-top { padding: 13px 14px; }
+      .preview-content { grid-template-columns: 1fr; }
+      .preview-side { border-top: 1px solid #edf0eb; border-left: 0; }
+      .preview-main { padding: 16px; }
+      .field-map { height: 150px; }
+      .evidence-row { grid-template-columns: 1fr; }
+      .preview-status { font-size: .6rem; }
+      .recommendation { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 12px; }
+      .recommendation p { margin: 0; }
+      .review-divider { margin: 14px 0; }
+      .reviewer { margin-top: 0; }
+      .review-visual { padding: 18px; }
+      .closing-actions { width: 100%; flex-direction: column; }
+      .closing-actions .btn { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+    }
+  </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="header" id="header">
-        <div class="container">
-            <nav class="nav">
-                <a href="#home" class="logo">
-                    <div class="logo-icon">
-                        <i class="fas fa-leaf"></i>
-                    </div>
-                    AgriMind
-                </a>
-                
-                <ul class="nav-menu" id="navMenu">
-                    <button class="mobile-close" id="mobileClose">
-                        <i class="fas fa-times"></i>
-                    </button>
-                    <li><a href="#home" class="nav-link active">Home</a></li>
-                    <li><a href="#about" class="nav-link">About</a></li>
-                    <li><a href="#services" class="nav-link">Services</a></li>
-                    
-                    <li><a href="#research" class="nav-link">Research</a></li>
-                    <li><a href="#field-map" class="nav-link">Field Map</a></li>
-                    <li><a href="#contact" class="nav-link">Contact</a></li>
-                    <li class="nav-cta">
-                        <a href="{% url 'login' %}" class="btn btn-primary">Get Started</a>
-                    </li>
-                </ul>
-                
-                <button class="mobile-toggle" id="mobileToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </nav>
-        </div>
-    </header>
+  <header class="site-header">
+    <div class="shell nav">
+      <a class="brand" href="#top" aria-label="AgriMind home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 3.5C12 3.5 6 6.7 5.2 12.3c-.5 3.4 1.8 6.3 5.1 6.3 5.5 0 9.4-6.1 10.2-15.1Z"/><path d="M3.5 21c2.2-4.3 5.7-7.7 10.8-10.5"/></svg>
+        </span>
+        AgriMind
+      </a>
+      <nav class="nav-links" id="siteNav" aria-label="Main navigation">
+        <a href="#workflow">How it works</a>
+        <a href="#capabilities">Capabilities</a>
+        <a href="#responsible">Responsible AI</a>
+        <a href="#access">Farmer access</a>
+      </nav>
+      <div class="nav-actions">
+        <a class="nav-login" href="{% url 'login' %}">Log in</a>
+        <a class="btn btn-primary" href="{% url 'login' %}">Open dashboard <svg class="arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11M10 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <button class="menu-toggle" type="button" id="menuToggle" aria-label="Open navigation" aria-controls="siteNav" aria-expanded="false"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      </div>
+    </div>
+  </header>
 
-    <!-- Hero Section -->
-    <section class="hero" id="home">
-        <div class="hero-bg">
-            <img src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=1920&q=80" alt="Agricultural technology monitoring crops from aerial view">
-            <div class="hero-overlay"></div>
+  <main id="top">
+    <section class="hero">
+      <div class="shell hero-grid">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="eyebrow-dot"></span> Field intelligence for agricultural teams</div>
+          <h1>Know which fields need attention <em>— and why.</em></h1>
+          <p class="hero-text">AgriMind brings crop, satellite, weather, and soil evidence into one review workflow—so extension teams can prioritize field follow-up and prepare guidance with confidence.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="{% url 'login' %}">Explore the dashboard <svg class="arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11M10 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+            <a class="btn btn-quiet" href="#workflow">See how it works</a>
+          </div>
+          <div class="hero-note"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5 3.8 5v4.2c0 4 2.7 6.8 6.2 8.3 3.5-1.5 6.2-4.3 6.2-8.3V5L10 2.5Z" stroke="currentColor" stroke-width="1.5"/><path d="m7 9.8 2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Evidence-led recommendations. Human review before approval.</div>
         </div>
-        <div class="hero-content fade-in">
-            <span class="hero-overline">Welcome to AgriMind</span>
-            <h1 class="hero-title">
-                Where Agriculture
-                <span>Meets Innovation</span>
-            </h1>
-            <p class="hero-description">
-                Transforming agriculture with innovative technology and data-driven solutions. 
-                Monitor crop health, detect diseases, and predict yields with precision.
-            </p>
-            <div class="hero-buttons">
-                <a href="#services" class="btn btn-primary">Explore Services</a>
-                <a href="#contact" class="btn btn-secondary">Contact Us</a>
+
+        <div class="preview-wrap" aria-label="Illustrative AgriMind field review screen">
+          <div class="preview-glow"></div>
+          <div class="preview">
+            <div class="preview-top">
+              <div class="preview-brand"><span class="preview-brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 4C12 4 6 7 6 13c0 3 2 5 5 5 5 0 8-6 9-14Z"/><path d="M4 21c2-4 5-7 10-10"/></svg></span> Field review</div>
+              <span class="preview-status">AgriMind workspace</span>
             </div>
+            <div class="preview-content">
+              <div class="preview-main">
+                <div class="preview-label">Field overview</div>
+                <div class="field-title-row">
+                  <div><h2 class="field-title">Maize field</h2><p class="field-meta">Field map · Evidence overview</p></div>
+                  <span class="review-chip"><span></span> Review needed</span>
+                </div>
+                <div class="field-map" role="img" aria-label="Illustrative field boundary map"><span class="map-pin"><svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg></span><span class="map-caption">Illustrative field view</span></div>
+                <div class="evidence-row">
+                  <div class="evidence-mini"><span class="evidence-icon"><svg viewBox="0 0 20 20" fill="none"><path d="M3 15.5 7 11l3 2.5 6-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 6.5H16v3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><strong>Vegetation signal</strong><small>Satellite evidence</small></span></div>
+                  <div class="evidence-mini"><span class="evidence-icon weather"><svg viewBox="0 0 20 20" fill="none"><path d="M5.2 12.8a3.4 3.4 0 0 1 .3-6.8 4.8 4.8 0 0 1 9.1 1.6 2.7 2.7 0 0 1-.2 5.3H5.2Z" stroke="currentColor" stroke-width="1.5"/><path d="m7 15-.7 1.5m4-.8-.7 1.5m4-.8-.7 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span><span><strong>Weather context</strong><small>Source and freshness</small></span></div>
+                </div>
+              </div>
+              <aside class="preview-side">
+                <span class="side-label">Proposed guidance</span>
+                <div class="recommendation"><div class="recommendation-action"><span class="hold-icon"><svg viewBox="0 0 14 14" fill="currentColor"><rect x="3" y="2.5" width="2.5" height="9" rx=".7"/><rect x="8.5" y="2.5" width="2.5" height="9" rx=".7"/></svg></span> Hold &amp; review</div><p>Check evidence and field context before taking action.</p></div>
+                <div class="review-divider"></div>
+                <span class="side-label">Decision owner</span>
+                <div class="reviewer"><span class="reviewer-avatar">EO</span><span><strong>Extension officer</strong><small>Approval required</small></span></div>
+              </aside>
+            </div>
+            <div class="preview-foot">Illustrative workflow preview · not live field data</div>
+          </div>
         </div>
-        <a href="#about" class="hero-scroll">
-            <i class="fas fa-chevron-down"></i>
-        </a>
+      </div>
     </section>
 
-    <!-- About Section -->
-    <section class="section" id="about">
-        <div class="container">
-            <div class="about-grid">
-                <div class="about-image fade-in">
-                    <img src="https://images.unsplash.com/photo-1586771107445-d3ca888129ff?w=800&q=80" alt="Drone monitoring agricultural fields with advanced technology">
-                </div>
-                <div class="about-content fade-in">
-                    <span class="overline">About Us</span>
-                    <h2 class="section-title">Empowering Farmers with Technology</h2>
-                    <p>
-                        AgriMind brings agricultural data and practical field guidance together. 
-                        Our platform uses advanced satellite imagery to monitor crop health, detect diseases, 
-                        and predict yields, helping farmers make informed decisions and boost productivity.
-                    </p>
-                    <p>
-                        We offer comprehensive tools for crop monitoring, soil analysis, weather forecasting, 
-                        and irrigation management, all designed to enhance farm efficiency and sustainability. 
-                        Our mission extends beyond individual farms — we aim to promote sustainable practices 
-                        and contribute to global food security.
-                    </p>
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <span class="stat-number">1K+</span>
-                            <span class="stat-label">Farmers Served</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-number">98%</span>
-                            <span class="stat-label">Accuracy Rate</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-number">30%</span>
-                            <span class="stat-label">Yield Increase</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <section class="capability-ribbon" aria-label="AgriMind workflow components">
+      <div class="shell ribbon-inner">
+        <div class="ribbon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5m0 14h17M7 15l4-4 3 2 6-7" stroke-linecap="round" stroke-linejoin="round"/></svg> Crop and satellite signals</div>
+        <div class="ribbon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 17.5a4 4 0 0 1 .5-8 5.5 5.5 0 0 1 10.4 1.8 3.2 3.2 0 0 1-.4 6.2H7Z" stroke-linecap="round" stroke-linejoin="round"/></svg> Weather and soil context</div>
+        <div class="ribbon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m12 3 8 3v5.5c0 4.3-3.4 7.7-8 9.5-4.6-1.8-8-5.2-8-9.5V6l8-3Z" stroke-linejoin="round"/><path d="m8.5 11.5 2.3 2.3 4.8-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Human approval workflow</div>
+        <div class="ribbon-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="6" y="2.8" width="12" height="18.4" rx="2.5"/><path d="M9 6.5h6m-6 3.5h6m-6 3.5h4M10 18h4" stroke-linecap="round"/></svg> Low-bandwidth access paths</div>
+      </div>
     </section>
 
-    <!-- Services Section -->
-    <section class="section section-alt" id="services">
-        <div class="container">
-            <div class="text-center fade-in">
-                <span class="overline">Our Services</span>
-                <h2 class="section-title">Comprehensive Agricultural Solutions</h2>
-                <p class="section-subtitle">
-                    From crop monitoring to irrigation management, we provide all the tools 
-                    you need to optimize your farm's performance and sustainability.
-                </p>
-            </div>
-            
-            <div class="services-grid">
-                <div class="service-card fade-in">
-                    <div class="service-image">
-                        <img src="https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=600&q=80" alt="Crop monitoring dashboard on tablet">
-                    </div>
-                    <div class="service-content">
-                        <div class="service-icon">
-                            <i class="fas fa-seedling"></i>
-                        </div>
-                        <h3>Crop Monitoring</h3>
-                        <p>
-                            Real-time monitoring of crop health using satellite imagery and AI-powered 
-                            analytics. Detect diseases early and track growth patterns efficiently.
-                        </p>
-                    </div>
-                </div>
-                
-                <div class="service-card fade-in">
-                    <div class="service-image">
-                        <img src="https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80" alt="Soil analysis with seedling emerging">
-                    </div>
-                    <div class="service-content">
-                        <div class="service-icon">
-                            <i class="fas fa-layer-group"></i>
-                        </div>
-                        <h3>Soil Analysis</h3>
-                        <p>
-                            Comprehensive soil health assessments to understand nutrient levels, 
-                            pH balance, and organic matter content for optimal crop planning.
-                        </p>
-                    </div>
-                </div>
-                
-                <div class="service-card fade-in">
-                    <div class="service-image">
-                        <img src="https://images.unsplash.com/photo-1504386106331-3e4e71712b38?w=600&q=80" alt="Weather monitoring station in agricultural field">
-                    </div>
-                    <div class="service-content">
-                        <div class="service-icon">
-                            <i class="fas fa-cloud-sun"></i>
-                        </div>
-                        <h3>Weather Forecasting</h3>
-                        <p>
-                            Accurate, localized weather predictions to help you plan planting, 
-                            harvesting, and protection measures with confidence.
-                        </p>
-                    </div>
-                </div>
-                
-                <div class="service-card fade-in">
-                    <div class="service-image">
-                        <img src="https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?w=600&q=80" alt="Smart irrigation system watering crops">
-                    </div>
-                    <div class="service-content">
-                        <div class="service-icon">
-                            <i class="fas fa-tint"></i>
-                        </div>
-                        <h3>Irrigation Management</h3>
-                        <p>
-                            Smart irrigation solutions that optimize water usage based on 
-                            real-time soil moisture data and weather conditions.
-                        </p>
-                    </div>
-                </div>
-            </div>
+    <section class="section" id="capabilities">
+      <div class="shell">
+        <p class="section-kicker">The field team’s challenge</p>
+        <h2 class="section-heading">One field decision depends on many signals.</h2>
+        <p class="section-lead">Crop observations, weather, soil conditions, and seasonal timing often live in separate places. AgriMind brings them together for a clearer review process.</p>
+        <div class="problem-grid">
+          <article class="problem-card"><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 18.5V5.5m0 13h16M7 15l4-5 3 3 5-7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h3>See field conditions</h3><p>Review crop health indicators alongside saved field, weather, and soil context.</p></article>
+          <article class="problem-card"><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5M8 10.5h5m-2.5-2.5v5" stroke-linecap="round"/></svg></span><h3>Check the evidence</h3><p>See source records, freshness, missing inputs, and deterministic crop-calendar checks.</p></article>
+          <article class="problem-card"><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 11V6.5a1.5 1.5 0 0 1 3 0V10m0 0V5.5a1.5 1.5 0 0 1 3 0V10m0 0V7a1.5 1.5 0 0 1 3 0v6.5c0 4.1-2.4 7-6.5 7h-.7c-2.1 0-3.5-.8-4.8-2.5L3.5 15a1.8 1.8 0 0 1 2.8-2.2L8 14.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><h3>Keep people in control</h3><p>Prepare an advisory for an extension officer to review, approve, or reject before it is finalized.</p></article>
         </div>
+      </div>
     </section>
 
-    <!-- Research Section -->
-    <section class="section" id="research">
-        <div class="container">
-            <div class="text-center fade-in">
-                <span class="overline">Research & News</span>
-                <h2 class="section-title">Latest Insights in AgriTech</h2>
-                <p class="section-subtitle">
-                    Stay informed with the latest updates, breakthroughs, and insights 
-                    in agricultural technology and sustainable farming practices.
-                </p>
-            </div>
-            
-            <div class="research-grid">
-                <article class="research-card fade-in">
-                    <a href="https://intellias.com/artificial-intelligence-in-agriculture/" target="_blank" rel="noopener" class="research-image">
-                        <img src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=600&q=80" alt="AI in agriculture concept">
-                        <span class="research-category">Agriculture & AI</span>
-                    </a>
-                    <div class="research-content">
-                        <h4>The Future of Agriculture: AI-Powered Farming</h4>
-                        <p class="research-description">Discover how machine learning and computer vision are transforming crop monitoring, pest detection, and yield prediction for modern farms.</p>
-                        <a href="https://intellias.com/artificial-intelligence-in-agriculture/" target="_blank" rel="noopener" class="research-link">
-                            Read More <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                </article>
-                
-                <article class="research-card fade-in">
-                    <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8388655/" target="_blank" rel="noopener" class="research-image">
-                        <img src="https://images.unsplash.com/photo-1560493676-04071c5f467b?w=600&q=80" alt="Precision farming with GPS tractor">
-                        <span class="research-category">Precision Farming</span>
-                    </a>
-                    <div class="research-content">
-                        <h4>How Precision Farming is Revolutionizing Agriculture</h4>
-                        <p class="research-description">GPS-guided equipment and variable rate technology are enabling farmers to optimize inputs and maximize efficiency across every acre.</p>
-                        <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8388655/" target="_blank" rel="noopener" class="research-link">
-                            Read More <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                </article>
-                
-                <article class="research-card fade-in">
-                    <a href="https://www.nationalgeographic.com/environment/article/paid-content-why-soil-matters-and-what-we-can-do-to-save-it" target="_blank" rel="noopener" class="research-image">
-                        <img src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&q=80" alt="Soil health analysis">
-                        <span class="research-category">Soil Health</span>
-                    </a>
-                    <div class="research-content">
-                        <h4>Maintain Optimal Soil Health for Better Yields</h4>
-                        <p class="research-description">Learn essential practices for building healthy soil ecosystems that improve water retention, nutrient availability, and long-term productivity.</p>
-                        <a href="https://www.nationalgeographic.com/environment/article/paid-content-why-soil-matters-and-what-we-can-do-to-save-it" target="_blank" rel="noopener" class="research-link">
-                            Read More <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                </article>
-                
-                <article class="research-card fade-in">
-                    <a href="https://www.agfoundation.org/news/how-does-weather-affect-farming" target="_blank" rel="noopener" class="research-image">
-                        <img src="https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=600&q=80" alt="Weather patterns over farmland">
-                        <span class="research-category">Weather Trends</span>
-                    </a>
-                    <div class="research-content">
-                        <h4>Understanding Weather Patterns for Farm Operations</h4>
-                        <p class="research-description">Advanced forecasting tools help farmers anticipate weather changes and make informed decisions about planting, irrigation, and harvesting.</p>
-                        <a href="https://www.agfoundation.org/news/how-does-weather-affect-farming" target="_blank" rel="noopener" class="research-link">
-                            Read More <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                </article>
-                
-                <article class="research-card fade-in">
-                    <a href="https://www.agweb.com/" target="_blank" rel="noopener" class="research-image">
-                        <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&q=80" alt="Agricultural market prices">
-                        <span class="research-category">Market Prices</span>
-                    </a>
-                    <div class="research-content">
-                        <h4>Global Crop Market Trends and Analysis</h4>
-                        <p class="research-description">Stay updated on commodity prices, trade policies, and market dynamics that impact agricultural profitability worldwide.</p>
-                        <a href="https://www.agweb.com/" target="_blank" rel="noopener" class="research-link">
-                            Read More <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                </article>
-                
-                <article class="research-card fade-in">
-                    <a href="https://www.yourarticlelibrary.com/crops/crop-seasons-crops-of-various-seasons-and-cash-crops/60685" target="_blank" rel="noopener" class="research-image">
-                        <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&q=80" alt="Different crop seasons">
-                        <span class="research-category">Crop Seasons</span>
-                    </a>
-                    <div class="research-content">
-                        <h4>Maximizing Profits with Seasonal Crop Planning</h4>
-                        <p class="research-description">Strategic crop rotation and timing can significantly boost yields while maintaining soil health and reducing pest pressure throughout the year.</p>
-                        <a href="https://www.yourarticlelibrary.com/crops/crop-seasons-crops-of-various-seasons-and-cash-crops/60685" target="_blank" rel="noopener" class="research-link">
-                            Read More <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                </article>
-            </div>
+    <section class="section workflow-section" id="workflow">
+      <div class="shell">
+        <p class="section-kicker">A practical decision loop</p>
+        <h2 class="section-heading">From field signals to reviewed guidance.</h2>
+        <p class="section-lead">A straightforward workflow that helps teams focus attention and make recommendations easier to inspect.</p>
+        <div class="workflow-grid">
+          <article class="workflow-step"><span class="step-number">01</span><h3>Monitor the field</h3><p>Bring field records and available satellite, weather, soil, and crop analysis into one place.</p><a href="{% url 'map' %}">Explore field monitoring <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h11M10 5l5 5-5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a></article>
+          <article class="workflow-step"><span class="step-number">02</span><h3>Verify the context</h3><p>Check data freshness, evidence records, and crop-stage rules. Missing evidence stays visible.</p><a href="#responsible">See the safeguards <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h11M10 5l5 5-5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a></article>
+          <article class="workflow-step"><span class="step-number">03</span><h3>Review before action</h3><p>AgriMind prepares a proposed advisory. An authorized officer remains responsible for the decision.</p><a href="{% url 'login' %}">Open the workspace <svg viewBox="0 0 20 20" fill="none"><path d="M4 10h11M10 5l5 5-5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a></article>
         </div>
+      </div>
     </section>
 
-    <!-- Field Analysis Map Section -->
-    <section class="map-section" id="field-map">
-        <div class="container">
-            <div class="text-center fade-in">
-                <span class="overline">Field Analysis</span>
-                <h2 class="section-title">Interactive Farm Monitoring</h2>
-                <p class="section-subtitle">
-                    Explore our real-time field analysis map showing crop health indicators, 
-                    soil conditions, and irrigation zones across monitored agricultural areas.
-                </p>
-            </div>
-            
-            <div class="map-container fade-in">
-                <div class="map-wrapper">
-                    <div id="fieldMap"></div>
-                </div>
-                
-                <div class="map-sidebar">
-                    <h3><i class="fas fa-chart-pie"></i> Field Statistics</h3>
-                    
-                    <div class="field-stats">
-                        <div class="field-stat">
-                            <span class="field-stat-label">
-                                <i class="fas fa-leaf"></i> Crop Health Index
-                            </span>
-                            <span class="field-stat-value good">87%</span>
-                        </div>
-                        <div class="field-stat">
-                            <span class="field-stat-label">
-                                <i class="fas fa-tint"></i> Soil Moisture
-                            </span>
-                            <span class="field-stat-value good">72%</span>
-                        </div>
-                        <div class="field-stat">
-                            <span class="field-stat-label">
-                                <i class="fas fa-thermometer-half"></i> Temperature
-                            </span>
-                            <span class="field-stat-value">24°C</span>
-                        </div>
-                        <div class="field-stat">
-                            <span class="field-stat-label">
-                                <i class="fas fa-sun"></i> UV Index
-                            </span>
-                            <span class="field-stat-value warning">6.2</span>
-                        </div>
-                        <div class="field-stat">
-                            <span class="field-stat-label">
-                                <i class="fas fa-wind"></i> Wind Speed
-                            </span>
-                            <span class="field-stat-value">12 km/h</span>
-                        </div>
-                        <div class="field-stat">
-                            <span class="field-stat-label">
-                                <i class="fas fa-cloud-rain"></i> Precipitation
-                            </span>
-                            <span class="field-stat-value good">15mm</span>
-                        </div>
-                    </div>
-                    
-                    <div class="map-legend">
-                        <h4>Field Health Legend</h4>
-                        <div class="legend-items">
-                            <div class="legend-item">
-                                <span class="legend-color healthy"></span>
-                                Healthy
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-color moderate"></span>
-                                Moderate
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-color attention"></span>
-                                Needs Attention
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="map-actions">
-                        <a href="#contact" class="btn btn-primary">
-                            <i class="fas fa-satellite"></i> Request Full Analysis
-                        </a>
-                    </div>
-                </div>
-            </div>
+    <section class="review-section" id="responsible">
+      <div class="shell review-panel">
+        <div>
+          <p class="section-kicker">Responsible by design</p>
+          <h2>AI can prepare the recommendation. The officer makes the call.</h2>
+          <p class="review-panel-copy">AgriMind is built as decision support for extension teams. Evidence and rule checks shape the draft; human review stays in the workflow.</p>
+          <ul class="review-points">
+            <li><svg viewBox="0 0 20 20" fill="none"><path d="m4 10 4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Advisories carry evidence IDs and review status.</li>
+            <li><svg viewBox="0 0 20 20" fill="none"><path d="m4 10 4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Missing or stale data can stop a recommendation.</li>
+            <li><svg viewBox="0 0 20 20" fill="none"><path d="m4 10 4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Approval remains with an authorized human reviewer.</li>
+          </ul>
         </div>
+        <div class="review-visual" aria-label="Illustration of an advisory waiting for human review">
+          <div class="review-visual-top"><span>ADVISORY REVIEW</span><span class="pending-tag">Awaiting review</span></div>
+          <h3>Hold and inspect field conditions</h3>
+          <p>Proposed guidance · maize field</p>
+          <div class="evidence-stack"><div class="evidence-line"><span>Vegetation observation</span><span>Evidence attached</span></div><div class="evidence-line"><span>Weather context</span><span>Freshness shown</span></div><div class="evidence-line"><span>Crop calendar check</span><span>Rule cited</span></div></div>
+          <div class="review-buttons"><span>Approve with reason</span><span>Reject with reason</span></div>
+        </div>
+      </div>
     </section>
 
-    <!-- CTA Banner -->
-    <section class="cta-banner">
-        <div class="container fade-in">
-            <h2>Ready to Transform Your Farm?</h2>
-            <p>
-                Join farmers using AgriMind to make more informed field decisions, 
-                reduce costs, and practice sustainable agriculture.
-            </p>
-            <div class="cta-buttons">
-                <a href="#contact" class="btn cta-btn-primary">Get Started Today</a>
-                <a href="#services" class="btn btn-secondary">Learn More</a>
-            </div>
+    <section class="section" id="access">
+      <div class="shell access-grid">
+        <div class="access-image"><img src="{% static 'images/image3.webp' %}" alt="Hands holding soil and a young crop seedling" loading="lazy"><span class="access-caption">Built around the people making field decisions.</span></div>
+        <div>
+          <p class="section-kicker">Designed for real field workflows</p>
+          <h2 class="section-heading">Useful to the officer. Reachable for the farmer.</h2>
+          <p class="section-lead">Extension teams need a clear workspace; farmers need guidance that can reach them where they are. AgriMind brings both needs into the product plan.</p>
+          <div class="access-list">
+            <div class="access-item"><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4" stroke-linecap="round"/></svg></span><div><strong>One workspace for field review</strong><p>Map fields, inspect crop analysis, and review AgriMind advisories from the web dashboard.</p></div></div>
+            <div class="access-item"><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-5l-4 4v-4H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M7 9h10M7 12.5h7" stroke-linecap="round"/></svg></span><div><strong>Low-bandwidth access paths</strong><p>USSD and SMS integration points support programs serving farmers beyond smartphone coverage.</p></div></div>
+            <div class="access-item"><span class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5m0 14h16M7 15l4-4 3 2 5-7" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><strong>Start with maize monitoring</strong><p>Crop-stage and seasonal context help make field review more relevant to the decisions teams face.</p></div></div>
+          </div>
         </div>
+      </div>
     </section>
 
-    <!-- Contact Section -->
-    <section class="section section-dark" id="contact">
-        <div class="container">
-            <div class="contact-grid">
-                <div class="contact-info fade-in">
-                    <span class="overline">Contact Us</span>
-                    <h2>Let's Work Together</h2>
-                    <p>
-                        At AgriMind, we are dedicated to improving agriculture through 
-                        cutting-edge technology and innovative solutions. Whether you need assistance 
-                        with our crop monitoring systems or want to explore our latest AI-driven features, 
-                        we're here to help.
-                    </p>
-                    
-                    <div class="contact-details">
-                        <div class="contact-item">
-                            <div class="contact-item-icon">
-                                <i class="fas fa-envelope"></i>
-                            </div>
-                            <div class="contact-item-text">
-                                <span>Email</span>
-                                <a href="mailto:info@agrivision.com">info@agrivision.com</a>
-                            </div>
-                        </div>
-                        
-                        <div class="contact-item">
-                            <div class="contact-item-icon">
-                                <i class="fas fa-phone"></i>
-                            </div>
-                            <div class="contact-item-text">
-                                <span>Phone</span>
-                                <a href="tel:+1234567890">+1 (234) 567-890</a>
-                            </div>
-                        </div>
-                        
-                        <div class="contact-item">
-                            <div class="contact-item-icon">
-                                <i class="fas fa-map-marker-alt"></i>
-                            </div>
-                            <div class="contact-item-text">
-                                <span>Location</span>
-                                <p>Agricultural Innovation Hub, Tech Valley</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="social-links">
-                        <a href="#" class="social-link" aria-label="Facebook">
-                            <i class="fab fa-facebook-f"></i>
-                        </a>
-                        <a href="#" class="social-link" aria-label="Twitter">
-                            <i class="fab fa-twitter"></i>
-                        </a>
-                        <a href="#" class="social-link" aria-label="Instagram">
-                            <i class="fab fa-instagram"></i>
-                        </a>
-                        <a href="#" class="social-link" aria-label="LinkedIn">
-                            <i class="fab fa-linkedin-in"></i>
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="contact-form-wrapper fade-in">
-                    <h3>How Can We Help?</h3>
-                    <form id="contactForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="name">Name *</label>
-                                <input type="text" id="name" name="name" placeholder="Your name" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="organization">Organization</label>
-                                <input type="text" id="organization" name="organization" placeholder="Your organization">
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="email">Email *</label>
-                            <input type="email" id="email" name="email" placeholder="Your email address" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="message">Project Description *</label>
-                            <textarea id="message" name="message" placeholder="Tell us about your project or inquiry..." required></textarea>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary btn-submit">
-                            Send Message <i class="fas fa-paper-plane"></i>
-                        </button>
-                        
-                        <div class="form-success" id="formSuccess">
-                            <i class="fas fa-check-circle"></i>
-                            Your message was sent successfully! We'll get back to you soon.
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+    <section class="closing">
+      <div class="shell closing-panel">
+        <div><h2>Bring clearer field decisions to your team.</h2><p>Explore AgriMind or talk with us about a focused field workflow.</p></div>
+        <div class="closing-actions"><a class="btn btn-primary" href="{% url 'login' %}">Open dashboard</a><a class="btn btn-quiet" href="{% url 'contact' %}">Discuss a pilot</a></div>
+      </div>
     </section>
+  </main>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-logo">
-                    <div class="logo-icon" style="width: 32px; height: 32px; font-size: 0.875rem;">
-                        <i class="fas fa-leaf"></i>
-                    </div>
-                    AgriMind
-                </div>
-                
-                <p class="footer-copyright">
-                    &copy; 2025 AgriMind. All rights reserved.
-                </p>
-                
-                <div class="footer-links">
-                    <a href="#home">Home</a>
-                    <a href="#services">Services</a>
-                    <a href="#field-map">Field Map</a>
-                    <a href="#research">Research</a>
-                    <a href="#contact">Contact</a>
-                </div>
-            </div>
-        </div>
-    </footer>
-
-    <!-- JavaScript -->
-    <script>
-        // ========================================
-        // HEADER SCROLL EFFECT
-        // ========================================
-        const header = document.getElementById('header');
-        
-        function handleScroll() {
-            if (window.scrollY > 100) {
-                header.classList.add('scrolled');
-            } else {
-                header.classList.remove('scrolled');
-            }
-        }
-        
-        window.addEventListener('scroll', handleScroll);
-
-        // ========================================
-        // MOBILE NAVIGATION
-        // ========================================
-        const mobileToggle = document.getElementById('mobileToggle');
-        const mobileClose = document.getElementById('mobileClose');
-        const navMenu = document.getElementById('navMenu');
-        const navLinks = document.querySelectorAll('.nav-link');
-
-        mobileToggle.addEventListener('click', () => {
-            navMenu.classList.add('active');
-        });
-
-        mobileClose.addEventListener('click', () => {
-            navMenu.classList.remove('active');
-        });
-
-        navLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                navMenu.classList.remove('active');
-            });
-        });
-
-        // ========================================
-        // ACTIVE NAV LINK ON SCROLL
-        // ========================================
-        const sections = document.querySelectorAll('section[id]');
-
-        function setActiveNavLink() {
-            const scrollY = window.scrollY;
-
-            sections.forEach(section => {
-                const sectionHeight = section.offsetHeight;
-                const sectionTop = section.offsetTop - 150;
-                const sectionId = section.getAttribute('id');
-                const navLink = document.querySelector(`.nav-link[href="#${sectionId}"]`);
-
-                if (scrollY > sectionTop && scrollY <= sectionTop + sectionHeight) {
-                    navLinks.forEach(link => link.classList.remove('active'));
-                    if (navLink) navLink.classList.add('active');
-                }
-            });
-        }
-
-        window.addEventListener('scroll', setActiveNavLink);
-
-        // ========================================
-        // SMOOTH SCROLL FOR ANCHOR LINKS
-        // ========================================
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function(e) {
-                e.preventDefault();
-                const targetId = this.getAttribute('href');
-                const targetElement = document.querySelector(targetId);
-                
-                if (targetElement) {
-                    const headerHeight = header.offsetHeight;
-                    const targetPosition = targetElement.offsetTop - headerHeight;
-                    
-                    window.scrollTo({
-                        top: targetPosition,
-                        behavior: 'smooth'
-                    });
-                }
-            });
-        });
-
-        // ========================================
-        // FADE IN ON SCROLL
-        // ========================================
-        const fadeElements = document.querySelectorAll('.fade-in');
-
-        const observerOptions = {
-            root: null,
-            rootMargin: '0px',
-            threshold: 0.1
-        };
-
-        const fadeObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                    fadeObserver.unobserve(entry.target);
-                }
-            });
-        }, observerOptions);
-
-        fadeElements.forEach(element => {
-            fadeObserver.observe(element);
-        });
-
-        // ========================================
-        // CONTACT FORM SUBMISSION
-        // ========================================
-        const contactForm = document.getElementById('contactForm');
-        const formSuccess = document.getElementById('formSuccess');
-
-        contactForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Simulate form submission
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-            submitBtn.disabled = true;
-            
-            setTimeout(() => {
-                formSuccess.classList.add('show');
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-                this.reset();
-                
-                setTimeout(() => {
-                    formSuccess.classList.remove('show');
-                }, 5000);
-            }, 1500);
-        });
-
-        // ========================================
-        // INITIAL LOAD ANIMATIONS
-        // ========================================
-        document.addEventListener('DOMContentLoaded', () => {
-            // Trigger fade in for hero content
-            setTimeout(() => {
-                document.querySelector('.hero-content').classList.add('visible');
-            }, 300);
-        });
-    </script>
-
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
-    <!-- Field Map Initialization -->
-    <script>
-        // ========================================
-        // FIELD ANALYSIS MAP - KIAMBU COUNTY, KENYA
-        // ========================================
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize the map centered on Kiambu County, Kenya
-            const map = L.map('fieldMap').setView([-1.1714, 36.8314], 12);
-
-            // Add satellite tile layer
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles &copy; Esri | Kiambu County, Kenya',
-                maxZoom: 19
-            }).addTo(map);
-
-            // Custom icons for different field conditions
-            const healthyIcon = L.divIcon({
-                className: 'custom-marker',
-                html: '<div style="background:#22c55e;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-            });
-
-            const moderateIcon = L.divIcon({
-                className: 'custom-marker',
-                html: '<div style="background:#f59e0b;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-            });
-
-            const attentionIcon = L.divIcon({
-                className: 'custom-marker',
-                html: '<div style="background:#ef4444;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>',
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
-            });
-
-            // Kiambu County crop fields data
-            const fields = [
-                {
-                    coords: [-1.1450, 36.8350],
-                    name: 'Limuru Tea Plantation',
-                    status: 'healthy',
-                    health: '94%',
-                    moisture: '78%',
-                    area: '120 hectares',
-                    crop: 'Tea'
-                },
-                {
-                    coords: [-1.1620, 36.8480],
-                    name: 'Kikuyu Coffee Estate',
-                    status: 'healthy',
-                    health: '91%',
-                    moisture: '72%',
-                    area: '85 hectares',
-                    crop: 'Coffee'
-                },
-                {
-                    coords: [-1.1850, 36.8200],
-                    name: 'Kabete Maize Farm',
-                    status: 'moderate',
-                    health: '76%',
-                    moisture: '58%',
-                    area: '45 hectares',
-                    crop: 'Maize'
-                },
-                {
-                    coords: [-1.1380, 36.8150],
-                    name: 'Tigoni Potato Fields',
-                    status: 'healthy',
-                    health: '88%',
-                    moisture: '82%',
-                    area: '65 hectares',
-                    crop: 'Potatoes'
-                },
-                {
-                    coords: [-1.1980, 36.8550],
-                    name: 'Kiambu Vegetable Garden',
-                    status: 'attention',
-                    health: '52%',
-                    moisture: '38%',
-                    area: '28 hectares',
-                    crop: 'Mixed Vegetables'
-                },
-                {
-                    coords: [-1.1550, 36.7950],
-                    name: 'Ndumberi Dairy Pastures',
-                    status: 'healthy',
-                    health: '85%',
-                    moisture: '70%',
-                    area: '95 hectares',
-                    crop: 'Napier Grass'
-                },
-                {
-                    coords: [-1.1280, 36.8620],
-                    name: 'Ruiru Flower Farm',
-                    status: 'healthy',
-                    health: '96%',
-                    moisture: '85%',
-                    area: '35 hectares',
-                    crop: 'Cut Flowers'
-                },
-                {
-                    coords: [-1.2050, 36.8080],
-                    name: 'Banana Hill Plantation',
-                    status: 'moderate',
-                    health: '68%',
-                    moisture: '55%',
-                    area: '42 hectares',
-                    crop: 'Bananas'
-                }
-            ];
-
-            // Add markers for each field
-            fields.forEach(field => {
-                let icon;
-                if (field.status === 'healthy') icon = healthyIcon;
-                else if (field.status === 'moderate') icon = moderateIcon;
-                else icon = attentionIcon;
-
-                const marker = L.marker(field.coords, { icon: icon }).addTo(map);
-                
-                marker.bindPopup(`
-                    <div class="popup-title">${field.name}</div>
-                    <div class="popup-info">
-                        <p><strong>Crop:</strong> ${field.crop}</p>
-                        <p><strong>Health Index:</strong> ${field.health}</p>
-                        <p><strong>Soil Moisture:</strong> ${field.moisture}</p>
-                        <p><strong>Area:</strong> ${field.area}</p>
-                    </div>
-                `);
-            });
-
-            // Add field polygons for Kiambu County farms
-            const fieldPolygons = [
-                {
-                    coords: [[-1.1400, 36.8300], [-1.1400, 36.8420], [-1.1520, 36.8420], [-1.1520, 36.8300]],
-                    color: '#22c55e',
-                    name: 'Limuru Tea Zone'
-                },
-                {
-                    coords: [[-1.1570, 36.8430], [-1.1570, 36.8550], [-1.1680, 36.8550], [-1.1680, 36.8430]],
-                    color: '#22c55e',
-                    name: 'Kikuyu Coffee Zone'
-                },
-                {
-                    coords: [[-1.1800, 36.8150], [-1.1800, 36.8280], [-1.1920, 36.8280], [-1.1920, 36.8150]],
-                    color: '#f59e0b',
-                    name: 'Kabete Maize Zone'
-                },
-                {
-                    coords: [[-1.1330, 36.8100], [-1.1330, 36.8220], [-1.1450, 36.8220], [-1.1450, 36.8100]],
-                    color: '#22c55e',
-                    name: 'Tigoni Potato Zone'
-                },
-                {
-                    coords: [[-1.1930, 36.8500], [-1.1930, 36.8620], [-1.2050, 36.8620], [-1.2050, 36.8500]],
-                    color: '#ef4444',
-                    name: 'Kiambu Vegetable Zone'
-                }
-            ];
-
-            fieldPolygons.forEach(poly => {
-                L.polygon(poly.coords, {
-                    color: poly.color,
-                    fillColor: poly.color,
-                    fillOpacity: 0.3,
-                    weight: 2
-                }).addTo(map);
-            });
-        });
-    </script>
+  <footer class="footer">
+    <div class="shell footer-main">
+      <a class="footer-brand" href="#top"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 3.5C12 3.5 6 6.7 5.2 12.3c-.5 3.4 1.8 6.3 5.1 6.3 5.5 0 9.4-6.1 10.2-15.1Z"/><path d="M3.5 21c2.2-4.3 5.7-7.7 10.8-10.5"/></svg></span>AgriMind</a>
+      <p class="footer-note">Field intelligence for evidence-led agricultural decisions.</p>
+      <nav class="footer-links" aria-label="Footer navigation"><a href="#workflow">How it works</a><a href="{% url 'chat' %}">Assistant</a><a href="{% url 'contact' %}">Contact</a></nav>
+    </div>
+  </footer>
+  <script>
+    (() => {
+      const button = document.getElementById('menuToggle');
+      const navigation = document.getElementById('siteNav');
+      if (!button || !navigation) return;
+      button.addEventListener('click', () => {
+        const open = button.getAttribute('aria-expanded') !== 'true';
+        button.setAttribute('aria-expanded', String(open));
+        button.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+        navigation.classList.toggle('is-open', open);
+      });
+      navigation.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
+        button.setAttribute('aria-expanded', 'false');
+        button.setAttribute('aria-label', 'Open navigation');
+        navigation.classList.remove('is-open');
+      }));
+    })();
+  </script>
 </body>
 </html>
